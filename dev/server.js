@@ -97,12 +97,11 @@ async function poses(req, env, hub) {
   if (!q.ok) return json({ error: "quota", message: q.message, left: 0 }, 429);
   const animal = KIND_KO[kind] || "pet";
   const prompt =
-    `Make a 2x2 sprite sheet of EXACTLY this same ${animal} character, same colors, same markings, same art style (soft dark-brown hand-drawn outline, round chubby body, flat pastel colors). ` +
-    `Square image split into 4 equal square cells. Each cell: the whole character centered with lots of empty margin, plain cream background (#FDF6EC), no text, no frames, no grid lines, no shadows on the ground, nothing else in the cell. ` +
-    `Top-left cell: walking, side view facing RIGHT, full body, one paw lifted. ` +
-    `Top-right cell: sleeping curled up into a round ball, eyes closed, peaceful. ` +
-    `Bottom-left cell: eating ${SNACK[kind] || "a treat"} held in front paws, cheeks puffed, front view. ` +
-    `Bottom-right cell: very happy, eyes closed in ^^ shape, big smile, front view, tiny pink hearts near the head.`;
+    `Make a 3x3 sprite sheet of EXACTLY this same ${animal} character: same colors, same markings, same face, same art style (soft dark-brown hand-drawn outline, round chubby mochi body, flat pastel colors). ` +
+    `Square image split into 9 equal square cells in 3 rows and 3 columns. Each cell: the whole character small and centered with generous empty margin, plain cream background (#FDF6EC), no text, no frames, no grid lines, no ground shadows, nothing else. ` +
+    `Row 1: (1) walking, side view facing RIGHT, one paw lifted; (2) seen from BEHIND, round fluffy butt and tiny tail, about to crawl into a hole; (3) sleeping curled into a ball, eyes closed. ` +
+    `Row 2: (4) eating ${SNACK[kind] || "a treat"} held in front paws, cheeks puffed; (5) very happy, eyes closed in ^^ shape, big smile, tiny pink hearts; (6) curious, standing up on hind legs, head tilted, ears up, one small question mark. ` +
+    `Row 3: (7) grumpy, puffed up, pouting, little anger mark; (8) grooming, rubbing its face with both front paws, eyes closed; (9) lying flat on its belly like a pancake, legs stretched out, relaxed.`;
   const imgs = [{ mime: "image/jpeg", data: image }];
   const tries = [
     () => callInteractions(env, prompt, imgs, true),
@@ -212,7 +211,7 @@ export class Hub extends DurableObject {
     }
     if (p === "/api/pose") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      if (!["side", "sleep", "eat", "happy"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
+      if (!["side", "back", "sleep", "eat", "happy", "curious", "grumpy", "groom", "flat"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
       if (typeof b.img !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
       this.sql.exec("INSERT INTO poses(id, k, img, at) VALUES(?, ?, ?, ?) ON CONFLICT(id, k) DO UPDATE SET img = excluded.img, at = excluded.at", b.id, b.k, b.img, now);
       return json({ ok: true });
