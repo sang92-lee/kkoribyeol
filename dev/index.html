@@ -92,7 +92,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .prop.hammock { bottom: auto; top: 22%; }
 .room .prop.lamp { bottom: auto; top: 0; }
 .room .pet { position: absolute; width: 23%; transform: translateX(-50%); cursor: pointer; z-index: 3; transition: opacity .6s; }
-.room .pet .spr { position: relative; transform-origin: 50% 100%; transition: transform .25s; }
+.room .pet .spr { position: relative; isolation: isolate; transform-origin: 50% 100%; transition: transform .25s; }
 .room .pet .body { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
 .room .pet .body img { width: 100%; display: block; }
 .room .pet .body svg { width: 100%; display: block; }
@@ -122,14 +122,17 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .bubble.on { opacity: 1; }
 .room .sndBtn { position: absolute; top: 8px; left: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 13px; }
 .room .sndBtn[aria-pressed="true"] { background: var(--butter); }
-.room .pet .feet { position: absolute; left: 22%; right: 22%; bottom: -2%; height: 12%; display: none; justify-content: space-between; z-index: -1; }
-.room .pet .feet i { width: 30%; height: 100%; border-radius: 50%; background: #F8D3DA; border: 2px solid var(--ink); }
-.room .pet.walk:not(.framed) .feet, .room .pet.run:not(.framed) .feet { display: flex; }
-.room .pet.walk:not(.framed) .feet i:first-child { animation: stepA .42s ease-in-out infinite; }
-.room .pet.walk:not(.framed) .feet i:last-child { animation: stepA .42s ease-in-out infinite reverse; animation-delay: -.21s; }
-.room .pet.run:not(.framed) .feet i:first-child { animation: stepA .2s linear infinite; }
-.room .pet.run:not(.framed) .feet i:last-child { animation: stepA .2s linear infinite; animation-delay: -.1s; }
-@keyframes stepA { 0%,100% { transform: translate(-25%, 0); } 50% { transform: translate(25%, -45%); } }
+.room .pet .legs { position: absolute; left: 25%; width: 50%; top: 80%; z-index: -1; display: none; --fur: #D9B48A; }
+.room .pet .legs svg { width: 100%; height: auto; display: block; overflow: visible; }
+.room .pet .legs .lg rect { fill: var(--fur); stroke: #4A3428; stroke-width: 3.5; }
+.room .pet .legs .lg { transform-box: fill-box; transform-origin: 50% 0; }
+.room .pet.walk:not(.framed) .legs, .room .pet.run:not(.framed) .legs { display: block; }
+.room .pet.walk:not(.framed) .l1, .room .pet.walk:not(.framed) .l4 { animation: legA .42s ease-in-out infinite; }
+.room .pet.walk:not(.framed) .l2, .room .pet.walk:not(.framed) .l3 { animation: legA .42s ease-in-out infinite; animation-delay: -.21s; }
+.room .pet.run:not(.framed) .l1, .room .pet.run:not(.framed) .l2 { animation: legR .22s linear infinite; }
+.room .pet.run:not(.framed) .l3, .room .pet.run:not(.framed) .l4 { animation: legR .22s linear infinite; animation-delay: -.11s; }
+@keyframes legA { 0%,100% { transform: rotate(28deg); } 50% { transform: rotate(-28deg); } }
+@keyframes legR { 0% { transform: rotate(50deg) scaleY(1.1); } 50% { transform: rotate(-50deg) scaleY(1.1); } 100% { transform: rotate(50deg) scaleY(1.1); } }
 .room .clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
 .care { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .care.play { grid-template-columns: repeat(3, 1fr); }
@@ -661,7 +664,7 @@ const P = { x: 50, y: FLOOR, dir: 1, act: 'idle', until: 0, target: null, speed:
 const rnd = (a, b) => a + Math.random() * (b - a);
 function ownedItems() { return new Set((S.state?.mine || []).filter(x => x.kind === 'item').map(x => x.a)); }
 /* 그림 테두리에 붙은 크림 배경만 지워서 방에 자연스럽게 서 있게 (털이 밝아도 안쪽은 안 지움) */
-const cutCache = {};
+const cutCache = {}, BOX = {};
 function cutout(url, crop) {
   const key = url + (crop ? crop.join() : '');
   if (cutCache[key]) return cutCache[key];
@@ -687,8 +690,22 @@ function cutout(url, crop) {
       if (x > 0) stack.push(n - 1); if (x < W - 1) stack.push(n + 1); if (y > 0) stack.push(n - W); if (y < H - 1) stack.push(n + W);
     }
     g.putImageData(d, 0, 0);
-    return c.toDataURL('image/png');
+    let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) if (px[(y * W + x) * 4 + 3] > 0) { if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+    const cs = [0, 0, 0, 0], my = Math.round(by0 + (by1 - by0) * .55);
+    for (let y = my; y < my + (by1 - by0) * .15; y += 2) for (let x = Math.round(bx0 + (bx1 - bx0) * .2); x < bx0 + (bx1 - bx0) * .4; x += 2) { const i = (Math.round(y) * W + x) * 4; if (px[i + 3] > 0 && px[i] + px[i + 1] + px[i + 2] > 60) { cs[0] += px[i]; cs[1] += px[i + 1]; cs[2] += px[i + 2]; cs[3]++; } }
+    const out = c.toDataURL('image/png');
+    BOX[out] = { x0: bx0 / W, y0: by0 / H, x1: bx1 / W, y1: by1 / H, fur: cs[3] ? `rgb(${cs[0] / cs[3] | 0},${cs[1] / cs[3] | 0},${cs[2] / cs[3] | 0})` : '#D9B48A' };
+    return out;
   })().catch(() => crop ? null : url);
+}
+/* 찹쌀떡 다리: 그림 바로 아래에 털색으로 붙여서 걸을 때 번갈아 움직임 */
+const LEGS_SVG = `<svg viewBox="0 0 100 34" aria-hidden="true"><g class="lg l1"><rect x="18" y="-6" width="15" height="30" rx="7.5"/></g><g class="lg l2"><rect x="30" y="-6" width="15" height="30" rx="7.5"/></g><g class="lg l3"><rect x="56" y="-6" width="15" height="30" rx="7.5"/></g><g class="lg l4"><rect x="68" y="-6" width="15" height="30" rx="7.5"/></g></svg>`;
+function placeLegs(b) {
+  const L = $('#legs'); if (!L || !b) return;
+  const w = (b.x1 - b.x0) * 100;
+  L.style.left = (b.x0 * 100 + w * .14) + '%'; L.style.width = (w * .72) + '%'; L.style.top = (b.y1 * 100 - w * .72 * .2) + '%';
+  L.style.setProperty('--fur', b.fur);
 }
 function buildRoom() {
   const p = myPet(); if (!p) return;
@@ -708,7 +725,7 @@ function buildRoom() {
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button>
-    <div class="pet" id="roomPet"><div class="feet"><i></i><i></i></div><div class="spr"><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear, p.gpos)}</div></div>
+    <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear, p.gpos)}</div></div>
     <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
@@ -717,7 +734,7 @@ function buildRoom() {
   const im = $('#roomPet img');
   P.spr = {}; P.cur = 'front';
   if (im) {
-    cutout(im.src).then(u => { P.spr.front = u; if (im.isConnected && P.cur === 'front') im.src = u; });
+    cutout(im.src).then(u => { P.spr.front = u; if (im.isConnected && P.cur === 'front') im.src = u; placeLegs(BOX[u]); });
     for (const k of Object.keys(p.poses || {})) { const u = `/api/img/${encodeURIComponent(S.id)}?p=${k}&v=${p.poses[k]}&c=${encodeURIComponent(S.code)}`; const pre = new Image(); pre.onload = () => P.spr[k] = u; pre.src = u; }
   }
   showPoseNote();
