@@ -104,7 +104,8 @@ async function draw(req, env, hub) {
     () => callGenerate(env, prompt, imgs, "gemini-2.5-flash-image"),
   ];
   const errs = [];
-  for (const t of tries) {
+  for (const t of [...tries, ...tries.slice(2)]) {
+    if (errs.length && /\b(429|500|503)\b/.test(errs[errs.length - 1])) await new Promise(r => setTimeout(r, 2500));
     try { const out = await t(); if (out) { if (photo.length < 1_400_000) await hub.fetch(new Request(new URL("/api/photo", req.url), { method: "POST", body: JSON.stringify({ id, photo: "data:image/jpeg;base64," + photo }) })).catch(() => {}); return json({ image: out.data, mime: out.mime, left: q.left }); } errs.push("그림 없는 응답"); }
     catch (e) { errs.push(String(e.message || e).slice(0, 220)); }
   }
