@@ -10,6 +10,9 @@ const JOIN_CLOSE = 60e3;      // 판 끝나기 1분 전엔 줄 마감
 const DRAW_PER_PLAYER = 8;    // AI 그림: 한 사람 하루 8번 (캐릭터+표정+동작)
 const DRAW_PER_DAY = 40;      // AI 그림: 전체 하루 40번 (요금 안전장치)
 
+const SPIN_COST = 50;         // 씨앗 50개로 언제든 뽑기
+const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
+const wkKey = t => String(Math.floor((t + 9 * 3600e3 - 4 * 864e5) / (7 * 864e5)));
 const NPC_PETS = [
   { id: "npc-kongtteok", name: "콩떡", kind: "hamster", fur: "#F3D9B1" },
   { id: "npc-hodu", name: "호두", kind: "hamster", fur: "#C08A5B" },
@@ -169,6 +172,8 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS poses(id TEXT, k TEXT, img TEXT, at INTEGER, PRIMARY KEY(id, k))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS equip(id TEXT PRIMARY KEY, gear TEXT)");
     try { this.sql.exec("ALTER TABLE equip ADD COLUMN pos TEXT"); } catch (e) {}
+    this.sql.exec("CREATE TABLE IF NOT EXISTS wallet(id TEXT PRIMARY KEY, seeds INTEGER, last INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS scores(wk TEXT, id TEXT, best INTEGER, PRIMARY KEY(wk, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS trades(tid TEXT PRIMARY KEY, fr TEXT, give TEXT, wk TEXT, wa TEXT, wb TEXT, at INTEGER, st TEXT, too TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS likes(day TEXT, fr TEXT, too TEXT, PRIMARY KEY(day, fr, too))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
@@ -230,6 +235,26 @@ export class Hub extends DurableObject {
       const pos = q.reset ? null : JSON.stringify({ l: num(q.l, -30, 100), t: num(q.t, -40, 100), w: num(q.w, 8, 110), r: num(q.r, -60, 60) });
       this.sql.exec("UPDATE equip SET pos = ? WHERE id = ?", pos, b.id);
       return json({ ok: true });
+    }
+    if (p === "/api/score") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const w = this.rows("SELECT seeds, last FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, last: 0 };
+      if (now - w.last < 20e3) return json({ error: "fast", message: "너무 빨라요" }, 429);
+      const score = Math.max(0, Math.min(MAX_SCORE, Math.floor(Number(b.score) || 0)));
+      const seeds = w.seeds + score, wk = wkKey(now);
+      this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, last = excluded.last", b.id, seeds, now);
+      const old = (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, b.id)[0] || { best: 0 }).best;
+      if (score > old) this.sql.exec("INSERT INTO scores(wk, id, best) VALUES(?, ?, ?) ON CONFLICT(wk, id) DO UPDATE SET best = excluded.best", wk, b.id, score);
+      return json({ ok: true, seeds, earned: score, best: Math.max(old, score), newBest: score > old && score > 0 });
+    }
+    if (p === "/api/spin") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const w = this.rows("SELECT seeds FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0 };
+      if (w.seeds < SPIN_COST) return json({ error: "poor", message: `씨앗이 ${SPIN_COST - w.seeds}개 모자라요` }, 409);
+      this.sql.exec("UPDATE wallet SET seeds = seeds - ? WHERE id = ?", SPIN_COST, b.id);
+      const out = this.roll(Math.random, b.id), uniq = `s:${now.toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+      this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, ?, ?, ?)", uniq, b.id, now, out.kind, out.a, out.b);
+      return json({ ok: true, result: out, seeds: w.seeds - SPIN_COST });
     }
     if (p === "/api/trade") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
@@ -387,11 +412,15 @@ export class Hub extends DurableObject {
     const tradedRecent = id ? this.rows("SELECT tid, too FROM trades WHERE fr = ? AND st = 'done' AND too IS NOT NULL ORDER BY at DESC LIMIT 5", id).map(x => ({ tid: x.tid, by: players[x.too] || "누군가" })) : [];
     const recent = this.rows("SELECT who, kind, a, b, t FROM pulls WHERE t <= ? ORDER BY t DESC LIMIT 6", now)
       .map(x => ({ ...x, by: pets[x.who]?.npc ? pets[x.who].name : (players[x.who] || "누군가") }));
+    const wk = wkKey(now);
+    const scoreRank = this.rows("SELECT id, best FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", wk).map(x => ({ ...x, nick: players[x.id] || "누군가" }));
+    const myBest = id ? (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, id)[0] || { best: 0 }).best : 0;
+    const seeds = id ? (this.rows("SELECT seeds FROM wallet WHERE id = ?", id)[0] || { seeds: 0 }).seeds : 0;
     const pulledMe = id ? this.rows("SELECT COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND a = ? AND who != ?", id, id)[0].n : 0;
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST,
     };
   }
 }
