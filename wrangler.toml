@@ -1,11 +1,8 @@
 name = "kkoribyeol"
-main = "src/worker.js"
+main = "worker.js"
 compatibility_date = "2026-09-01"
 
-# 게임 화면 (public 폴더)
-[assets]
-directory = "./public"
-binding = "ASSETS"
+# 게임 화면·기준 그림은 worker.js 안에 같이 들어 있어서 파일이 2개뿐이야
 
 # 줄·갓챠·랭킹·펫 그림을 모아두는 공용 저장소 (무료 플랜에서 되는 SQLite 방식)
 [[durable_objects.bindings]]
