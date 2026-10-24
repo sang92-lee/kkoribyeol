@@ -296,6 +296,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .item b { font-family: var(--display); font-weight: 400; font-size: 13px; }
 .item.rare { background: #FFF1C2; }
 .gearGrid { grid-template-columns: repeat(3, 1fr); }
+.persBtn { font-family: var(--display); font-size: 15px; text-decoration: none; color: var(--pink-deep); padding: 0; }
+.persCard { border: var(--stroke); border-radius: 18px; background: linear-gradient(160deg, #FFF1C2, #FBE3EA); padding: 14px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.persCard.reveal { animation: pop .6s cubic-bezier(.3,1.6,.5,1); }
+.persCard .pi { font-size: 40px; line-height: 1; } .persCard b { font-family: var(--display); font-weight: 400; font-size: 26px; } .persCard p { margin: 0; font-size: 14px; color: var(--soft); }
 .snackGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
 .snackT { border: var(--stroke); border-radius: 14px; background: var(--card); padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 0; }
 .snackT svg { width: 42px; height: 42px; } .snackT b { font-family: var(--display); font-weight: 400; font-size: 14px; } .snackT small { font-size: 11px; color: var(--soft); }
@@ -601,7 +605,19 @@ function snackSVG(id) {
   return `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="rgba(255,230,140,.5)"/><ellipse cx="20" cy="20" rx="8" ry="13" fill="${c}" stroke="${INK}" stroke-width="3"/><path d="M18 9 l4 22" stroke="#FFF3C4" stroke-width="2"/><path d="M33 6 l1.5 3 l3 .5 l-2.2 2 l.6 3 l-2.9 -1.5 l-2.9 1.5 l.6 -3 l-2.2 -2 l3 -.5z" fill="#FFFFFF"/></svg>`;
 }
 /* 입맛: 애마다 정해진 최애·싫어하는 간식 */
-function taste() { let h = 7; for (const ch of S.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const love = ['cheese', 'worm', 'strawberry', 'pudding', 'apple'][h % 5], hate = ['carrot', 'apple', 'cheese', 'worm'].filter(x => x !== love)[(h >> 4) % 3]; return { love, hate }; }
+/* 성격: 사진으로 만들 때마다 랜덤으로 정해짐 (다시 그리면 다시 뽑힘) */
+const PERSONA = {
+  glutton: { name: '먹보', icon: '🍰', desc: '먹을 거라면 뭐든 OK. 대신 살이 잘 쪄요', love: ['cheese', 'pudding', 'cake', 'corn'], hate: ['carrot', 'blueberry'], w: { eat: .25, cafe: .2 }, fat: 1.4 },
+  scaredy: { name: '겁쟁이', icon: '💦', desc: '숨는 걸 좋아하고 친해지는 데 오래 걸려요', love: ['blueberry', 'egg', 'apple'], hate: ['worm', 'cheese'], w: { seek: .25, rest: .1 }, trust: .6 },
+  snob: { name: '새침이', icon: '🎀', desc: '입맛이 까다로워서 밥에 금방 질려요', love: ['macaron', 'strawberry', 'cake'], hate: ['carrot', 'corn', 'pumpkin'], w: { groom: .25 }, picky: 1.8 },
+  rascal: { name: '장난꾸러기', icon: '⚡', desc: '우다다랑 숨바꼭질이 제일 좋아', love: ['banana', 'corn', 'worm'], hate: ['pudding', 'egg'], w: { zoom: .3, seek: .2, wheel: .2 } },
+  sleepy: { name: '잠꾸러기', icon: '💤', desc: '틈만 나면 꾸벅꾸벅 낮잠', love: ['pudding', 'egg', 'pumpkin'], hate: ['banana', 'worm'], w: { nap: .4, rest: .3 } },
+  sweetie: { name: '애교쟁이', icon: '💗', desc: '부르면 쪼르르, 쓰다듬는 걸 제일 좋아해요', love: ['strawberry', 'apple', 'cake'], hate: ['cheese', 'carrot'], w: { fidget: .2 }, trust: 1.5 },
+};
+const PERSONA_KEYS = Object.keys(PERSONA);
+function hashStr(t) { let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
+function persona() { const p = myPet(); return PERSONA[PERSONA_KEYS[hashStr(S.id + '|' + (p?.v || 0)) % PERSONA_KEYS.length]]; }
+function taste() { const ps = persona(), h = hashStr(S.id + '#' + (myPet()?.v || 0)); return { love: ps.love[h % ps.love.length], hate: ps.hate[(h >> 5) % ps.hate.length] }; }
 /* 등급: 0 일반, 1 고급, 2 레어, 3 전설 */
 const RARITY = { bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
   pool: 2, cloud: 2, wings: 2, figure: 2, strawberry: 2, pudding: 2, tent: 3, crown: 3, goldseed: 3 };
@@ -683,7 +699,7 @@ function renderPet() {
   $('#btnCancelMake').hidden = !(making && p && p.img);
   if (S.drawsLeft != null) $('#drawLeft').textContent = `오늘 그리기 ${S.drawsLeft}번 남았어요`;
   if (showMaker) return;
-  $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
+  $('#homeName').textContent = p.name; { const ps = persona(); $('#homeKind').innerHTML = `${KIND[p.kind] || ''} · <button type="button" class="link persBtn" id="persBtn">${ps.icon} ${ps.name}</button>`; $('#persBtn').onclick = showPersona; }
   buildRoom(); dayLook(); statusLine(); drawCare(); renderFriends();
   $('#btnGearPos').hidden = !(p.gears || []).length;
   { const lv = S.state.roomLv || 0, cost = (S.state.roomCost || [])[lv + 1], eb = $('#btnExpand');
@@ -792,7 +808,7 @@ function care() {
   return CARE = c;
 }
 function saveCare() { const c = care(); c.at = Date.now(); store.set('care_' + S.id, JSON.stringify({ food: c.food, water: c.water, poop: c.poop, trust: c.trust, fat: c.fat, at: c.at })); drawCare(); }
-function fatUp(d) { const c = care(); c.fat = Math.max(0, Math.min(1, c.fat + d)); saveCare(); }
+function fatUp(d) { const c = care(); c.fat = Math.max(0, Math.min(1, c.fat + (d > 0 ? d * (persona().fat || 1) : d))); saveCare(); }
 const BASE_WT = { hamster: [120, 'g'], cat: [4.2, 'kg'], dog: [5.5, 'kg'] };
 function fatLabel(f) { return f < .2 ? '홀쭉' : f < .5 ? '딱 좋아' : f < .75 ? '통통' : f < .9 ? '빵빵' : '찹쌀떡'; }
 function fatTick(now) {
@@ -804,7 +820,7 @@ function fatTick(now) {
     const el = $('#wtTag'); if (el) el.textContent = `${u === 'g' ? Math.round(w) : w.toFixed(1)}${u} · ${fatLabel(c.fat)}`;
   }
 }
-function trustUp(d) { const c = care(); c.trust = Math.max(0, Math.min(100, c.trust + d)); saveCare(); }
+function trustUp(d) { const c = care(); c.trust = Math.max(0, Math.min(100, c.trust + (d > 0 ? d * (persona().trust || 1) : d))); saveCare(); }
 function drawCare() {
   const c = care(), b = $('#room .prop.bowl'), w = $('#room .prop.bottle'), tl = $('#room .prop.toilet');
   if (b) b.innerHTML = PROP_SVG.bowl(c.food);
@@ -842,6 +858,15 @@ function treat() {
   m.hidden = false;
   $('#snClose').onclick = () => m.hidden = true;
   c.querySelectorAll('[data-snack]').forEach(b => b.onclick = () => { m.hidden = true; giveSnack(b.dataset.snack); });
+}
+function showPersona(reveal) {
+  const ps = persona(), t = taste(), kn = care().known || {}, m = $('#modal'), c = $('#modalCard');
+  c.classList.remove('legendCard');
+  c.innerHTML = `<h3 style="font-size:18px">${reveal ? `${esc(petNm())}의 성격은…` : `${esc(petNm())} 성격`}</h3>
+    <div class="persCard ${reveal ? 'reveal' : ''}"><span class="pi">${ps.icon}</span><b>${ps.name}</b><p>${ps.desc}</p></div>
+    <p class="note">최애 간식: ${kn.love ? SNACK[kn.love].name : '??? (간식을 줘 보며 찾아봐요)'}<br>싫어하는 간식: ${kn.hate ? SNACK[kn.hate].name : '???'}</p>
+    <button type="button" class="btn main big" id="psOk">좋아!</button>`;
+  m.hidden = false; $('#psOk').onclick = () => m.hidden = true;
 }
 async function giveSnack(id) {
   const n = petNm(), c = care(), t = taste();
@@ -883,7 +908,7 @@ function eatNow() {
   if (c.food < .25) { emote('sweat', 2200); setAct('sad', 2600, `${n}가 빈 밥그릇을 봐요`, ''); say('밥이 없어…'); P.sadUntil = performance.now() + 2600; return; }
   c.bored = c.bored || 0;
   if (c.bored > .7 && Math.random() < .65) { $('#paws')?.style.setProperty('--snk', '#B98A5A'); P.face = 'grumpy'; P.faceUntil = performance.now() + 2200; emote('mad', 1800); say(['흥, 또 이거야?', '이거 질렸어…', '맛있는 거 없어?'][Math.floor(Math.random() * 3)], 1800); P.dir *= -1; return setAct('sad', 2500, `${n}가 밥에 질려서 안 먹어요`, ''); }
-  c.bored = Math.min(1, c.bored + .16);
+  c.bored = Math.min(1, c.bored + .16 * (persona().picky || 1));
   c.food = Math.max(0, c.food - .5); c.fat = Math.min(1, c.fat + .025); saveCare(); P.potty = (P.potty || 0) + .45; P.afterEat = true;
   setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠');
 }
@@ -1202,6 +1227,7 @@ function choose() {
   if (m === 'calm' || m === 'settle') w.rest = k === 'cat' ? .45 : .2;
   if ((P.tired || 0) > 1 && m !== 'sleep') { w.nap = (w.nap || 0) + 1.5; P.tired = 0; }
   if (m !== 'sleep') { const c = care(); if (c.food > .25 && Math.random() < .5) w.eat += .1; if (c.food < .25) w.eat += .25; if (c.water < .08) w.drink += .2; }
+  { const ps = persona(); if (m !== 'sleep') for (const [k2, v] of Object.entries(ps.w || {})) w[k2] = (w[k2] || 0) + v; }
   const list = Object.entries(w).filter(([, v]) => v > 0), sum = list.reduce((a, b) => a + b[1], 0);
   let r = Math.random() * sum; for (const [a, v] of list) if ((r -= v) <= 0) return a;
   return 'wander';
@@ -1607,7 +1633,7 @@ $('#btnKeep').onclick = async () => {
     const img = await toJpeg(drawn, 448, .85);
     await api('pet', { id: S.id, name: $('#petName').value.trim(), kind, img });
     making = false; $('#drawOut').hidden = true; $('#pickRow').hidden = true; $('#btnDraw').hidden = false;
-    await refresh(); toast('우리 아이가 꼬리별에 왔어요');
+    await refresh(); toast('우리 아이가 꼬리별에 왔어요'); setTimeout(() => showPersona(true), 600);
     makePoses(img, 'faces');
   } catch (e) { showMakeErr(e.message); }
   $('#btnKeep').disabled = false;
