@@ -103,7 +103,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room.night .floor { background: linear-gradient(#C9B08E, #B89A78); }
 .room .star { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #FFFFFF; opacity: 0; transition: opacity 2s; }
 .room.night .star { opacity: .9; }
-.room .prop { position: absolute; bottom: 12%; transform: translateX(-50%); pointer-events: auto; }
+.room .prop { position: absolute; bottom: 12%; transform: translateX(-50%); pointer-events: auto; z-index: 2; }
 .room .prop svg { width: 100%; height: auto; display: block; }
 .room .prop.house { pointer-events: auto; cursor: pointer; }
 .room .prop.hammock { bottom: auto; top: 22%; }
@@ -1014,6 +1014,7 @@ function buildRoom() {
     if (P.panned) { P.panned = false; return; }
     if (DECO.on) return;
     const pr = e.target.closest('.prop');
+    if (P.hiding && e.target.closest('.pet')) return foundIt(e);
     if (P.hiding && pr) { const nm = [...pr.classList].find(c => c !== 'prop' && c !== 'rustle'); if (nm === P.hiding) return foundIt(e); missSpot(pr); return; }
     if (P.hiding) return;
     if (e.target.closest('.pet, .prop.house, button') || P.hidden || P.act === 'sleep') return;
@@ -1058,7 +1059,8 @@ function emote(kind, ms = 1600, icon) {
   r.appendChild(e); P.emo = e; placeEmote();
   clearTimeout(emote.t); emote.t = setTimeout(() => { e.classList.add('out'); setTimeout(() => e.remove(), 320); }, ms);
 }
-function headTop() { const b = (P.spr && BOX[P.spr.front]) || { y0: .15 }; return P.y + 23 * 4 / 3 * (1 - b.y0); }
+function headTop() { const b = (P.spr && BOX[P.spr.front]) || { y0: .15 }, z = P.z || 0; return P.y + z * DEPTH + 23 * 4 / 3 * (1 - b.y0) * (1 - z * .25); }
+const DEPTH = 9; /* 뒤쪽 줄이 몇 % 위에 있는지 */
 function placeEmote() { const e = P.emo; if (!e || !e.isConnected) return; e.style.left = (P.x + P.dir * 5) + '%'; e.style.bottom = (headTop() + 1) + '%'; }
 function fx(cls, ms) {
   P.fx = cls; P.fxUntil = performance.now() + ms;
@@ -1184,7 +1186,7 @@ const GAIT = {
 };
 function say(t, ms = 1800) {
   const b = $('#bubble'); if (!b) return;
-  b.textContent = t; b.style.left = Math.min(80, Math.max(20, P.x)) + '%'; b.style.bottom = (P.y + 26) + '%';
+  b.textContent = t; b.style.left = Math.min(80, Math.max(20, P.x)) + '%'; b.style.bottom = (P.y + (P.z || 0) * DEPTH + 26 * (1 - (P.z || 0) * .25)) + '%';
   b.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => b.classList.remove('on'), ms);
 }
 function setAct(name, ms, text, cls) {
@@ -1192,7 +1194,7 @@ function setAct(name, ms, text, cls) {
   P.act = name; P.until = ms ? performance.now() + ms : 0; P.cls = cls || ''; P.actText = text || P.actText;
   statusLine();
 }
-function goTo(x, speed, then, text) { if (P.act !== 'walk') { P.walkStart = performance.now(); fx('go', 200); } P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
+function goTo(x, speed, then, text, z) { if (z != null) P.zt = z; if (P.act !== 'walk') { P.walkStart = performance.now(); fx('go', 200); } P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
 function tweenY(to, ms, done) { P.tween = { from: P.y, to, t0: performance.now(), ms, done }; }
 function KP() { return KIND_PROPS[kindNow()] || KIND_PROPS.hamster; }
 function kindNow() { return myPet()?.kind || 'hamster'; }
@@ -1201,7 +1203,7 @@ function petNm() { return myPet()?.name || '우리 애'; }
 function statusLine() {
   const el = $('#petStatus'); if (!el) return;
   const k = kindNow(), m = modeNow();
-  let sub = P.hiding ? '방을 옆으로 밀어서 찾아봐요 · 부스럭거리는 곳을 톡!' : `지금은 ${MODE_TEXT[m]}`;
+  let sub = P.hiding ? (P.behind ? '어디 뒤에 숨었는데… 귀가 삐죽 보일지도?' : '방을 옆으로 밀어서 찾아봐요 · 부스럭거리는 곳을 톡!') : `지금은 ${MODE_TEXT[m]}`;
   if (phase(k).mode === 'sleep') sub += ` · 보통 ${wakeHour(k)}시쯤 일어나요`;
   if (k === 'hamster' && P.ran > 1) sub += ` · 오늘 쳇바퀴 ${P.ran >= 1000 ? (P.ran / 1000).toFixed(2) + 'km' : Math.round(P.ran) + 'm'}`;
   const c = care(); if (c.food < .25) sub += ' · 밥그릇이 비었어요'; else if ((c.bored || 0) > .7) sub += ' · 밥에 질렸어요, 간식 줘 봐요'; else if (c.water < .08) sub += ' · 물이 다 떨어졌어요';
@@ -1234,6 +1236,7 @@ function choose() {
   return 'wander';
 }
 function enterHouse(then) {
+  P.zt = 0;
   if ((CARE?.fat ?? 0) > .85 && !P.stuckOnce) {
     P.stuckOnce = true; P.act = 'enter'; P.until = 0; P.face = 'back'; P.faceUntil = performance.now() + 3200; fx('twitch', 2500); emote('sweat', 2600);
     say('꽉 꼈다…!', 1600); setTimeout(() => say('영차! 영차!', 1200), 1600);
@@ -1255,7 +1258,7 @@ function leaveHouse(then) {
   }, 700);
 }
 function next() {
-  if (P.hiding) { const k = P.hiding; P.hiding = null; $('#roomPet').style.opacity = 1; P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
+  if (P.hiding) { const k = P.hiding; P.hiding = null; P.behind = false; P.zt = 0; $('#roomPet').style.opacity = 1; P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
   const a = choose(), n = petNm(), own = ownedItems();
   if (a !== 'sleep' && P.hidden) return leaveHouse(next);
   if (a === 'sleep' && own.has('tent') && !P.hidden && Math.random() < .6) { const ms = modeNow() === 'sleep' ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3; return goTo(SPOT.tent, 9, () => { emote('spark', 1500); say('별빛 아래서 잘래', 1400); setAct('sleep', ms, `${n}가 무지개 별 텐트에서 쿨쿨`, 'sleep'); }, `${n}가 텐트로 가요`); }
@@ -1295,7 +1298,7 @@ function next() {
     : goTo(rnd(25, 75), 9, () => setAct('sleep', rnd(30, 70) * 1000, `${n}가 꾸벅꾸벅 낮잠`, 'sleep'), `${n}가 낮잠 잘 곳을 찾아요`);
   if (a === 'rest') return setAct('rest', rnd(6, 14) * 1000, kindNow() === 'cat' ? `${n}가 식빵 굽는 중` : kindNow() === 'dog' ? `${n}가 배 깔고 쉬어요` : `${n}가 납작 엎드려 쉬어요`, '');
   if (a === 'toilet') return goTo(SPOT.toilet, 11, toiletNow, `${n}가 화장실 가요`);
-  return goTo(rnd(8, 92), rnd(8, 12), () => setAct('idle', rnd(1.5, 4) * 1000, `${n}가 방을 구경해요`, ''), `${n}가 돌아다녀요`);
+  return goTo(rnd(8, 92), rnd(8, 12), () => setAct('idle', rnd(1.5, 4) * 1000, `${n}가 방을 구경해요`, ''), Math.random() < .45 ? `${n}가 뒤쪽을 탐험해요` : `${n}가 돌아다녀요`, Math.random() < .45 ? 1 : 0);
 }
 function zoom() {
   if (P.zooms-- <= 0) return setAct('idle', 800, `${petNm()}가 우다다 뛰었어요`, '');
@@ -1324,12 +1327,13 @@ function hideSpots() { return HIDE_SPOTS.filter(k => $(`#world .prop.${k}`)); }
 function hideNow(instant) {
   const spots = hideSpots(); if (!spots.length) return false;
   const k = spots[Math.floor(Math.random() * spots.length)], n = petNm();
-  const go = () => { P.hiding = k; P.x = SPOT[k]; P.y = FLOOR; $('#roomPet').style.opacity = 0; setAct('hiding', rnd(80, 140) * 1000, `${n}가 어딘가 숨었어요!`, ''); statusLine(); };
-  if (instant) go(); else { say('숨어야지~', 1000); goTo(SPOT[k], 22, go, `${n}가 숨을 곳을 찾아요`); }
+  const behind = k !== 'house' && k !== 'toilet' && Math.random() < .7;
+  const go = () => { P.hiding = k; P.behind = behind; P.x = SPOT[k] + (behind ? rnd(-3, 3) : 0); P.y = FLOOR; if (behind) { P.zt = P.z = 1; P.dir = Math.random() < .5 ? 1 : -1; } else $('#roomPet').style.opacity = 0; setAct('hiding', rnd(80, 140) * 1000, `${n}가 어딘가 숨었어요!`, ''); statusLine(); };
+  if (instant) go(); else { say('숨어야지~', 1000); goTo(SPOT[k], 22, go, `${n}가 숨을 곳을 찾아요`, behind ? 1 : 0); }
   return true;
 }
 function foundIt(e) {
-  const k = P.hiding, n = petNm(); P.hiding = null;
+  const k = P.hiding, n = petNm(); P.hiding = null; P.behind = false; P.zt = 0;
   $(`#world .prop.${k}`)?.classList.remove('rustle');
   P.x = SPOT[k] + (Math.random() < .5 ? -4 : 4); $('#roomPet').style.opacity = 1; P.cls = 'popout';
   P.face = 'curious'; P.faceUntil = performance.now() + 900; setTimeout(() => { P.happyUntil = performance.now() + 2000; }, 900);
@@ -1410,8 +1414,12 @@ function loop(now) {
   if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
   else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
   soundTick(now);
-  pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
-  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + '%'; }
+  P.z = (P.z || 0) + (((P.zt ?? P.z) || 0) - (P.z || 0)) * Math.min(1, dt * 2.2);
+  const zs = 1 - P.z * .25;
+  pet.style.left = P.x + '%'; pet.style.bottom = (P.y + P.z * DEPTH) + '%';
+  pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = P.z > .5 ? 1 : 4;
+  pet.style.filter = P.z > .5 ? `brightness(${1 - P.z * .08})` : '';
+  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = P.z > .5 ? 0 : 2; sh.style.marginBottom = (P.z * DEPTH) + '%'; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
   placeEmote(); snot(now); jelly(dt, now);
   const wd = $('#world'); if (wd) {
     const maxC = (WF - 1) * 100; if (P.cam == null) P.cam = rnd(0, maxC);
