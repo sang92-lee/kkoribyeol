@@ -109,6 +109,14 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .loft::before, .room .loft::after { content: ""; position: absolute; top: 100%; width: 6px; height: 1200%; background: #B98558; border: 2px solid var(--ink); }
 .room .loft::before { left: 4%; } .room .loft::after { right: 4%; }
 .room .ladder { position: absolute; bottom: 12%; width: calc(4% / var(--wf)); height: 37%; border-left: 4px solid #9E6B42; border-right: 4px solid #9E6B42; background: repeating-linear-gradient(transparent 0 14%, #9E6B42 14% 18%); z-index: 1; pointer-events: none; }
+.room .bars { position: absolute; inset: 0 0 30% 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(160,160,175,.55) 22px 24px); border-top: 6px solid #B8B8C8; }
+.room .loft.hi { bottom: 62%; } .room .loft.hi::before, .room .loft.hi::after { height: 1500%; }
+.room .ladder.hi { height: 50%; transform: rotate(14deg); transform-origin: 50% 100%; }
+.room .tubeW { position: absolute; left: 24%; width: 50%; bottom: 31%; height: 33%; pointer-events: none; z-index: 1; } .room .tubeW svg { width: 100%; height: 100%; display: block; }
+.room .bridgeW { position: absolute; left: 66%; width: calc(14% / var(--wf)); bottom: 9%; pointer-events: none; } .room .bridgeW svg { width: 100%; display: block; }
+.room .hay { position: absolute; bottom: 8%; width: calc(12% / var(--wf)); height: 9%; border-radius: 50% 50% 20% 20%; background: repeating-linear-gradient(70deg, #F2D58A 0 3px, #E2BC62 3px 5px); border: 2px solid #C9A24A; pointer-events: none; opacity: .95; }
+.room .signW { position: absolute; z-index: 6; left: 50%; top: 13%; transform: translateX(-50%) rotate(-2deg); padding: 3px 14px 4px; background: #D9A877; border: 2.5px solid var(--ink); border-radius: 8px; text-align: center; pointer-events: none; line-height: 1.1; box-shadow: 0 3px 0 rgba(74,52,40,.25); }
+.room .signW b { font-family: var(--display); font-weight: 400; font-size: 14px; display: block; color: #4A3428; } .room .signW small { font-size: 9px; color: #6B4A33; }
 .room .rug { position: absolute; left: 30%; width: 40%; bottom: 7%; height: 10%; border-radius: 50%; background: repeating-radial-gradient(ellipse, #F7B6C6 0 10%, #FBE3EA 10% 20%); border: 2.5px solid var(--ink); opacity: .9; pointer-events: none; }
 .room .chand { position: absolute; left: 50%; top: 0; width: calc(18% / var(--wf)); transform: translateX(-50%); pointer-events: none; animation: sway2 4s ease-in-out infinite; transform-origin: 50% 0; }
 .room .chand svg { width: 100%; display: block; } @keyframes sway2 { 0%,100% { rotate: -2deg; } 50% { rotate: 2deg; } }
@@ -1048,7 +1056,7 @@ function ownedItems() {
   if (lay) return new Set(Object.keys(lay).filter(k => all.has(k)).slice(0, slots()));
   return new Set(ITEM_ORDER.filter(k => all.has(k)).slice(0, slots()));
 }
-const DECO = { on: false, lay: null };
+const DECO = { on: false, lay: null, ver: 0 };
 /* 그림 테두리에 붙은 크림 배경만 지워서 방에 자연스럽게 서 있게 (털이 밝아도 안쪽은 안 지움) */
 const cutCache = {}, BOX = {};
 function cutout(url, crop, keepBg) {
@@ -1099,7 +1107,14 @@ function roomDecor(lv, pid = S.id) {
   const p = S.state?.pets?.[pid]; let h = '';
   if (lv >= 1) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
   if (lv >= 2) h += `<div class="loft" style="left:40%;width:42%"></div><div class="ladder" style="left:39%"></div>`;
-  if (lv >= 3) h += `<div class="rug"></div><div class="chand"><svg viewBox="0 0 100 70"><path d="M50 0 V16" stroke="#C9A24A" stroke-width="3"/><path d="M14 30 Q50 52 86 30" stroke="#C9A24A" stroke-width="5" fill="none"/>${[14, 32, 50, 68, 86].map(x => `<path d="M${x} ${x === 50 ? 40 : 34} v-8" stroke="#C9A24A" stroke-width="3"/><path d="M${x} ${x === 50 ? 22 : 16} q-4 6 0 10 q4 -4 0 -10z" fill="#FFE08A"/><circle cx="${x}" cy="${x === 50 ? 46 : 40}" r="3" fill="#C9E8F6"/>`).join('')}<circle cx="50" cy="16" r="6" fill="#F6C94E" stroke="#4A3428" stroke-width="2"/></svg></div><div class="frameW"><div class="ph"><img data-cut="${pid === S.id && P.spr?.front ? P.spr.front : (p ? `/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}` : '')}" alt=""></div><small>${esc(p?.name || '')}</small></div>`;
+  if (lv >= 3) {
+    const tube = `<svg viewBox="0 0 300 120" preserveAspectRatio="none"><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#4A3428" stroke-width="17" stroke-linecap="round"/><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#BDEBD9" stroke-width="12" stroke-linecap="round" opacity=".92"/><path d="M14 13 H118" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/><path d="M184 95 H288" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/>${[[60, 18], [150, 58], [235, 100]].map(([x, y]) => `<rect x="${x - 6}" y="${y - 11}" width="12" height="22" rx="3" fill="#F7B6C6" stroke="#4A3428" stroke-width="3" transform="${x === 150 ? `rotate(90 ${x} ${y})` : ''}"/>`).join('')}</svg>`;
+    const bridge = `<svg viewBox="0 0 120 50"><path d="M4 46 Q60 -4 116 46" fill="none" stroke="#4A3428" stroke-width="4"/>${Array.from({ length: 9 }, (_, i) => { const t = (i + .5) / 9, x = 4 + t * 112, y = 46 - Math.sin(t * Math.PI) * 34; return `<rect x="${x - 5}" y="${y - 6}" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/>`; }).join('')}</svg>`;
+    h += `<div class="bars"></div><div class="loft hi" style="left:5%;width:24%"></div><div class="ladder hi" style="left:27%"></div>
+      <div class="tubeW">${tube}</div><div class="bridgeW">${bridge}</div>
+      <div class="hay" style="left:8%"></div><div class="hay" style="left:57%"></div><div class="hay" style="left:88%"></div>
+      <div class="signW"><b>${esc(p?.name || '')}</b><small>햄찌 저택</small></div>`;
+  }
   return h;
 }
 function buildRoom() {
@@ -1108,7 +1123,7 @@ function buildRoom() {
   SPOT = { ...BASE_SPOT }; PZ = {};
   for (const [k, v] of Object.entries((DECO.on ? DECO.lay : p.layout) || {})) { if (v && typeof v === 'object') { SPOT[k] = v.x; PZ[k] = v.y || 0; } else SPOT[k] = v; }
   const babyKey = (S.state?.babies || []).filter(x => x.st === 'born').map(x => x.bid).join();
-  const owned = ownedItems(), key = babyKey + (DECO.on ? 'deco' + JSON.stringify(DECO.lay) : JSON.stringify(p.layout || '')) + WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gears || []).join(',') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
+  const owned = ownedItems(), key = babyKey + (DECO.on ? 'deco' + DECO.ver : JSON.stringify(p.layout || '')) + WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gears || []).join(',') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: Math.round(10 * WF) }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
@@ -1134,7 +1149,7 @@ function buildRoom() {
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="camArrow l" id="camL" aria-label="왼쪽 보기">‹</button><button type="button" class="camArrow r" id="camR" aria-label="오른쪽 보기">›</button>
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
-  cutImgs($('#world')); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
+  cutImgs($('#world')); if (DECO.on) setTimeout(decoBind); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   bindPan();
@@ -1531,11 +1546,14 @@ function decoUI() {
     const k = b.dataset.deco;
     if (DECO.lay[k] != null) delete DECO.lay[k];
     else if (placed.length < max) DECO.lay[k] = Math.max(4, Math.min(96, (P.cam + 50) / WF)); else return toast('칸이 꽉 찼어요');
-    P.built = ''; buildRoom(); decoUI();
+    DECO.ver++; P.built = ''; buildRoom(); decoUI();
   });
   $('#decoCancel').onclick = decoEnd;
   $('#decoSave').onclick = async () => { try { await api('layout', { id: S.id, layout: DECO.lay }); decoEnd(); await refresh(); toast('방 배치를 저장했어요'); } catch (e) { toast(e.message); } };
-  $('#world').querySelectorAll('.prop').forEach(pr => {
+  decoBind();
+}
+function decoBind() {
+  $('#world')?.querySelectorAll('.prop').forEach(pr => {
     const k = [...pr.classList].find(c => c !== 'prop'); pr.classList.add('edit');
     pr.onpointerdown = e => { e.stopPropagation(); const w = $('#world').getBoundingClientRect(); try { pr.setPointerCapture(e.pointerId); } catch (x) {}
       const rr = $('#room').getBoundingClientRect(), base = parseFloat(pr.style.width) / (1 - (PZ[k] || 0) * .25);
@@ -1546,7 +1564,7 @@ function decoUI() {
         PZ[k] = z; pr.style.bottom = (12 + z * DEPTH) + '%'; pr.style.width = (base * (1 - z * .25)) + '%'; pr.style.zIndex = z > .55 ? 0 : 2; pr.style.filter = `brightness(${1 - z * .06})`;
         DECO.lay[k] = z > .02 ? { x, y: +z.toFixed(2) } : x;
       };
-      pr.onpointerup = () => { pr.onpointermove = null; }; };
+      pr.onpointerup = pr.onpointercancel = () => { pr.onpointermove = null; }; };
   });
 }
 function decoEnd() { DECO.on = false; DECO.lay = null; $('#decoBar').hidden = true; $('#homeTools').hidden = false; P.built = ''; buildRoom(); }
