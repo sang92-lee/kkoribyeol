@@ -19,6 +19,9 @@ const NPC_PETS = [
 const ITEMS = [
   { id: "slide", w: 30 }, { id: "hammock", w: 30 }, { id: "lamp", w: 30 }, { id: "cloud", w: 10 },
 ];
+const GEAR = [
+  { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "crown", w: 6 },
+];
 const GOODS = [
   { id: "sticker", w: 40 }, { id: "keyring", w: 35 }, { id: "plush", w: 18 }, { id: "figure", w: 7 },
 ];
@@ -126,6 +129,7 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pets(id TEXT PRIMARY KEY, name TEXT, kind TEXT, img TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS queue(r INTEGER, id TEXT, at INTEGER, PRIMARY KEY(r, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS pulls(uniq TEXT PRIMARY KEY, who TEXT, r INTEGER, t INTEGER, kind TEXT, a TEXT, b TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS equip(id TEXT PRIMARY KEY, gear TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -169,6 +173,13 @@ export class Hub extends DurableObject {
       this.sql.exec("INSERT INTO pets(id, name, kind, img, at) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, img = excluded.img, at = excluded.at", b.id, name, kind, b.img, now);
       return json({ ok: true });
     }
+    if (p === "/api/equip") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const gear = String(b.gear || "");
+      if (gear && !this.rows("SELECT 1 FROM pulls WHERE who = ? AND kind = 'gear' AND a = ?", b.id, gear)[0]) return json({ error: "bad", message: "아직 없는 장비예요" }, 400);
+      this.sql.exec("INSERT INTO equip(id, gear) VALUES(?, ?) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear", b.id, gear);
+      return json({ ok: true });
+    }
     if (p === "/api/join") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
       const R = this.round(now);
@@ -197,8 +208,9 @@ export class Hub extends DurableObject {
   player(id) { return validId(id) && this.rows("SELECT id FROM players WHERE id = ?", id)[0]; }
   pool() { return [...this.rows("SELECT id FROM pets WHERE img IS NOT NULL").map(r => r.id), ...NPC_PETS.map(n => n.id)]; }
   roll(R, who) {
-    const pool = this.pool();
-    if (R() < .5) return { kind: "item", a: pickW(ITEMS, R()).id, b: "" };
+    const pool = this.pool(), x = R();
+    if (x < .38) return { kind: "item", a: pickW(ITEMS, R()).id, b: "" };
+    if (x < .62) return { kind: "gear", a: pickW(GEAR, R()).id, b: "" };
     return { kind: "pet", a: pool[Math.floor(R() * pool.length)], b: pickW(GOODS, R()).id };
   }
 
@@ -234,7 +246,8 @@ export class Hub extends DurableObject {
     const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "" };
+    const gear = Object.fromEntries(this.rows("SELECT id, gear FROM equip").map(x => [x.id, x.gear]));
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", gear: gear[x.id] || "" };
 
     const line = [];
     R.entries.forEach((e, i) => {

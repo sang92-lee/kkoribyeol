@@ -78,18 +78,46 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* 우리 방 */
-.room { position: relative; aspect-ratio: 1 / 1; max-width: 100%; border: var(--stroke); border-radius: var(--r); overflow: hidden; background: linear-gradient(#E7DDF8 0%, #F6E7EE 58%, #F3DDC0 58%, #EED1AE 100%); touch-action: manipulation; }
-.room .it { position: absolute; width: 30%; }
-.room .it svg { width: 100%; height: auto; display: block; }
-.room .lamp { left: 4%; top: 0; width: 22%; }
-.room .cloud { right: 4%; top: 8%; }
-.room .hammock { left: 3%; bottom: 8%; }
-.room .slide { right: 3%; bottom: 8%; }
-.room .pet { position: absolute; left: 50%; bottom: 9%; width: 54%; transform: translateX(-50%); cursor: pointer; }
-.room .pet .bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
-.room .pet img { width: 100%; display: block; border-radius: 50%; mix-blend-mode: multiply; }
-.room .bubble { position: absolute; left: 50%; top: 10%; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 16px; padding: 6px 14px; font-family: var(--display); white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.room { position: relative; aspect-ratio: 4 / 3; max-width: 100%; border: var(--stroke); border-radius: var(--r); overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.room .sky { position: absolute; inset: 0 0 30% 0; background: linear-gradient(#D9E8FA, #F7E8EF); transition: background 2s; }
+.room .floor { position: absolute; inset: 70% 0 0 0; background: linear-gradient(#F3DDC0, #EBCCA6); border-top: 2.5px solid var(--ink); }
+.room.dusk .sky { background: linear-gradient(#F4B8A8, #F9DEC9); }
+.room.night .sky { background: linear-gradient(#3F3A6B, #7A6A9E); }
+.room.night .floor { background: linear-gradient(#C9B08E, #B89A78); }
+.room .star { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #FFFFFF; opacity: 0; transition: opacity 2s; }
+.room.night .star { opacity: .9; }
+.room .prop { position: absolute; bottom: 12%; transform: translateX(-50%); pointer-events: none; }
+.room .prop svg { width: 100%; height: auto; display: block; }
+.room .prop.house { pointer-events: auto; cursor: pointer; }
+.room .prop.hammock { bottom: auto; top: 22%; }
+.room .prop.lamp { bottom: auto; top: 0; }
+.room .pet { position: absolute; width: 23%; transform: translateX(-50%); cursor: pointer; z-index: 3; transition: opacity .6s; }
+.room .pet .spr { position: relative; transform-origin: 50% 100%; transition: transform .25s; }
+.room .pet .body { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
+.room .pet .body img { width: 100%; display: block; }
+.room .pet .body svg { width: 100%; display: block; }
+.room .pet.walk .body { animation: hop .32s ease-in-out infinite; }
+.room .pet.run .body { animation: hop .18s ease-in-out infinite; }
+.room .pet.eat .body { animation: munch .35s ease-in-out infinite; }
+.room .pet.groom .body { animation: wiggle .5s ease-in-out infinite; }
+.room .pet.sleep .body { animation: breathe 4s ease-in-out infinite; filter: brightness(.95); }
+.room .pet.sway .spr { animation: sway 2.2s ease-in-out infinite; }
+.room .pet.look .spr { transform: rotate(-8deg); }
+.room .gear { position: absolute; pointer-events: none; z-index: 2; }
+.room .gear svg { width: 100%; height: auto; display: block; }
+.room .zz { position: absolute; font-family: var(--display); color: #FFFFFF; text-shadow: 0 0 3px var(--ink), 0 0 1px var(--ink); font-size: 18px; pointer-events: none; animation: zzz 2.2s ease-out forwards; z-index: 4; }
+@keyframes zzz { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(18px, -44px); opacity: 0; } }
+@keyframes breathe { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.02, .97); } }
+@keyframes hop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9%); } }
+@keyframes munch { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.03, .95); } }
+@keyframes wiggle { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes sway { 0%,100% { transform: rotate(-7deg) translateX(-4%); } 50% { transform: rotate(7deg) translateX(4%); } }
+.room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
+.room .clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
+.petStatus { margin: 0; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
+.petStatus b { font-family: var(--display); font-weight: 400; font-size: 17px; }
+.petStatus span { color: var(--soft); font-size: 14px; }
 .heart { position: absolute; font-size: 22px; color: var(--pink-deep); pointer-events: none; animation: rise 1.1s ease-out forwards; }
 @keyframes rise { to { transform: translateY(-80px); opacity: 0; } }
 @keyframes bob { 0%,100% { transform: translateY(0) scale(1,1); } 50% { transform: translateY(-6px) scale(1.02,.98); } }
@@ -156,6 +184,11 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .item svg { width: 100%; height: auto; }
 .item b { font-family: var(--display); font-weight: 400; font-size: 13px; }
 .item.rare { background: #FFF1C2; }
+.gearGrid { grid-template-columns: repeat(3, 1fr); }
+.gearGrid .item { cursor: pointer; padding: 10px 4px 6px; }
+.gearGrid .item svg { width: 70%; }
+.gearGrid .item.on { background: var(--mint); box-shadow: 0 0 0 3px var(--pink-deep); }
+.gearGrid .item.on::after { white-space: nowrap; content: "착용 중"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: var(--pink-deep); color: #FFFFFF; font-family: var(--display); font-size: 11px; border-radius: 999px; padding: 0 8px; }
 
 /* 결과 */
 .modal { position: fixed; inset: 0; z-index: 30; background: rgba(74,52,40,.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -208,9 +241,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 
     <div class="card" id="home" hidden>
       <div class="petName"><h2 id="homeName"></h2><span class="note" id="homeKind"></span></div>
-      <div class="room" id="room"><div class="bubble" id="bubble"></div></div>
+      <div class="room" id="room"></div>
+      <p class="petStatus" id="petStatus"><b></b><span></span></p>
       <p class="brag" id="brag" hidden></p>
-      <p class="note">탭하면 반응해요. 갓챠에서 방 아이템을 뽑으면 여기 생겨요</p>
+      <p class="note">우리 애는 진짜 시간에 맞춰 살아요. 탭하면 반응하고, 자고 있을 땐 집을 톡 하면 빼꼼 나와요</p>
       <button type="button" class="link" id="btnRemake">사진으로 다시 그리기</button>
     </div>
   </section>
@@ -220,7 +254,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
     <div class="card">
       <div class="roundBar"><span class="left">남은 캡슐 <b id="left">-</b></span><span class="clock" id="clock"></span></div>
       <div class="machine" id="machine"></div>
-      <p class="note" style="text-align:center">통 안엔 친구들 펫 굿즈랑 방 아이템이 섞여 있어요</p>
+      <p class="note" style="text-align:center">통 안엔 친구들 펫 굿즈, 방 아이템, 펫 장비가 섞여 있어요</p>
     </div>
     <div class="card">
       <h2>지금 줄</h2>
@@ -240,6 +274,11 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
     <div class="card">
       <h2>우리 방 아이템</h2>
       <div class="items" id="items"></div>
+    </div>
+    <div class="card">
+      <h2>펫 장비</h2>
+      <p class="note">탭하면 우리 애가 착용해요. 다시 탭하면 벗어요</p>
+      <div class="items gearGrid" id="gears"></div>
     </div>
     <div class="card">
       <h2>모은 펫 굿즈</h2>
@@ -368,23 +407,226 @@ function renderPet() {
   if (S.drawsLeft != null) $('#drawLeft').textContent = `오늘 그리기 ${S.drawsLeft}번 남았어요`;
   if (showMaker) return;
   $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
-  const owned = new Set((S.state.mine || []).filter(x => x.kind === 'item').map(x => x.a));
-  const key = [...owned].sort().join(',') + '|' + p.v;
-  if ($('#room').dataset.key !== key) {
-    $('#room').dataset.key = key;
-    $('#room').innerHTML = ITEM_ORDER.filter(i => owned.has(i)).map(i => `<div class="it ${i}">${ITEM_SVG[i]}</div>`).join('') +
-      `<div class="pet" id="roomPet"><div class="bob">${petFace(S.id)}</div></div><div class="bubble" id="bubble"></div>`;
-    $('#roomPet').onclick = poke;
-  }
+  buildRoom(); dayLook(); statusLine();
   const n = S.state.pulledMe;
   $('#brag').hidden = !n; $('#brag').textContent = `${p.name} 굿즈가 친구 캡슐에서 ${n}번 나왔어요`;
 }
-const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹'] };
+/* ---------- 펫 장비 ---------- */
+const GEAR = { ribbon: '리본', strawhat: '밀짚모자', scarf: '목도리', glasses: '동글 안경', flower: '꽃핀', crown: '왕관' };
+const GEAR_ORDER = ['ribbon', 'strawhat', 'scarf', 'glasses', 'flower', 'crown'];
+/* 캐릭터 그림 위 어디에 얹는지 (그림 너비 기준 %) */
+const GEAR_POS = { ribbon: [56, 4, 30], strawhat: [20, -10, 60], crown: [31, -6, 38], flower: [14, 10, 24], glasses: [24, 34, 52], scarf: [20, 60, 60] };
+const GEAR_SVG = {
+  ribbon: `<svg viewBox="0 0 100 60" aria-hidden="true"><path d="M50 30 L12 8 Q4 30 12 52Z M50 30 L88 8 Q96 30 88 52Z" fill="#F2A0B3" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="30" r="10" fill="#E07C95" stroke="${INK}" stroke-width="4"/></svg>`,
+  strawhat: `<svg viewBox="0 0 120 60" aria-hidden="true"><ellipse cx="60" cy="44" rx="56" ry="12" fill="#F3D27A" stroke="${INK}" stroke-width="4"/><path d="M30 44 Q30 8 60 8 Q90 8 90 44Z" fill="#F7DE95" stroke="${INK}" stroke-width="4"/><path d="M31 34 Q60 42 89 34 L89 42 Q60 50 31 42Z" fill="#E07C95" stroke="${INK}" stroke-width="3"/></svg>`,
+  crown: `<svg viewBox="0 0 100 64" aria-hidden="true"><path d="M10 58 L6 14 L30 34 L50 6 L70 34 L94 14 L90 58Z" fill="#F6C94E" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="42" r="6" fill="#E07C95" stroke="${INK}" stroke-width="2.5"/><circle cx="26" cy="46" r="4" fill="#9FD3E8" stroke="${INK}" stroke-width="2"/><circle cx="74" cy="46" r="4" fill="#9FD3E8" stroke="${INK}" stroke-width="2"/></svg>`,
+  flower: `<svg viewBox="0 0 60 60" aria-hidden="true"><g fill="#FFFFFF" stroke="${INK}" stroke-width="3"><circle cx="30" cy="14" r="11"/><circle cx="46" cy="27" r="11"/><circle cx="40" cy="46" r="11"/><circle cx="20" cy="46" r="11"/><circle cx="14" cy="27" r="11"/></g><circle cx="30" cy="31" r="9" fill="#F6C94E" stroke="${INK}" stroke-width="3"/></svg>`,
+  glasses: `<svg viewBox="0 0 120 50" aria-hidden="true"><circle cx="32" cy="26" r="20" fill="rgba(255,255,255,.25)" stroke="${INK}" stroke-width="5"/><circle cx="88" cy="26" r="20" fill="rgba(255,255,255,.25)" stroke="${INK}" stroke-width="5"/><path d="M52 24 Q60 18 68 24" stroke="${INK}" stroke-width="5" fill="none"/></svg>`,
+  scarf: `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 14 Q60 34 112 14 L112 30 Q60 50 8 30Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M78 30 L92 58 L76 58 L68 34Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M30 22 v12 M50 26 v12 M70 26 v12 M90 22 v12" stroke="#FFFFFF" stroke-width="4" opacity=".7"/></svg>`,
+};
+function gearOverlay(g) {
+  if (!g || !GEAR_POS[g]) return '';
+  const [l, t, w] = GEAR_POS[g];
+  return `<div class="gear" style="left:${l}%;top:${t}%;width:${w}%">${GEAR_SVG[g]}</div>`;
+}
+
+/* ---------- 방 소품 ---------- */
+const PROP_SVG = {
+  house: `<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M8 98 Q8 30 60 22 Q112 30 112 98Z" fill="#E59B74" stroke="${INK}" stroke-width="4"/><path d="M4 30 Q60 0 116 30" stroke="${INK}" stroke-width="4" fill="#F3B48F"/><ellipse cx="60" cy="74" rx="20" ry="24" fill="#6E3F2A" stroke="${INK}" stroke-width="4"/></svg>`,
+  wheel: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M36 118 L60 60 L84 118" stroke="#7E95BA" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="60" cy="58" r="52" fill="#EEF3FB" stroke="${INK}" stroke-width="4"/><g class="spokes" stroke="#9FB7D9" stroke-width="3.5"><path d="M60 8 V108 M10 58 H110 M25 23 L95 93 M25 93 L95 23"/></g><circle cx="60" cy="58" r="7" fill="#7E95BA" stroke="${INK}" stroke-width="3"/></svg>`,
+  bowl: `<svg viewBox="0 0 80 40" aria-hidden="true"><path d="M4 12 h72 l-8 26 h-56z" fill="#E58A62" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><ellipse cx="40" cy="12" rx="36" ry="7" fill="#F6C9A8" stroke="${INK}" stroke-width="3"/><g fill="#B98A5A"><circle cx="28" cy="10" r="4"/><circle cx="42" cy="9" r="4"/><circle cx="52" cy="12" r="3.5"/></g></svg>`,
+  bottle: `<svg viewBox="0 0 40 120" aria-hidden="true"><rect x="8" y="4" width="24" height="70" rx="10" fill="#CFE6F5" stroke="${INK}" stroke-width="4"/><rect x="11" y="30" width="18" height="40" rx="7" fill="#8EC3E6"/><path d="M20 74 V100" stroke="#9AA3AE" stroke-width="5" stroke-linecap="round"/><path d="M6 118 h28" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M20 100 V118" stroke="#C9B08A" stroke-width="5"/></svg>`,
+};
+/* 방 안 위치 (가로 %) */
+const SPOT = { house: 13, slide: 33, bowl: 49, bottle: 59, cloud: 71, wheel: 87, hammock: 40, lamp: 63 };
+const FLOOR = 12;
+
+/* ---------- 하루 리듬: 진짜 시계 기준 ---------- */
+const DAY = {
+  hamster: [[6, 17, 'sleep'], [17, 19, 'wake'], [19, 26, 'active'], [26, 30, 'calm']],
+  dog: [[23, 31, 'sleep'], [7, 12, 'active'], [12, 17, 'calm'], [17, 21, 'active'], [21, 23, 'settle']],
+  cat: [[1, 5, 'sleep'], [5, 8, 'active'], [8, 10, 'calm'], [10, 15, 'sleep'], [15, 17, 'calm'], [17, 21, 'active'], [21, 25, 'calm']],
+};
+const MODE_TEXT = { sleep: '자는 시간', wake: '막 일어나는 시간', active: '한창 노는 시간', calm: '느긋한 시간', settle: '잘 준비하는 시간' };
+function hourNow() { const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
+function phase(k) {
+  const h = hourNow(), list = DAY[k] || DAY.hamster;
+  for (const [a, b, m] of list) { if ((h >= a && h < b) || (h + 24 >= a && h + 24 < b)) return { mode: m, end: b % 24 }; }
+  return { mode: 'calm', end: (Math.floor(h) + 1) % 24 };
+}
+function wakeHour(k) { const s = (DAY[k] || DAY.hamster).find(x => x[2] === 'sleep'); return s ? s[1] % 24 : 7; }
+
+/* ---------- 방 엔진 ---------- */
+const P = { x: 50, y: FLOOR, dir: 1, act: 'idle', until: 0, target: null, speed: 0, onArrive: null, hidden: false, tween: null, wheel: 0, ran: 0, awakeUntil: 0, actText: '', built: '' };
+const rnd = (a, b) => a + Math.random() * (b - a);
+function ownedItems() { return new Set((S.state?.mine || []).filter(x => x.kind === 'item').map(x => x.a)); }
+/* 그림 테두리에 붙은 크림 배경만 지워서 방에 자연스럽게 서 있게 (털이 밝아도 안쪽은 안 지움) */
+const cutCache = {};
+function cutout(url) {
+  if (cutCache[url]) return cutCache[url];
+  return cutCache[url] = (async () => {
+    const img = await loadImg(url), W = Math.min(420, img.width), H = Math.round(img.height * W / img.width);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H), px = d.data;
+    const at = (x, y) => (y * W + x) * 4;
+    const corners = [at(0, 0), at(W - 1, 0), at(0, H - 1), at(W - 1, H - 1)];
+    const bg = [0, 1, 2].map(k => corners.reduce((a, i) => a + px[i + k], 0) / 4);
+    const near = i => Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) < 54;
+    const seen = new Uint8Array(W * H), stack = [];
+    for (let x = 0; x < W; x++) stack.push(x, (H - 1) * W + x);
+    for (let y = 0; y < H; y++) stack.push(y * W, y * W + W - 1);
+    while (stack.length) {
+      const n = stack.pop(); if (seen[n]) continue; seen[n] = 1;
+      const i = n * 4; if (!near(i)) continue;
+      px[i + 3] = 0;
+      const x = n % W, y = (n / W) | 0;
+      if (x > 0) stack.push(n - 1); if (x < W - 1) stack.push(n + 1); if (y > 0) stack.push(n - W); if (y < H - 1) stack.push(n + W);
+    }
+    g.putImageData(d, 0, 0);
+    return c.toDataURL('image/png');
+  })().catch(() => url);
+}
+function buildRoom() {
+  const p = myPet(); if (!p) return;
+  const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '');
+  if (P.built === key) return;
+  P.built = key;
+  const stars = Array.from({ length: 9 }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
+  const prop = (n, svg, w, extra = '') => `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w}%;${extra}">${svg}</div>`;
+  $('#room').innerHTML = `<div class="sky"></div>${stars}<div class="floor"></div>
+    ${owned.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}
+    ${owned.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
+    ${prop('house', PROP_SVG.house, 22)}
+    ${owned.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}
+    ${prop('bowl', PROP_SVG.bowl, 12)}${prop('bottle', PROP_SVG.bottle, 6)}
+    ${owned.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 18) : ''}
+    ${prop('wheel', PROP_SVG.wheel, 24)}
+    <div class="pet" id="roomPet"><div class="spr"><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear)}</div></div>
+    <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
+  $('#roomPet').onclick = poke;
+  $('#room .prop.house').onclick = knockHouse;
+  const im = $('#roomPet img'); if (im) cutout(im.src).then(u => { if (im.isConnected) im.src = u; });
+  if (!P.started) { P.started = true; startLife(); requestAnimationFrame(loop); }
+}
+function say(t, ms = 1800) {
+  const b = $('#bubble'); if (!b) return;
+  b.textContent = t; b.style.left = Math.min(80, Math.max(20, P.x)) + '%'; b.style.bottom = (P.y + 26) + '%';
+  b.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => b.classList.remove('on'), ms);
+}
+function setAct(name, ms, text, cls) {
+  P.act = name; P.until = ms ? performance.now() + ms : 0; P.cls = cls || ''; P.actText = text || P.actText;
+  statusLine();
+}
+function goTo(x, speed, then, text) { P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
+function tweenY(to, ms, done) { P.tween = { from: P.y, to, t0: performance.now(), ms, done }; }
+function kindNow() { return myPet()?.kind || 'hamster'; }
+function modeNow() { const k = kindNow(); return performance.now() < P.awakeUntil ? 'calm' : phase(k).mode; }
+function petNm() { return myPet()?.name || '우리 애'; }
+function statusLine() {
+  const el = $('#petStatus'); if (!el) return;
+  const k = kindNow(), m = modeNow();
+  let sub = `지금은 ${MODE_TEXT[m]}`;
+  if (phase(k).mode === 'sleep') sub += ` · 보통 ${wakeHour(k)}시쯤 일어나요`;
+  if (k === 'hamster' && P.ran > 1) sub += ` · 오늘 쳇바퀴 ${P.ran >= 1000 ? (P.ran / 1000).toFixed(2) + 'km' : Math.round(P.ran) + 'm'}`;
+  el.querySelector('b').textContent = P.actText || `${petNm()} 방`;
+  el.querySelector('span').textContent = sub;
+}
+function choose() {
+  const k = kindNow(), m = modeNow(), own = ownedItems(), ham = k === 'hamster';
+  const w = { wander: .3, eat: .15, drink: .15, groom: .12 };
+  if (m === 'sleep') Object.assign(w, { sleep: 2, wander: .02, eat: .02, groom: 0 });
+  if (m === 'settle') Object.assign(w, { sleep: .5, groom: .25 });
+  if (m === 'wake') Object.assign(w, { drink: .35, eat: .3, groom: .25 });
+  if (m === 'active') Object.assign(w, { zoom: .25, wheel: ham ? .55 : 0, wander: .3 });
+  if (m === 'calm') Object.assign(w, { nap: own.has('cloud') ? .15 : .05, wander: .35 });
+  if (m !== 'sleep') { if (own.has('hammock')) w.hammock = .2; if (own.has('slide')) w.slide = m === 'active' ? .3 : .15; if (own.has('lamp') && document.querySelector('#room.night')) w.lamp = .12; }
+  const list = Object.entries(w).filter(([, v]) => v > 0), sum = list.reduce((a, b) => a + b[1], 0);
+  let r = Math.random() * sum; for (const [a, v] of list) if ((r -= v) <= 0) return a;
+  return 'wander';
+}
+function leaveHouse(then) {
+  if (!P.hidden) return then();
+  P.hidden = false; P.x = SPOT.house; P.y = FLOOR; $('#roomPet').style.opacity = 1; say('빼꼼'); setTimeout(then, 700);
+}
+function next() {
+  const a = choose(), n = petNm(), own = ownedItems();
+  if (a !== 'sleep' && P.hidden) return leaveHouse(next);
+  if (a === 'sleep') {
+    const deep = modeNow() === 'sleep', ms = deep ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3;
+    if (P.hidden) return setAct('sleep', ms, `${n}가 집에서 자요`);
+    if (own.has('cloud') && (kindNow() !== 'hamster' || Math.random() < .35)) return goTo(SPOT.cloud, 9, () => { P.y = FLOOR + 6; setAct('sleep', ms, `${n}가 구름 침대에서 자요`, 'sleep'); });
+    if (kindNow() === 'hamster') return goTo(SPOT.house, 9, () => { P.hidden = true; $('#roomPet').style.opacity = 0; setAct('sleep', ms, `${n}가 집에 들어가 자요`); });
+    return goTo(rnd(20, 40), 8, () => setAct('sleep', ms, `${n}가 꾸벅꾸벅 자요`, 'sleep'));
+  }
+  if (a === 'eat') return goTo(SPOT.bowl, 12, () => { setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠'); });
+  if (a === 'drink') return goTo(SPOT.bottle - 3, 12, () => { setAct('drink', rnd(3, 5) * 1000, `${n}가 물 마셔요`, 'eat'); say('할짝할짝'); });
+  if (a === 'groom') return setAct('groom', rnd(3, 6) * 1000, `${n}가 세수해요`, 'groom');
+  if (a === 'wheel') return goTo(SPOT.wheel, 14, () => { P.y = FLOOR + 4; setAct('wheel', rnd(15, 45) * 1000, `${n}가 쳇바퀴를 달려요`, 'run'); say('다다다다'); });
+  if (a === 'zoom') { P.zooms = 3 + Math.floor(Math.random() * 3); return zoom(); }
+  if (a === 'hammock') return goTo(SPOT.hammock, 11, () => { say('영차'); tweenY(52, 700, () => { setAct('hammock', rnd(8, 16) * 1000, `${n}가 해먹에서 흔들흔들`, 'sway'); }); }, `${n}가 해먹으로 가요`);
+  if (a === 'slide') return goTo(SPOT.slide - 6, 12, () => { tweenY(40, 800, () => { P.target = SPOT.slide + 12; P.speed = 40; P.act = 'slidedown'; P.cls = ''; say('슝~'); P.actText = `${n}가 미끄럼틀 타요`; statusLine(); tweenY(FLOOR, 650, null); P.onArrive = () => setAct('idle', 1500, null, ''); }); }, `${n}가 미끄럼틀로 가요`);
+  if (a === 'lamp') return goTo(SPOT.lamp, 10, () => { setAct('look', 3500, `${n}가 달 조명을 봐요`, 'look'); say('달빛 좋다'); });
+  if (a === 'nap') return goTo(SPOT.cloud, 10, () => { P.y = FLOOR + 6; setAct('sleep', rnd(30, 60) * 1000, `${n}가 구름 침대에서 낮잠`, 'sleep'); });
+  return goTo(rnd(8, 92), rnd(8, 12), () => setAct('idle', rnd(1.5, 4) * 1000, `${n}가 방을 구경해요`, ''), `${n}가 돌아다녀요`);
+}
+function zoom() {
+  if (P.zooms-- <= 0) return setAct('idle', 800, `${petNm()}가 우다다 뛰었어요`, '');
+  goTo(rnd(8, 92), 34, zoom, `${petNm()}가 우다다 뛰어요`);
+}
+function startLife() {
+  const k = kindNow();
+  if (phase(k).mode === 'sleep' && k === 'hamster') { P.hidden = true; P.x = SPOT.house; $('#roomPet').style.opacity = 0; setAct('sleep', rnd(5, 15) * 60e3, `${petNm()}가 집에서 자요`); }
+  else setAct('idle', 1200, `${petNm()} 방`, '');
+}
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const pet = $('#roomPet'), room = $('#room');
+  if (!pet || !room) { requestAnimationFrame(loop); return; }
+  if (P.act === 'walk' || P.act === 'slidedown') {
+    const d = P.target - P.x, step = P.speed * dt;
+    if (P.act === 'walk') P.dir = d >= 0 ? 1 : -1;
+    if (Math.abs(d) <= step) { P.x = P.target; const f = P.onArrive; P.onArrive = null; P.act = 'idle'; P.until = now + 500; P.cls = ''; if (f) f(); }
+    else P.x += d > 0 ? step : -step;
+  }
+  if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
+  if (P.act === 'wheel') { P.wheel += dt * 520; P.ran += dt * 1.1; const sp = room.querySelector('.prop.wheel .spokes'); if (sp) sp.setAttribute('transform', `rotate(${P.wheel} 60 58)`); }
+  if (P.act === 'sleep' && Math.random() < dt * .45) zz();
+  if (P.act !== 'walk' && P.act !== 'slidedown' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.act === 'hammock') { tweenY(FLOOR, 600, next); P.act = 'idle'; } else { P.y = FLOOR; next(); } }
+  pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
+  pet.className = 'pet ' + (P.cls || '');
+  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden ? ' rotate(-10deg)' : '');
+  requestAnimationFrame(loop);
+}
+function zz() {
+  const r = $('#room'); if (!r) return;
+  const z = document.createElement('span'); z.className = 'zz'; z.textContent = 'z';
+  const x = P.hidden ? SPOT.house + 3 : P.x + 6, y = P.hidden ? 70 : 100 - P.y - 26;
+  z.style.left = x + '%'; z.style.top = y + '%'; z.style.fontSize = (14 + Math.random() * 8) + 'px';
+  r.appendChild(z); setTimeout(() => z.remove(), 2300);
+}
+function dayLook() {
+  const h = hourNow(), r = $('#room'); if (!r) return;
+  r.classList.toggle('night', h >= 19.5 || h < 5.5);
+  r.classList.toggle('dusk', (h >= 17 && h < 19.5) || (h >= 5.5 && h < 7));
+  const c = $('#roomClock'); if (c) { const d = new Date(); c.textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? '오전' : '오후'}`; }
+}
+setInterval(dayLook, 10000);
+const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
 function poke(e) {
   const p = myPet(); if (!p) return;
-  const L = LINES[p.kind] || LINES.hamster, b = $('#bubble');
-  b.textContent = L[Math.floor(Math.random() * L.length)]; b.classList.add('on');
-  clearTimeout(poke.t); poke.t = setTimeout(() => b.classList.remove('on'), 1500);
+  if (P.act === 'sleep') { P.awakeUntil = performance.now() + 60e3; P.y = FLOOR; setAct('idle', 1500, `${petNm()}가 잠에서 깼어요`, ''); say('으응… 왜 깨워'); }
+  else { const L = LINES[p.kind] || LINES.hamster; say(L[Math.floor(Math.random() * L.length)], 1500); }
+  hearts(e);
+}
+function knockHouse(e) {
+  if (!P.hidden) return;
+  P.awakeUntil = performance.now() + 60e3; say('빼꼼… 놀아 줄 거야?');
+  leaveHouse(() => setAct('idle', 1500, `${petNm()}가 집에서 나왔어요`, ''));
+  hearts(e);
+}
+function hearts(e) {
   const r = $('#room').getBoundingClientRect(), h = document.createElement('span');
   h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px';
   $('#room').appendChild(h); setTimeout(() => h.remove(), 1200);
@@ -513,15 +755,20 @@ function showResult(res) {
     setTimeout(() => $('#cap').classList.replace('shake', 'open'), 1000);
     setTimeout(() => {
       let body;
-      if (res.kind === 'item') {
+      if (res.kind === 'gear') {
+        const rare = res.a === 'crown';
+        body = `<span class="badge ${rare ? 'rare' : ''}">${rare ? '★ 레어 장비' : '펫 장비'}</span><div class="reveal" style="width:140px">${GEAR_SVG[res.a]}</div><h3 style="font-size:22px">${GEAR[res.a]} 나왔다!</h3><p class="note">진열장 → 펫 장비에서 씌워 줄 수 있어요</p>`;
+      } else if (res.kind === 'item') {
         const rare = res.a === 'cloud';
         body = `<span class="badge ${rare ? 'rare' : ''}">${rare ? '★ 레어 아이템' : '방 아이템'}</span><div class="reveal">${ITEM_SVG[res.a]}</div><h3 style="font-size:22px">${ITEMS[res.a]} 나왔다!</h3><p class="note">우리 아이 방에 바로 놓았어요</p>`;
       } else {
         const p = S.state.pets[res.a] || { name: '???' }, rare = res.b === 'figure', mine = res.a === S.id;
         body = `<span class="badge ${rare ? 'rare' : ''}">${rare ? '★ 레어 굿즈' : '펫 굿즈'}</span><div class="reveal">${goodsHTML(res.a, res.b, 1)}</div><h3 style="font-size:22px">${esc(p.name)} ${GOODS[res.b]} 나왔다!</h3><p class="note">${mine ? '우리 애가 나왔어요!' : p.npc ? '꼬리별 주민이에요' : `${esc(p.owner || '친구')}네 아이예요`}</p>`;
       }
-      c.innerHTML = body + `<button type="button" class="btn main big" id="mOk">진열장에 넣기</button>`;
+      const wear = res.kind === 'gear' && myPet();
+      c.innerHTML = body + (wear ? `<button type="button" class="btn main big" id="mWear">바로 씌워 주기</button><button type="button" class="link" id="mOk">진열장에 넣기</button>` : `<button type="button" class="btn main big" id="mOk">진열장에 넣기</button>`);
       $('#mOk').onclick = () => { m.hidden = true; done(); };
+      if (wear) $('#mWear').onclick = () => { m.hidden = true; done(); equip(res.a); };
     }, 1600);
   });
 }
@@ -531,10 +778,20 @@ function renderShelf() {
   const mine = S.state.mine || [], own = {};
   mine.filter(x => x.kind === 'item').forEach(x => own[x.a] = (own[x.a] || 0) + 1);
   $('#items').innerHTML = ITEM_ORDER.map(i => `<div class="item ${i === 'cloud' ? 'rare' : ''} ${own[i] ? '' : 'locked'}">${ITEM_SVG[i]}<b>${own[i] ? ITEMS[i] : '???'}</b>${own[i] > 1 ? `<span>×${own[i]}</span>` : ''}</div>`).join('');
+  const gOwn = {}; mine.filter(x => x.kind === 'gear').forEach(x => gOwn[x.a] = (gOwn[x.a] || 0) + 1);
+  const cur = myPet()?.gear || '';
+  $('#gears').innerHTML = GEAR_ORDER.map(gid => `<div class="item ${gid === 'crown' ? 'rare' : ''} ${gOwn[gid] ? '' : 'locked'} ${cur === gid ? 'on' : ''}" data-gear="${gOwn[gid] ? gid : ''}" role="button" tabindex="0">${GEAR_SVG[gid]}<b>${gOwn[gid] ? GEAR[gid] : '???'}</b></div>`).join('');
+  $('#gears').querySelectorAll('[data-gear]').forEach(el => el.onclick = () => { if (el.dataset.gear) equip(el.dataset.gear === cur ? '' : el.dataset.gear); });
   const g = {};
   mine.filter(x => x.kind === 'pet').forEach(x => { const k = x.a + '|' + x.b; g[k] = (g[k] || 0) + 1; });
   const keys = Object.keys(g);
   $('#goods').innerHTML = keys.length ? keys.map(k => { const [a, b] = k.split('|'); return goodsHTML(a, b, g[k]); }).join('') : `<p class="note" style="grid-column:1/-1">아직 없어요. 갓챠에서 친구들 펫 굿즈를 모아 보세요</p>`;
+}
+
+async function equip(gid) {
+  if (!myPet()) { toast('먼저 우리 아이를 만들어 주세요'); return; }
+  try { await api('equip', { id: S.id, gear: gid }); await refresh(); toast(gid ? `${GEAR[gid]} 착용!` : '장비를 벗었어요'); }
+  catch (e) { toast(e.message); }
 }
 
 /* ---------- 내 차례 알림 ---------- */
