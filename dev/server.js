@@ -24,7 +24,8 @@ const NPC_PETS = [
 ];
 const ITEMS = [
   { id: "slide", w: 22 }, { id: "hammock", w: 22 }, { id: "lamp", w: 22 }, { id: "garden", w: 16 }, { id: "cafe", w: 14 },
-  { id: "pool", w: 9 }, { id: "cloud", w: 7 }, { id: "tent", w: 3 },
+  { id: "sandbath", w: 18 }, { id: "balloon", w: 18 }, { id: "swing", w: 12 }, { id: "bookshelf", w: 12 },
+  { id: "pool", w: 9 }, { id: "piano", w: 6 }, { id: "cloud", w: 7 }, { id: "tent", w: 3 },
 ];
 const GEAR = [
   { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "bowtie", w: 16 }, { id: "beret", w: 14 }, { id: "bunny", w: 9 }, { id: "heartglass", w: 9 },
@@ -314,9 +315,11 @@ export class Hub extends DurableObject {
       return json({ ok: true, room: lv + 1, seeds: w.seeds - cost });
     }
     if (p === "/api/eat") {
-      const r = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = 'snack' AND a = ? LIMIT 1", b.id, String(b.a || ""))[0];
+      const r = this.rows("SELECT uniq, b FROM pulls WHERE who = ? AND kind = 'snack' AND a = ? LIMIT 1", b.id, String(b.a || ""))[0];
       if (!r) return json({ error: "none", message: "그 간식이 없어요" }, 409);
-      this.sql.exec("DELETE FROM pulls WHERE uniq = ?", r.uniq);
+      const left = (parseInt(r.b) || 1) - 1;
+      if (left > 0) this.sql.exec("UPDATE pulls SET b = ? WHERE uniq = ?", String(left), r.uniq);
+      else this.sql.exec("DELETE FROM pulls WHERE uniq = ?", r.uniq);
       return json({ ok: true });
     }
     if (p === "/api/layout") {
@@ -326,7 +329,7 @@ export class Hub extends DurableObject {
       const base = ["house", "bowl", "bottle", "toilet", "wheel"], out = {};
       let n = 0;
       for (const [k, v] of Object.entries(b.layout || {})) {
-        const x = Math.max(2, Math.min(98, Number(v) || 50));
+        const x = typeof v === "object" && v ? { x: Math.max(2, Math.min(98, Number(v.x) || 50)), y: Math.max(0, Math.min(1, Number(v.y) || 0)) } : Math.max(2, Math.min(98, Number(v) || 50));
         if (base.includes(k)) out[k] = x;
         else if (owned.has(k) && n < ROOM_SLOTS[lv]) { out[k] = x; n++; }
       }
@@ -479,7 +482,7 @@ export class Hub extends DurableObject {
   pool() { return [...this.rows("SELECT id FROM pets WHERE img IS NOT NULL").map(r => r.id), ...NPC_PETS.map(n => n.id)]; }
   roll(R, who) {
     const pool = this.pool(), x = R();
-    if (x < .26) return { kind: "snack", a: pickW(SNACKS, R()).id, b: "" };
+    if (x < .26) return { kind: "snack", a: pickW(SNACKS, R()).id, b: "10" };
     if (x < .52) return { kind: "item", a: pickW(ITEMS, R()).id, b: "" };
     if (x < .7) return { kind: "gear", a: pickW(GEAR, R()).id, b: "" };
     return { kind: "pet", a: pool[Math.floor(R() * pool.length)], b: pickW(GOODS, R()).id };
