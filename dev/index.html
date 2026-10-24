@@ -124,6 +124,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes sway { 0%,100% { transform: rotate(-7deg) translateX(-4%); } 50% { transform: rotate(7deg) translateX(4%); } }
 .room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
+.room .pet .paws { position: absolute; inset: 0; pointer-events: none; z-index: 2; --ps: 12%; }
+.room .pet .paws .pw { position: absolute; width: var(--ps); aspect-ratio: 1.2; border-radius: 50% 50% 45% 45%; background: #F8D3DA; border: 2px solid #4A3428; transform: translate(-50%, -50%); }
+.room .pet .paws .pw::after { content: ""; position: absolute; left: 22%; right: 22%; top: 12%; height: 30%; background: radial-gradient(circle, #E9A5B5 28%, transparent 30%) 0 0 / 33.3% 100% repeat-x; }
+.room .pet .paws .snk { position: absolute; width: calc(var(--ps) * .7); aspect-ratio: .6; border-radius: 50%; background: #B98A5A; border: 2px solid #4A3428; transform: translate(-50%, -50%) rotate(12deg); display: none; }
 .room .shadow { position: absolute; bottom: 10.5%; width: 15%; height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
 .room .emote { position: absolute; width: 9%; transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
 .room .emote svg { width: 100%; display: block; }
@@ -818,7 +822,7 @@ function buildRoom() {
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button>
     <div class="shadow" id="shadow"></div>
-    <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div>${gearOverlay(p.gear, p.gpos)}</div></div>
+    <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div><div class="paws" id="paws"><i class="snk"></i><i class="pw pl"></i><i class="pw pr"></i></div>${gearOverlay(p.gear, p.gpos)}</div></div>
     <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
@@ -913,6 +917,52 @@ function jelly(dt, now) {
     g.drawImage(im, 0, i * sh, iw, sh + .6, pad + (bw - dw) / 2 + dx, dy, dw, dh + 1);
   }
 }
+/* ---------- 앞발: 세수·먹기 ---------- */
+function pawsTick(now) {
+  const box = $('#paws'); if (!box) return;
+  const k = kindNow(), groom = P.act === 'groom' && !P.hidden, eat = P.act === 'eat' && k === 'hamster' && !P.hidden;
+  P.tilt = 0;
+  if (!groom && !eat) { if (box.style.display) box.style.display = ''; return; }
+  box.style.display = 'block';
+  const b = (P.spr && BOX[P.spr.front]) || { x0: .15, y0: .12, x1: .85, y1: .92 };
+  const w = (b.x1 - b.x0) * 100, fx = (b.x0 + b.x1) / 2 * 100, top = b.y0 * 100, hgt = (b.y1 - b.y0) * 100;
+  const faceY = top + hgt * .5, mouthY = top + hgt * .6, bellyY = top + hgt * .78;
+  const J = P.J || { lean: 0, wob: 0, sq: 1 };
+  const place = (el, x, y) => {
+    const up = Math.pow(Math.max(0, 1 - y / 100), 1.5), dx = (J.lean * .22 + J.wob * .06) * 100 * up;
+    el.style.left = (x + dx) + '%'; el.style.top = (100 - (100 - y) * J.sq) + '%';
+  };
+  const pl = box.querySelector('.pl'), pr = box.querySelector('.pr'), snk = box.querySelector('.snk');
+  box.style.setProperty('--ps', (w * .23) + '%');
+  const t = now / 1000;
+  if (eat) {
+    const o = (Math.sin(t * 17) + 1) / 2, y = mouthY + w * .03 - o * w * .04;
+    place(pl, fx - w * .09, y); place(pr, fx + w * .09, y);
+    snk.style.display = 'block'; place(snk, fx, y - w * .02); P.tilt = Math.sin(t * 17) * 1.2;
+    return;
+  }
+  snk.style.display = 'none';
+  const kk = Math.min(1, (now - (P.actT0 || now)) / (P.actMs || 1)), wt = t * 11;
+  if (kk < .45) {
+    /* 볼을 동글동글 문지르기 */
+    place(pl, fx - w * .17 + Math.cos(wt) * w * .06, faceY + Math.sin(wt) * w * .07);
+    place(pr, fx + w * .17 - Math.cos(wt + .6) * w * .06, faceY + Math.sin(wt + .6) * w * .07);
+    P.tilt = Math.sin(t * 2.2) * 3;
+    if (P.J && Math.sin(wt) > .97 && !P.rubbed) { P.J.sv -= .5; P.rubbed = true; } else if (Math.sin(wt) < 0) P.rubbed = false;
+  } else if (kk < .75) {
+    /* 고개 기울이고 귀 뒤까지 쓱쓱 */
+    const side = Math.sin(t * 1.6) > 0 ? 1 : -1, ex = fx + side * w * .32, ey = top + hgt * .12;
+    P.tilt = side * 10;
+    const ear = side > 0 ? pr : pl, rest = side > 0 ? pl : pr;
+    place(ear, ex + Math.cos(wt) * w * .05, ey + Math.sin(wt) * w * .06);
+    place(rest, fx - side * w * .12, mouthY + w * .02);
+  } else {
+    /* 숙여서 배 털 정리 */
+    P.tilt = Math.sin(t * 9) * 4;
+    place(pl, fx - w * .1 + Math.sin(wt) * w * .03, bellyY); place(pr, fx + w * .1 - Math.sin(wt) * w * .03, bellyY);
+    if (P.J) P.J.sq += (0.9 - P.J.sq) * .08;
+  }
+}
 /* 종류별 걸음걸이 */
 const GAIT = {
   hamster: { lean: .7, walkStep: 150, runStep: 95, walkKick: 1.3, runKick: 1.6, bounce: 300, burst: true },
@@ -925,6 +975,7 @@ function say(t, ms = 1800) {
   b.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => b.classList.remove('on'), ms);
 }
 function setAct(name, ms, text, cls) {
+  P.actT0 = performance.now(); P.actMs = ms || 1;
   P.act = name; P.until = ms ? performance.now() + ms : 0; P.cls = cls || ''; P.actText = text || P.actText;
   statusLine();
 }
@@ -1071,7 +1122,7 @@ function loop(now) {
   pet.className = 'pet ' + (P.pauseUntil > now && P.act === 'walk' ? '' : (P.cls || '')) + (now < (P.fxUntil || 0) && P.fx ? ' ' + P.fx : '') + (P.spr && (P.cls === 'run' ? P.spr.run1 : P.spr.walk1) && (P.cls === 'run' || P.cls === 'walk') ? ' framed' : '');
   if (P.spr) {
     const moving = P.act === 'walk' || P.act === 'slidedown', t = performance.now();
-    const want = t < (P.faceUntil || 0) && P.face ? P.face : t < (P.happyUntil || 0) ? 'happy' : moving ? 'side' : (P.act === 'sleep' && !P.hidden) ? 'sleep' : ['eat', 'drink', 'chew'].includes(P.act) ? 'eat' : ['groom', 'scratch'].includes(P.act) ? 'groom' : P.act === 'rest' ? 'flat' : P.act === 'sad' ? 'grumpy' : ['sniff', 'look'].includes(P.act) ? 'curious' : 'front';
+    const want = t < (P.faceUntil || 0) && P.face ? P.face : t < (P.happyUntil || 0) ? 'happy' : moving ? 'side' : (P.act === 'sleep' && !P.hidden) ? 'sleep' : ['eat', 'drink', 'chew'].includes(P.act) ? 'eat' : P.act === 'groom' ? (P.spr?.happy ? 'happy' : 'front') : P.act === 'scratch' ? 'groom' : P.act === 'rest' ? 'flat' : P.act === 'sad' ? 'grumpy' : ['sniff', 'look'].includes(P.act) ? 'curious' : 'front';
     let use = P.spr[want] ? want : 'front';
     const running = P.act === 'wheel' || (moving && P.speed > 25), walking = moving && !running;
     if ((want === 'side' || P.act === 'wheel') && (running || walking)) {
@@ -1081,7 +1132,8 @@ function loop(now) {
     }
     if (use !== P.cur && P.spr[use]) { P.cur = use; const im = pet.querySelector('.body img'); if (im) im.src = P.spr[use]; }
   }
-  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '');
+  pawsTick(now);
+  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '') + (P.tilt ? ` rotate(${P.tilt}deg)` : '');
   requestAnimationFrame(loop);
 }
 function paw() {
