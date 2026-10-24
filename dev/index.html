@@ -79,6 +79,9 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 
 /* 우리 방 */
 .room { position: relative; aspect-ratio: 4 / 3; max-width: 100%; border: var(--stroke); border-radius: var(--r); overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.room { --wf: 1; }
+.room .world { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% * 1.7); --wf: 1.7; will-change: transform; }
+.room .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
 .room .sky { position: absolute; inset: 0 0 30% 0; background: linear-gradient(#D9E8FA, #F7E8EF); transition: background 2s; }
 .room .floor { position: absolute; inset: 70% 0 0 0; background: linear-gradient(#F3DDC0, #EBCCA6); border-top: 2.5px solid var(--ink); }
 .room.dusk .sky { background: linear-gradient(#F4B8A8, #F9DEC9); }
@@ -91,7 +94,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .prop.house { pointer-events: auto; cursor: pointer; }
 .room .prop.hammock { bottom: auto; top: 22%; }
 .room .prop.lamp { bottom: auto; top: 0; }
-.room .pet { position: absolute; width: 23%; transform: translateX(-50%); cursor: pointer; z-index: 3; transition: opacity .6s; }
+.room .pet { position: absolute; width: calc(23% / var(--wf)); transform: translateX(-50%); cursor: pointer; z-index: 3; transition: opacity .6s; }
 .room .pet .spr { position: relative; isolation: isolate; transform-origin: 50% 100%; transition: transform .25s; }
 .room .pet .body { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
 .room .pet .body.cv { position: relative; aspect-ratio: 1; }
@@ -104,14 +107,14 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet.run .body { animation: hop .18s ease-in-out infinite; }
 .room .pet.framed .body { animation: trot .24s ease-in-out infinite; }
 @keyframes trot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3%); } }
-.room .dust { position: absolute; width: 3%; aspect-ratio: 1; border-radius: 50%; background: #FFFFFF; border: 1.5px solid rgba(74,52,40,.35); pointer-events: none; animation: dust .6s ease-out forwards; z-index: 2; }
+.room .dust { position: absolute; width: calc(3% / var(--wf)); aspect-ratio: 1; border-radius: 50%; background: #FFFFFF; border: 1.5px solid rgba(74,52,40,.35); pointer-events: none; animation: dust .6s ease-out forwards; z-index: 2; }
 @keyframes dust { to { transform: translate(var(--dx), -60%) scale(1.8); opacity: 0; } }
 .room .pet.eat .body { animation: munch .35s ease-in-out infinite; }
 .room .pet.groom .body { animation: wiggle .5s ease-in-out infinite; }
 .room .pet.sleep .body { animation: breathe 4s ease-in-out infinite; filter: brightness(.95); }
 .room .pet.sway .spr { animation: sway 2.2s ease-in-out infinite; }
 .room .pet.look .spr { transform: rotate(-8deg); }
-.room .ball { position: absolute; width: 6%; bottom: 12%; transform: translateX(-50%); z-index: 4; pointer-events: none; transition: left .9s cubic-bezier(.2,.8,.3,1), bottom .25s; }
+.room .ball { position: absolute; width: calc(6% / var(--wf)); bottom: 12%; transform: translateX(-50%); z-index: 4; pointer-events: none; transition: left .9s cubic-bezier(.2,.8,.3,1), bottom .25s; }
 .room .ball svg { width: 100%; display: block; }
 .room .gear { position: absolute; pointer-events: none; z-index: 2; }
 .room .gear svg { width: 100%; height: auto; display: block; }
@@ -128,17 +131,17 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .paws .pw { position: absolute; width: var(--ps); aspect-ratio: 1.2; border-radius: 50% 50% 45% 45%; background: #F8D3DA; border: 2px solid #4A3428; transform: translate(-50%, -50%); }
 .room .pet .paws .pw::after { content: ""; position: absolute; left: 22%; right: 22%; top: 12%; height: 30%; background: radial-gradient(circle, #E9A5B5 28%, transparent 30%) 0 0 / 33.3% 100% repeat-x; }
 .room .pet .paws .snk { position: absolute; width: calc(var(--ps) * .7); aspect-ratio: .6; border-radius: 50%; background: #B98A5A; border: 2px solid #4A3428; transform: translate(-50%, -50%) rotate(12deg); display: none; }
-.room .shadow { position: absolute; bottom: 10.5%; width: 15%; height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
-.room .emote { position: absolute; width: 9%; transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
+.room .shadow { position: absolute; bottom: 10.5%; width: calc(15% / var(--wf)); height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
+.room .emote { position: absolute; width: calc(9% / var(--wf)); transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
 .room .emote svg { width: 100%; display: block; }
 @keyframes emoteIn { from { transform: translate(-50%, 30%) scale(.2); opacity: 0; } }
 .room .emote.out { transition: opacity .3s, transform .3s; opacity: 0; transform: translate(-50%, -30%); }
-.room .snot { position: absolute; width: 4.5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #FFFFFF, #CFE6F5 60%, rgba(159,183,217,.6)); border: 1.5px solid rgba(74,52,40,.5); pointer-events: none; z-index: 5; animation: snot 2.6s ease-in-out infinite; transform-origin: 0 100%; }
+.room .snot { position: absolute; width: calc(4.5% / var(--wf)); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #FFFFFF, #CFE6F5 60%, rgba(159,183,217,.6)); border: 1.5px solid rgba(74,52,40,.5); pointer-events: none; z-index: 5; animation: snot 2.6s ease-in-out infinite; transform-origin: 0 100%; }
 @keyframes snot { 0%,100% { transform: scale(.35); } 50% { transform: scale(1.15); } }
-.room .print { position: absolute; width: 2.6%; aspect-ratio: 1; pointer-events: none; z-index: 1; animation: fadePrint 1.6s ease-out forwards; }
+.room .print { position: absolute; width: calc(2.6% / var(--wf)); aspect-ratio: 1; pointer-events: none; z-index: 1; animation: fadePrint 1.6s ease-out forwards; }
 .room .print svg { width: 100%; display: block; }
 @keyframes fadePrint { to { opacity: 0; } }
-.room .tapRing { position: absolute; width: 6%; aspect-ratio: 1; border: 3px solid #FFFFFF; border-radius: 50%; transform: translate(-50%, 50%); pointer-events: none; animation: ring .6s ease-out forwards; z-index: 2; }
+.room .tapRing { position: absolute; width: calc(6% / var(--wf)); aspect-ratio: 1; border: 3px solid #FFFFFF; border-radius: 50%; transform: translate(-50%, 50%); pointer-events: none; animation: ring .6s ease-out forwards; z-index: 2; }
 @keyframes ring { from { transform: translate(-50%, 50%) scale(.3); opacity: 1; } to { transform: translate(-50%, 50%) scale(1.6); opacity: 0; } }
 .room .pet.go .body { animation: go .2s ease-out; }
 .room .pet.land .body { animation: land .38s ease-out; }
@@ -183,10 +186,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .prop.house.occupied .peek { display: flex; }
 .room .peek.look { display: flex; } .room .peek.look b { animation: none; height: 11px; width: 9px; }
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
-.room .hand { position: absolute; left: 50%; bottom: -30%; width: 26%; transform: translateX(-50%); z-index: 2; transition: bottom .6s cubic-bezier(.3,1.4,.5,1), left .6s; pointer-events: none; }
+.room .hand { position: absolute; left: 50%; bottom: -30%; width: calc(26% / var(--wf)); transform: translateX(-50%); z-index: 2; transition: bottom .6s cubic-bezier(.3,1.4,.5,1), left .6s; pointer-events: none; }
 .room .hand.on { bottom: -2%; }
 .room .hand svg { width: 100%; display: block; }
-.room .toyx { position: absolute; width: 9%; z-index: 4; pointer-events: none; transition: left .7s ease-in-out, bottom .7s ease-in-out; transform: translateX(-50%); }
+.room .toyx { position: absolute; width: calc(9% / var(--wf)); z-index: 4; pointer-events: none; transition: left .7s ease-in-out, bottom .7s ease-in-out; transform: translateX(-50%); }
 .room .toyx svg { width: 100%; display: block; }
 .cbtn { border: var(--stroke); border-radius: 16px; background: var(--card); padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 0; box-shadow: 0 3px 0 var(--ink); }
 .cbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
@@ -663,7 +666,8 @@ const KIND_PROPS = {
 };
 const BALL_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="#F6C94E" stroke="${INK}" stroke-width="4"/><path d="M6 16 Q20 26 34 16 M8 28 Q20 18 32 28" stroke="#FFFFFF" stroke-width="3" fill="none"/></svg>`;
 /* 방 안 위치 (가로 %) */
-const SPOT = { house: 13, slide: 33, bowl: 49, bottle: 59, cloud: 70, toilet: 73, wheel: 89, hammock: 40, lamp: 63 };
+const WF = 1.7; /* 방 너비 = 화면의 1.7배, 카메라가 따라감 */
+const SPOT = { house: 8, hammock: 21, slide: 27, bowl: 39, bottle: 45, lamp: 49, toilet: 55, cloud: 63, wheel: 84 };
 function TOILET_SVG(k, poop) {
   const n = Math.min(4, poop || 0), dots = [[30, 18], [44, 16], [56, 19], [38, 22]].slice(0, n);
   if (k === 'dog') return `<svg viewBox="0 0 80 30" aria-hidden="true"><path d="M4 26 L12 6 H70 L76 26Z" fill="#E4F3EC" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/><path d="M14 10 H68 M10 18 H72" stroke="#BFE3D0" stroke-width="2"/>${dots.map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="7" ry="3.5" fill="#F3E08A" opacity=".85"/>`).join('')}</svg>`;
@@ -693,12 +697,24 @@ function care() {
   if (CARE && CARE.id === S.id) return CARE;
   let c = null; try { c = JSON.parse(store.get('care_' + S.id) || 'null'); } catch (e) {}
   c = c || { food: 3, water: .8, at: Date.now() };
-  c.poop = c.poop || 0; c.trust = c.trust ?? 25;
+  c.poop = c.poop || 0; c.trust = c.trust ?? 25; c.fat = c.fat ?? .35;
   const h = (Date.now() - c.at) / 3.6e6;
-  c.food = Math.max(0, c.food - h * .3); c.water = Math.max(0, c.water - h * .07); c.at = Date.now(); c.id = S.id;
+  c.food = Math.max(0, c.food - h * .3); if (c.fat != null) c.fat = Math.max(0, c.fat - h * .01); c.water = Math.max(0, c.water - h * .07); c.at = Date.now(); c.id = S.id;
   return CARE = c;
 }
-function saveCare() { const c = care(); c.at = Date.now(); store.set('care_' + S.id, JSON.stringify({ food: c.food, water: c.water, poop: c.poop, trust: c.trust, at: c.at })); drawCare(); }
+function saveCare() { const c = care(); c.at = Date.now(); store.set('care_' + S.id, JSON.stringify({ food: c.food, water: c.water, poop: c.poop, trust: c.trust, fat: c.fat, at: c.at })); drawCare(); }
+function fatUp(d) { const c = care(); c.fat = Math.max(0, Math.min(1, c.fat + d)); saveCare(); }
+const BASE_WT = { hamster: [120, 'g'], cat: [4.2, 'kg'], dog: [5.5, 'kg'] };
+function fatLabel(f) { return f < .2 ? '홀쭉' : f < .5 ? '딱 좋아' : f < .75 ? '통통' : f < .9 ? '빵빵' : '찹쌀떡'; }
+function fatTick(now) {
+  const c = CARE; if (!c) return;
+  if (P.act === 'wheel' || (P.act === 'walk' && P.speed > 25)) c.fat = Math.max(0, c.fat - .00004 * 60 * ((now - (P.fatT || now)) / 1000 || 0));
+  P.fatT = now;
+  if (now > (P.wtT || 0)) {
+    P.wtT = now + 1000; const [b, u] = BASE_WT[kindNow()] || BASE_WT.hamster, w = b * (.85 + c.fat * .55);
+    const el = $('#wtTag'); if (el) el.textContent = `${u === 'g' ? Math.round(w) : w.toFixed(1)}${u} · ${fatLabel(c.fat)}`;
+  }
+}
 function trustUp(d) { const c = care(); c.trust = Math.max(0, Math.min(100, c.trust + d)); saveCare(); }
 function drawCare() {
   const c = care(), b = $('#room .prop.bowl'), w = $('#room .prop.bottle'), tl = $('#room .prop.toilet');
@@ -731,7 +747,7 @@ function treat() {
   if (performance.now() < (P.treatOk || 0)) { say('배불러…'); return; }
   P.treatOk = performance.now() + 60e3;
   emote('bang', 900);
-  goTo(50, 30, () => { P.happyUntil = performance.now() + 1500; fx('hopx', 900); emote('spark', 1400); say(`${KP().snack}다!`); setTimeout(() => setAct('eat', 4500, `${petNm()}가 ${KP().snack}를 먹어요`, 'eat'), 1000); }, `${petNm()}가 간식 받으러 와요`);
+  goTo(50, 30, () => { P.happyUntil = performance.now() + 1500; fx('hopx', 900); emote('spark', 1400); say(`${KP().snack}다!`); setTimeout(() => { fatUp(.06); setAct('eat', 4500, `${petNm()}가 ${KP().snack}를 먹어요`, 'eat'); }, 1000); }, `${petNm()}가 간식 받으러 와요`);
 }
 function toiletNow() {
   const c = care(), n = petNm(), k = kindNow();
@@ -743,7 +759,7 @@ function toiletNow() {
 function eatNow() {
   const c = care(), n = petNm();
   if (c.food < .25) { emote('sweat', 2200); setAct('sad', 2600, `${n}가 빈 밥그릇을 봐요`, ''); say('밥이 없어…'); P.sadUntil = performance.now() + 2600; return; }
-  c.food = Math.max(0, c.food - .5); saveCare(); P.potty = (P.potty || 0) + .45; P.afterEat = true;
+  c.food = Math.max(0, c.food - .5); c.fat = Math.min(1, c.fat + .025); saveCare(); P.potty = (P.potty || 0) + .45; P.afterEat = true;
   setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠');
 }
 function drinkNow() {
@@ -808,9 +824,9 @@ function buildRoom() {
   const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
-  const stars = Array.from({ length: 9 }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
-  const prop = (n, svg, w, extra = '') => `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w}%;${extra}">${svg}</div>`;
-  $('#room').innerHTML = `<div class="sky"></div>${stars}<div class="floor"></div>
+  const stars = Array.from({ length: 16 }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
+  const prop = (n, svg, w, extra = '') => `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w / WF}%;${extra}">${svg}</div>`;
+  $('#room').innerHTML = `<div class="world" id="world"><div class="sky"></div>${stars}<div class="floor"></div>
     ${owned.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}
     ${owned.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
     ${prop('house', KP().house + '<i class="peek"><b></b><b></b></i>', 22)}
@@ -820,18 +836,18 @@ function buildRoom() {
     ${prop('toilet', TOILET_SVG(kindNow(), care().poop), 12)}
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
-    <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button>
     <div class="shadow" id="shadow"></div>
     <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div><div class="paws" id="paws"><i class="snk"></i><i class="pw pl"></i><i class="pw pr"></i></div>${gearOverlay(p.gear, p.gpos)}</div></div>
-    <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
+    <div class="bubble" id="bubble"></div></div>
+    <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   $('#room').onclick = e => {
     if (e.target.closest('.pet, .prop.house, button') || P.hidden || P.act === 'sleep') return;
-    const r = $('#room').getBoundingClientRect(), x = Math.max(6, Math.min(94, (e.clientX - r.left) / r.width * 100)), yb = (r.bottom - e.clientY) / r.height * 100;
+    const r = $('#world').getBoundingClientRect(), x = Math.max(4, Math.min(96, (e.clientX - r.left) / r.width * 100)), yb = (r.bottom - e.clientY) / r.height * 100;
     if (yb > 32) return;
-    const ring = document.createElement('i'); ring.className = 'tapRing'; ring.style.left = x + '%'; ring.style.bottom = yb + '%'; $('#room').appendChild(ring); setTimeout(() => ring.remove(), 650);
+    const ring = document.createElement('i'); ring.className = 'tapRing'; ring.style.left = x + '%'; ring.style.bottom = yb + '%'; $('#world').appendChild(ring); setTimeout(() => ring.remove(), 650);
     if (kindNow() === 'dog') return throwBall(true, x);
     emote('bang', 800); P.dir = x > P.x ? 1 : -1;
     setTimeout(() => goTo(x, care().trust >= 30 ? 22 : 12, () => { P.happyUntil = performance.now() + 1200; say(care().trust >= 30 ? '왔어!' : '…여기?', 1100); setAct('idle', 1800, `${petNm()}가 톡 한 곳으로 왔어요`, ''); }, `${petNm()}가 그쪽으로 가요`), 350);
@@ -863,10 +879,10 @@ const THINK = {
   play: `<circle cx="20" cy="18" r="14" fill="#F6C94E" stroke="${INK}" stroke-width="3"/><path d="M8 14 Q20 24 32 14" stroke="#FFFFFF" stroke-width="3" fill="none"/>`,
 };
 function emote(kind, ms = 1600, icon) {
-  const r = $('#room'); if (!r || P.hidden) return;
+  const r = ($('#world') || $('#room')); if (!r || P.hidden) return;
   r.querySelector('.emote')?.remove();
   const e = document.createElement('div'); e.className = 'emote'; e.innerHTML = kind === 'think' ? EMO.think(THINK[icon]) : EMO[kind];
-  if (kind === 'think') e.style.width = '13%';
+  if (kind === 'think') e.style.width = `calc(13% / var(--wf))`;
   r.appendChild(e); P.emo = e; placeEmote();
   clearTimeout(emote.t); emote.t = setTimeout(() => { e.classList.add('out'); setTimeout(() => e.remove(), 320); }, ms);
 }
@@ -906,7 +922,7 @@ function jelly(dt, now) {
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   const g = cv.getContext('2d'); g.clearRect(0, 0, W, H);
   const pad = W * .15 / 1.3, bw = W - pad * 2, bh = H - pad * 2, N = 30, iw = im.naturalWidth, ih = im.naturalHeight;
-  const sq = J.sq, wscale = 1 + (1 - sq) * .85;
+  const fat = (CARE?.fat ?? .35) - .35, sq = J.sq * (1 - Math.max(0, fat) * .12), wscale = (1 + (1 - J.sq) * .85) * (1 + fat * .38);
   for (let i = 0; i < N; i++) {
     const yN = i / N, sh = ih / N, dh = bh / N * sq;
     const dy = pad + bh - (N - i) * dh;
@@ -1018,6 +1034,12 @@ function choose() {
   return 'wander';
 }
 function enterHouse(then) {
+  if ((CARE?.fat ?? 0) > .85 && !P.stuckOnce) {
+    P.stuckOnce = true; P.act = 'enter'; P.until = 0; P.face = 'back'; P.faceUntil = performance.now() + 3200; fx('twitch', 2500); emote('sweat', 2600);
+    say('꽉 꼈다…!', 1600); setTimeout(() => say('영차! 영차!', 1200), 1600);
+    setTimeout(() => { P.stuckOnce = false; P.cls = 'squeeze'; say('쏙!', 800); setTimeout(() => { P.hidden = true; $('#roomPet').style.opacity = 0; P.cls = ''; then && then(); }, 1300); }, 3000);
+    return;
+  }
   P.act = 'enter'; P.until = 0; P.face = 'back'; P.faceUntil = performance.now() + 1600; P.cls = 'squeeze';
   say(kindNow() === 'dog' ? '총총' : '꾸깃꾸깃');
   setTimeout(() => { P.hidden = true; $('#roomPet').style.opacity = 0; P.cls = ''; then && then(); }, 1300);
@@ -1057,6 +1079,7 @@ function next() {
   if (a === 'scratch') return goTo(SPOT.wheel - 3, 12, () => { setAct('scratch', rnd(3, 6) * 1000, `${n}가 기둥을 벅벅 긁어요`, 'groom'); say('벅벅벅'); });
   if (a === 'chew') return goTo(SPOT.wheel - 2, 12, () => { setAct('chew', rnd(5, 9) * 1000, `${n}가 뼈다귀를 오독오독`, 'eat'); say('오독오독'); });
   if (a === 'ball') return throwBall(false);
+  if (a === 'zoom' && (CARE?.fat ?? 0) > .8) { emote('sweat', 1800); say('헥헥… 못 뛰겠어', 1500); return setAct('rest', 5000, `${n}가 배가 무거워서 털썩`, ''); }
   if (a === 'zoom') { P.zooms = 3 + Math.floor(Math.random() * 3); P.tired = (P.tired || 0) + .35; return zoom(); }
   if (a === 'hammock') return goTo(SPOT.hammock, 11, () => { say('영차'); tweenY(52, 700, () => { setAct('hammock', rnd(8, 16) * 1000, `${n}가 해먹에서 흔들흔들`, 'sway'); }); }, `${n}가 해먹으로 가요`);
   if (a === 'slide') return goTo(SPOT.slide - 6, 12, () => { tweenY(40, 800, () => { P.target = SPOT.slide + 12; P.speed = 40; P.act = 'slidedown'; P.cls = ''; say('슝~'); P.actText = `${n}가 미끄럼틀 타요`; statusLine(); tweenY(FLOOR, 650, null); P.onArrive = () => setAct('idle', 1500, null, ''); }); }, `${n}가 미끄럼틀로 가요`);
@@ -1101,7 +1124,8 @@ function loop(now) {
   }
   if ((P.act === 'walk' && !(P.pauseUntil > now)) || P.act === 'slidedown') {
     const d = P.target - P.x;
-    const burst = P.act === 'walk' && GAIT[kindNow()]?.burst && P.speed < 30 ? 1.6 : kindNow() === 'cat' && P.speed < 30 ? .75 : 1;
+    const fatSlow = 1 - Math.max(0, (CARE?.fat ?? 0) - .75) * 1.4;
+    const burst = fatSlow * (P.act === 'walk' && GAIT[kindNow()]?.burst && P.speed < 30 ? 1.6 : kindNow() === 'cat' && P.speed < 30 ? .75 : 1);
     const ease = P.act === 'walk' ? Math.min(1, .35 + (now - (P.walkStart || 0)) / 350) * Math.min(1, .3 + Math.abs(d) / 5) : 1, step = P.speed * burst * dt * ease;
     if (P.act === 'walk') P.dir = d >= 0 ? 1 : -1;
     if (P.act === 'walk' && P.speed > 25 && P.y <= FLOOR + .5 && now > (P.printT || 0)) { P.printT = now + 230; paw(); }
@@ -1118,6 +1142,8 @@ function loop(now) {
   pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
   const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.opacity = P.hidden ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + '%'; }
   placeEmote(); snot(now); jelly(dt, now);
+  const wd = $('#world'); if (wd) { const want = Math.max(0, Math.min((WF - 1) * 100, P.x * WF - 50)); P.cam = P.cam == null ? want : P.cam + (want - P.cam) * Math.min(1, dt * 2.5); wd.style.transform = `translateX(${-P.cam / WF}%)`; }
+  fatTick(now);
   const hs = room.querySelector('.prop.house'); if (hs) { hs.classList.toggle('knock', P.hidden); hs.classList.toggle('occupied', P.hidden); }
   pet.className = 'pet ' + (P.pauseUntil > now && P.act === 'walk' ? '' : (P.cls || '')) + (now < (P.fxUntil || 0) && P.fx ? ' ' + P.fx : '') + (P.spr && (P.cls === 'run' ? P.spr.run1 : P.spr.walk1) && (P.cls === 'run' || P.cls === 'walk') ? ' framed' : '');
   if (P.spr) {
@@ -1137,14 +1163,14 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 function paw() {
-  const r = $('#room'); if (!r) return;
+  const r = ($('#world') || $('#room')); if (!r) return;
   const d = document.createElement('i'); d.className = 'print';
   d.innerHTML = `<svg viewBox="0 0 20 20"><ellipse cx="10" cy="13" rx="5" ry="4" fill="rgba(74,52,40,.25)"/><circle cx="4" cy="7" r="2" fill="rgba(74,52,40,.25)"/><circle cx="10" cy="4" r="2" fill="rgba(74,52,40,.25)"/><circle cx="16" cy="7" r="2" fill="rgba(74,52,40,.25)"/></svg>`;
   P.pawAlt = !P.pawAlt; d.style.left = (P.x - P.dir * 6) + '%'; d.style.bottom = (FLOOR - 2 + (P.pawAlt ? 1.2 : -.3)) + '%'; d.style.transform = `rotate(${P.dir * 90}deg)`;
   r.appendChild(d); setTimeout(() => d.remove(), 1650);
 }
 function snot(now) {
-  const r = $('#room'); if (!r) return;
+  const r = ($('#world') || $('#room')); if (!r) return;
   const show = P.act === 'sleep' && !P.hidden;
   let s = r.querySelector('.snot');
   if (!show) { if (s) s.remove(); return; }
@@ -1153,14 +1179,14 @@ function snot(now) {
   s.style.left = (P.x + P.dir * 4) + '%'; s.style.bottom = (P.y + 23 * 4 / 3 * (1 - (b.y0 + b.y1) / 2) * .9) + '%';
 }
 function dust() {
-  const r = $('#room'); if (!r || P.hidden) return;
+  const r = ($('#world') || $('#room')); if (!r || P.hidden) return;
   const d = document.createElement('i'); d.className = 'dust';
   const back = P.act === 'wheel' ? -1 : -P.dir;
   d.style.left = (P.x + back * 8 + rnd(-1.5, 1.5)) + '%'; d.style.bottom = (P.y + rnd(0, 3)) + '%'; d.style.setProperty('--dx', (back * 140) + '%');
   r.appendChild(d); setTimeout(() => d.remove(), 650);
 }
 function zz() {
-  const r = $('#room'); if (!r) return;
+  const r = ($('#world') || $('#room')); if (!r) return;
   const z = document.createElement('span'); z.className = 'zz'; z.textContent = 'z';
   const x = P.hidden ? SPOT.house + 3 : P.x + 6, y = P.hidden ? 70 : 100 - P.y - 26;
   z.style.left = x + '%'; z.style.top = y + '%'; z.style.fontSize = (14 + Math.random() * 8) + 'px';
@@ -1215,7 +1241,7 @@ function stroke(e) {
 const HAND_SVG = `<svg viewBox="0 0 120 90" aria-hidden="true"><path d="M8 88 Q4 40 30 34 Q36 14 50 22 Q58 8 70 20 Q82 10 90 26 Q104 22 106 40 Q118 60 112 88Z" fill="#F7D3BE" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M38 40 q4 14 2 28 M58 34 q4 16 2 32 M78 36 q4 14 2 30" stroke="#E2AE95" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
 function offerHand() {
   if (!awakeVisible()) return toast(`${petNm()}가 자고 있어요. 집을 톡 해서 깨워 보세요`);
-  const r = $('#room'); let h = $('#hand');
+  const r = $('#world') || $('#room'); let h = $('#hand');
   if (!h) { h = document.createElement('div'); h.className = 'hand'; h.id = 'hand'; h.innerHTML = HAND_SVG; r.appendChild(h); }
   const hx = rnd(35, 65); h.style.left = hx + '%'; requestAnimationFrame(() => h.classList.add('on'));
   const n = petNm(), k = kindNow(), c = care(), bye = ms => setTimeout(() => { h.classList.remove('on'); if (P.y > FLOOR + 1) tweenY(FLOOR, 500); }, ms);
@@ -1252,7 +1278,7 @@ function playWith() {
   if (!awakeVisible()) return toast(`${petNm()}가 자고 있어요. 집을 톡 해서 깨워 보세요`);
   const k = kindNow(), n = petNm(), r = $('#room');
   if (k === 'dog') { throwBall(true); P.tired = (P.tired || 0) + .4; trustUp(1); return; }
-  const t = document.createElement('div'); t.className = 'toyx'; t.innerHTML = k === 'cat' ? WAND_SVG : SEED_SVG; r.appendChild(t);
+  const t = document.createElement('div'); t.className = 'toyx'; t.innerHTML = k === 'cat' ? WAND_SVG : SEED_SVG; ($('#world') || r).appendChild(t);
   if (k === 'hamster') {
     const sx = rnd(15, 85); t.style.left = sx + '%'; t.style.bottom = '4%'; t.style.width = '4%';
     say('어? 냄새 난다'); P.face = 'curious'; P.faceUntil = performance.now() + 1500;
@@ -1706,6 +1732,7 @@ async function endGame() {
   $('#gAgain').onclick = startGame;
   $('#gSpin').onclick = spinSeeds;
   try {
+    fatUp(-.04);
     const r = await api('score', { id: S.id, score });
     S.state.seeds = r.seeds; S.state.myBest = r.best;
     $('#gResult').innerHTML = `씨앗 <b>+${r.earned}</b> · 모은 씨앗 <b>${r.seeds}</b>개${r.newBest ? '<br><span class="newBest">이번 주 최고 기록!</span>' : ''}`;
