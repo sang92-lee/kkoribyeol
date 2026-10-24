@@ -1,6 +1,8 @@
 name = "kkoribyeol"
 main = "worker.js"
 compatibility_date = "2026-09-01"
+# Cloudflare 화면에서 넣은 값을 다음 배포 때 지우지 않게
+keep_vars = true
 
 # 게임 화면·기준 그림은 worker.js 안에 같이 들어 있어서 파일이 2개뿐이야
 
