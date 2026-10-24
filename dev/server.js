@@ -15,6 +15,8 @@ const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
 const ROOM_SLOTS = [3, 5, 7, 9];        // 방 크기별 놓을 수 있는 아이템 수
 const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
+const POUCH_MS = 40 * 60e3, POUCH_MAX = 5, GIFT_COST = 15;
+const CONTESTS = [{ k: "likes", t: "하트 제일 많이 받은 햄찌", u: "♥" }, { k: "score", t: "씨앗 받기 최고점", u: "점" }, { k: "pouch", t: "볼주머니 제일 많이 턴 햄찌", u: "번" }];
 const wkKey = t => String(Math.floor((t + 9 * 3600e3 - 4 * 864e5) / (7 * 864e5)));
 const NPC_PETS = [
   { id: "npc-kongtteok", name: "콩떡", kind: "hamster", fur: "#F3D9B1" },
@@ -229,6 +231,9 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS trades(tid TEXT PRIMARY KEY, fr TEXT, give TEXT, wk TEXT, wa TEXT, wb TEXT, at INTEGER, st TEXT, too TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS likes(day TEXT, fr TEXT, too TEXT, PRIMARY KEY(day, fr, too))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS photos(id TEXT PRIMARY KEY, img TEXT, at INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS pouch(id TEXT PRIMARY KEY, last INTEGER, shards INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS pouchlog(wk TEXT, id TEXT, n INTEGER, PRIMARY KEY(wk, id))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS gifts(gid TEXT PRIMARY KEY, fr TEXT, too TEXT, x REAL, a TEXT, at INTEGER, open INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -290,6 +295,12 @@ export class Hub extends DurableObject {
       const old = this.rows("SELECT img FROM pets WHERE id = ?", b.id)[0];
       if (old && old.img !== b.img) this.sql.exec("DELETE FROM poses WHERE id = ?", b.id);
       this.sql.exec("INSERT INTO pets(id, name, kind, img, at) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, img = excluded.img, at = excluded.at", b.id, name, kind, b.img, now);
+      return json({ ok: true });
+    }
+    if (p === "/api/rename") {
+      const name = String(b.name || "").trim().slice(0, 12);
+      if (!this.player(b.id) || !name) return json({ error: "bad", message: "이름을 적어 주세요" }, 400);
+      this.sql.exec("UPDATE pets SET name = ? WHERE id = ?", name, b.id);
       return json({ ok: true });
     }
     if (p === "/api/pose") {
@@ -397,6 +408,38 @@ export class Hub extends DurableObject {
       const bb = this.rows("SELECT * FROM babies WHERE bid = ?", String(b.bid || ""))[0];
       if (!bb || bb.st !== "ask" || (bb.pa !== b.id && bb.pb !== b.id) || bb.asker === b.id) return json({ ok: false, message: "수락할 수 없는 제안이에요" });
       return json({ ok: true, pa: bb.pa, pb: bb.pb, kind: bb.kind });
+    }
+    if (p === "/api/pouch") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const pc = this.rows("SELECT last, shards FROM pouch WHERE id = ?", b.id)[0] || { last: 0, shards: 0 };
+      const n = pc.last ? Math.min(POUCH_MAX, Math.floor((now - pc.last) / POUCH_MS)) : 3;
+      if (n < 1) return json({ ok: true, n: 0, next: pc.last + POUCH_MS });
+      const got = []; let seeds = 0, shards = pc.shards || 0;
+      for (let i = 0; i < n; i++) { const r = Math.random(); if (r < .12) { shards++; got.push("shard"); } else if (r < .3) { got.push("button"); seeds += 1; } else { const k = 2 + Math.floor(Math.random() * 4); seeds += k; got.push("seed:" + k); } }
+      let gear = null;
+      if (shards >= 5) { shards -= 5; gear = pickW(GEAR, Math.random()).id; this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, 'gear', ?, '')", `p:${now.toString(36)}:${Math.random().toString(36).slice(2, 8)}`, b.id, now, gear); }
+      this.sql.exec("INSERT INTO pouch(id, last, shards) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET last = excluded.last, shards = excluded.shards", b.id, now, shards);
+      this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, ?, 0) ON CONFLICT(id) DO UPDATE SET seeds = seeds + ?", b.id, seeds, seeds);
+      this.sql.exec("INSERT INTO pouchlog(wk, id, n) VALUES(?, ?, ?) ON CONFLICT(wk, id) DO UPDATE SET n = n + ?", wkKey(now), b.id, n, n);
+      return json({ ok: true, n, got, seeds, shards, gear });
+    }
+    if (p === "/api/gift") {
+      if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad", message: "선물을 못 뒀어요" }, 400);
+      if (this.rows("SELECT 1 FROM gifts WHERE fr = ? AND too = ? AND open = 0", b.id, b.to)[0]) return json({ error: "dup", message: "이미 몰래 둔 선물이 있어요. 친구가 찾으면 또 둘 수 있어요" }, 409);
+      const w = this.rows("SELECT seeds FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0 };
+      if (w.seeds < GIFT_COST) return json({ error: "poor", message: `씨앗이 ${GIFT_COST - w.seeds}개 모자라요` }, 409);
+      this.sql.exec("UPDATE wallet SET seeds = seeds - ? WHERE id = ?", GIFT_COST, b.id);
+      const a = pickW(SNACKS, Math.random()).id;
+      this.sql.exec("INSERT INTO gifts(gid, fr, too, x, a, at, open) VALUES(?, ?, ?, ?, ?, ?, 0)", now.toString(36) + Math.random().toString(36).slice(2, 6), b.id, b.to, 8 + Math.random() * 84, a, now);
+      return json({ ok: true, a, seeds: w.seeds - GIFT_COST });
+    }
+    if (p === "/api/giftopen") {
+      const g = this.rows("SELECT * FROM gifts WHERE gid = ? AND too = ? AND open = 0", b.gid, b.id)[0];
+      if (!g) return json({ error: "gone", message: "이미 열었어요" }, 409);
+      this.sql.exec("UPDATE gifts SET open = 1 WHERE gid = ?", g.gid);
+      this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, 'snack', ?, '3')", "g:" + g.gid, b.id, now, g.a);
+      const nick = (this.rows("SELECT nick FROM players WHERE id = ?", g.fr)[0] || {}).nick || "누군가";
+      return json({ ok: true, a: g.a, from: nick });
     }
     if (p === "/api/visit") {
       if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad" }, 400);
@@ -585,12 +628,20 @@ export class Hub extends DurableObject {
     const myBest = id ? (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, id)[0] || { best: 0 }).best : 0;
     const wal = id ? (this.rows("SELECT seeds, room FROM wallet WHERE id = ?", id)[0] || { seeds: 0, room: 0 }) : { seeds: 0, room: 0 };
     const seeds = wal.seeds, roomLv = wal.room || 0;
+    const pc = id ? (this.rows("SELECT last, shards FROM pouch WHERE id = ?", id)[0] || { last: 0, shards: 0 }) : { last: 0, shards: 0 };
+    const pouch = { n: pc.last ? Math.min(POUCH_MAX, Math.floor((now - pc.last) / POUCH_MS)) : 3, shards: pc.shards || 0, next: pc.last ? pc.last + POUCH_MS * (1 + Math.min(POUCH_MAX - 1, Math.floor((now - pc.last) / POUCH_MS))) : 0 };
+    const gifts = id ? this.rows("SELECT gid, fr, x FROM gifts WHERE too = ? AND open = 0", id).map(g => ({ gid: g.gid, x: g.x, nick: players[g.fr] || "누군가" })) : [];
+    const cw = Number(wkKey(now)), C = CONTESTS[cw % CONTESTS.length], d7 = kst(now - 6 * 864e5);
+    const crow = C.k === "likes" ? this.rows("SELECT too AS id, COUNT(*) AS n FROM likes WHERE day >= ? GROUP BY too ORDER BY n DESC LIMIT 5", d7)
+      : C.k === "score" ? this.rows("SELECT id, best AS n FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", String(cw))
+      : this.rows("SELECT id, n FROM pouchlog WHERE wk = ? ORDER BY n DESC LIMIT 5", String(cw));
+    const contest = { title: C.t, unit: C.u, ends: (cw + 1) * 7 * 864e5 + 4 * 864e5 - 9 * 3600e3, rank: crow.filter(x => x.n > 0).map(x => ({ id: x.id, n: x.n, nick: players[x.id] || "누군가" })) };
     const visitors = id ? this.rows("SELECT fr, MAX(at) AS at FROM visits WHERE too = ? GROUP BY fr ORDER BY at DESC LIMIT 5", id).map(x => ({ id: x.fr, at: x.at, nick: players[x.fr] || "누군가" })) : [];
     const pulledMe = id ? this.rows("SELECT COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND a = ? AND who != ?", id, id)[0].n : 0;
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors, bonds, babies,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors, bonds, babies, pouch, gifts, contest, giftCost: GIFT_COST,
     };
   }
 }

@@ -128,6 +128,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes rock { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
 .room .prop.carousel.spin .cr { animation: bob2 .5s ease-in-out infinite alternate; }
 @keyframes bob2 { to { transform: translateY(-6px); } }
+.hdr .who { background: none; border: 2px solid var(--line, #E8DCCF); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+.setRow { display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 14px; margin: 8px 0; } .setRow input { font: inherit; font-size: 16px; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; }
 .roomBar { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
 .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
@@ -490,7 +492,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 </head>
 <body>
 
-<header class="hdr"><h1>꼬리<span>별</span></h1><span class="who" id="who"></span></header>
+<header class="hdr"><h1>꼬리<span>별</span></h1><button type="button" class="who" id="who" aria-label="설정"></button></header>
 
 <main>
   <!-- 우리 아이 -->
@@ -683,6 +685,24 @@ async function api(path, body) {
   if (!r.ok) { const e = new Error(j.message || '잠시 뒤 다시 해 주세요'); e.code = j.error; e.status = r.status; e.detail = j.detail; throw e; }
   return j;
 }
+function openSettings() {
+  const m = $('#modal'), c = $('#modalCard'), p = myPet();
+  c.innerHTML = `<h3 style="font-size:21px">설정</h3>
+    <label class="setRow">내 이름<input id="setNick" maxlength="12" value="${esc(S.nick)}"></label>
+    ${p ? `<label class="setRow">우리 아이 이름<input id="setPet" maxlength="12" value="${esc(p.name)}"></label>` : ''}
+    <div class="row2"><button type="button" class="btn" id="setNo">닫기</button><button type="button" class="btn main" id="setOk">저장</button></div>`;
+  m.hidden = false; $('#setNo').onclick = () => m.hidden = true;
+  $('#setOk').onclick = async () => {
+    const nick = $('#setNick').value.trim(), pn = $('#setPet')?.value.trim();
+    if (!nick) return toast('이름을 적어 주세요');
+    try {
+      if (nick !== S.nick) { await api('hello', { id: S.id, nick }); S.nick = nick; store.set('nick', nick); $('#who').textContent = `${nick}님 ⚙️`; }
+      if (p && pn && pn !== p.name) await api('rename', { id: S.id, name: pn });
+      m.hidden = true; toast('바꿨어요'); P.built = ''; refresh();
+    } catch (e) { toast(e.message); }
+  };
+}
+document.addEventListener('click', e => { if (e.target.closest('#who')) openSettings(); });
 function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
 
 /* ---------- 그림 조각 ---------- */
@@ -810,7 +830,7 @@ async function refresh() {
 }
 function render() {
   const st = S.state; if (!st) return;
-  $('#who').textContent = S.nick ? `${S.nick}님` : '';
+  $('#who').textContent = S.nick ? `${S.nick}님 ⚙️` : '';
   renderPet(); renderGacha(); renderShelf(); renderPlay(); renderShow();
   if (st.me.st === 'turn' && S.lastSt !== 'turn') alertTurn();
   S.lastSt = st.me.st;
@@ -2658,7 +2678,7 @@ document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
 });
 
 function boot() {
-  $('#who').textContent = `${S.nick}님`;
+  $('#who').textContent = `${S.nick}님 ⚙️`;
   refresh();
   clearInterval(boot.p); clearInterval(boot.c);
   boot.p = setInterval(() => { if (!document.hidden) refresh(); }, 3000);
