@@ -386,7 +386,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .showTop .realPh img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px}
 .showTop .realPh span{display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#F6EFF7;font-size:11px;text-align:center;line-height:1.3;color:var(--ink-soft)}
 .showTop .realPh small{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:11px;color:var(--ink-soft)}
-.homeReal{position:absolute;top:30px;right:8px;width:56px;padding:3px 3px 3px;background:#fff;border:2px solid var(--ink);border-radius:5px;transform:rotate(6deg);z-index:5}.homeReal img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.homeTop{display:flex;align-items:center;justify-content:center;gap:18px;padding:6px 0 10px}
+.homeArt{width:96px;aspect-ratio:1;border:2px solid var(--ink);border-radius:16px;background:#FFF4E6;display:flex;align-items:center;justify-content:center;overflow:hidden}.homeArt img{width:90%}
+.homeReal{position:relative;width:84px;padding:4px 4px 16px;background:#fff;border:2px solid var(--ink);border-radius:5px;transform:rotate(5deg);box-shadow:2px 3px 0 rgba(74,52,40,.18)}.homeReal img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.homeReal small{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:10px;color:var(--ink-soft)}.homeReal.none>span{display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#F6EFF7;font-size:20px}
 .home{position:relative}
 .room.mini { aspect-ratio: 4 / 3; } .room.mini.lv3 { box-shadow: 0 0 0 3px #F6C94E, 0 0 14px rgba(246,201,78,.7); } .room.mini.lv2 { box-shadow: 0 0 0 3px #A9D4F2; }
 .room.mini .itTag { position: absolute; top: 6px; right: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-size: 11px; z-index: 7; }
@@ -2068,7 +2071,7 @@ function renderShow() {
         <button type="button" class="btn main big" id="showShare">이 카드로 자랑하기</button>`;
       cutImgs(me);
       $('#showShare').onclick = share;
-      $('#realIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; const u = URL.createObjectURL(f); try { const photo = await toJpeg(u, 640, .82); const r = await api('/api/photo', { id: S.id, photo }); if (r && r.ok !== false) { toast?.('실물 사진 올렸어요'); refresh?.(); } } catch { } finally { URL.revokeObjectURL(u); } };
+      $('#realIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; const u = URL.createObjectURL(f); try { const photo = await toJpeg(u, 640, .82); const r = await api('photo', { id: S.id, photo }); if (r && r.ok !== false) { toast?.('실물 사진 올렸어요'); refresh?.(); } } catch { } finally { URL.revokeObjectURL(u); } };
     }
   }
   const ids = Object.keys(st.pets).filter(id => !st.pets[id].npc && st.pets[id].img && id !== S.id).sort((a, b) => (st.pets[b].likes || 0) - (st.pets[a].likes || 0));
@@ -2076,7 +2079,7 @@ function renderShow() {
   const hm = $('#homes');
   if (hm.dataset.key !== hk) {
     hm.dataset.key = hk;
-    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}">${miniRoom(id)}${q.ph ? `<span class="homeReal"><img src="/api/img/photo-${encodeURIComponent(id)}?v=${q.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습"></span>` : ''}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
+    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}"><span class="homeTop"><span class="homeArt"><img data-cut="/api/img/${encodeURIComponent(id)}?v=${q.v}&c=${encodeURIComponent(S.code)}" alt=""></span>${q.ph ? `<span class="homeReal"><img src="/api/img/photo-${encodeURIComponent(id)}?v=${q.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습"><small>실물</small></span>` : '<span class="homeReal none"><span>📷</span><small>실물 아직</small></span>'}</span>${miniRoom(id)}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
     cutImgs(hm);
   }
 }
