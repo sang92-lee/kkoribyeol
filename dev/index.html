@@ -120,6 +120,34 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes sway { 0%,100% { transform: rotate(-7deg) translateX(-4%); } 50% { transform: rotate(7deg) translateX(4%); } }
 .room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
+.room .shadow { position: absolute; bottom: 10.5%; width: 15%; height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
+.room .emote { position: absolute; width: 9%; transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
+.room .emote svg { width: 100%; display: block; }
+@keyframes emoteIn { from { transform: translate(-50%, 30%) scale(.2); opacity: 0; } }
+.room .emote.out { transition: opacity .3s, transform .3s; opacity: 0; transform: translate(-50%, -30%); }
+.room .snot { position: absolute; width: 4.5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #FFFFFF, #CFE6F5 60%, rgba(159,183,217,.6)); border: 1.5px solid rgba(74,52,40,.5); pointer-events: none; z-index: 5; animation: snot 2.6s ease-in-out infinite; transform-origin: 0 100%; }
+@keyframes snot { 0%,100% { transform: scale(.35); } 50% { transform: scale(1.15); } }
+.room .print { position: absolute; width: 2.6%; aspect-ratio: 1; pointer-events: none; z-index: 1; animation: fadePrint 1.6s ease-out forwards; }
+.room .print svg { width: 100%; display: block; }
+@keyframes fadePrint { to { opacity: 0; } }
+.room .tapRing { position: absolute; width: 6%; aspect-ratio: 1; border: 3px solid #FFFFFF; border-radius: 50%; transform: translate(-50%, 50%); pointer-events: none; animation: ring .6s ease-out forwards; z-index: 2; }
+@keyframes ring { from { transform: translate(-50%, 50%) scale(.3); opacity: 1; } to { transform: translate(-50%, 50%) scale(1.6); opacity: 0; } }
+.room .pet.go .body { animation: go .2s ease-out; }
+.room .pet.land .body { animation: land .38s ease-out; }
+.room .pet.stretch .body { animation: stretch 1.4s ease-in-out; }
+.room .pet.twitch .body { animation: twitch .12s linear 6; }
+.room .pet.hopx .body { animation: hopx .45s cubic-bezier(.3,.7,.4,1) 2; }
+@keyframes go { 0% { transform: scale(1.12, .86); } 100% { transform: scale(1, 1); } }
+@keyframes land { 0% { transform: scale(1.14, .84); } 45% { transform: scale(.94, 1.07); } 100% { transform: scale(1, 1); } }
+@keyframes stretch { 0%,100% { transform: scale(1, 1); } 35% { transform: scale(.9, 1.16) translateY(-3%); } 60% { transform: scale(1.12, .88); } }
+@keyframes twitch { 50% { transform: scale(1.025, .985); } }
+@keyframes hopx { 0%,100% { transform: translateY(0) scale(1, 1); } 15% { transform: scale(1.1, .88); } 50% { transform: translateY(-26%) scale(.95, 1.06); } }
+/* 친구 방 */
+.friends { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: none; }
+.friend { flex: none; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: none; padding: 0; font-size: 13px; color: var(--soft); }
+.friend .av { width: 64px; height: 64px; border-radius: 50%; border: var(--stroke); overflow: hidden; background: var(--bg); position: relative; }
+.friend .av img, .friend .av svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.friend b { font-family: var(--display); font-weight: 400; color: var(--ink); font-size: 14px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room .sndBtn { position: absolute; top: 8px; left: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 13px; }
 .room .sndBtn[aria-pressed="true"] { background: var(--butter); }
 .room .pet .legs { position: absolute; left: 25%; width: 50%; top: 80%; z-index: -1; display: none; --fur: #D9B48A; }
@@ -337,10 +365,14 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       </div>
       <p class="note" id="poseNote" hidden></p>
       <p class="brag" id="brag" hidden></p>
-      <p class="note">우리 애는 진짜 시간에 맞춰 살아요. 손가락으로 쓱쓱 문지르면 쓰다듬기, 자고 있을 땐 집을 톡 하면 빼꼼 나와요</p>
+      <p class="note">진짜 시간에 맞춰 살아요. 쓱쓱 문지르면 쓰다듬기, 바닥을 톡 하면 그쪽으로 와요. 자고 있을 땐 집을 톡</p>
       <button type="button" class="btn" id="btnGearPos" hidden>장비 위치 맞추기</button>
       <button type="button" class="btn main" id="btnShare">친구한테 자랑하기</button>
       <button type="button" class="link" id="btnRemake">사진으로 다시 그리기</button>
+    </div>
+    <div class="card" id="friendsCard" hidden>
+      <h2>친구들 방 놀러가기</h2>
+      <div class="friends" id="friends"></div>
     </div>
   </section>
 
@@ -513,7 +545,7 @@ function renderPet() {
   if (S.drawsLeft != null) $('#drawLeft').textContent = `오늘 그리기 ${S.drawsLeft}번 남았어요`;
   if (showMaker) return;
   $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
-  buildRoom(); dayLook(); statusLine(); drawCare();
+  buildRoom(); dayLook(); statusLine(); drawCare(); renderFriends();
   $('#btnGearPos').hidden = !p.gear;
   $('#careSnack').textContent = KP().snack; $('#callName').textContent = `"${myPet()?.name || ''}~"`;
   $('#playName').textContent = { hamster: '씨앗 숨기기', cat: '낚싯대', dog: '공 던지기' }[kindNow()];
@@ -635,7 +667,8 @@ function treat() {
   if (!awakeVisible()) { toast(`${petNm()}가 자고 있어요. 집을 톡 해서 깨워 보세요`); return; }
   if (performance.now() < (P.treatOk || 0)) { say('배불러…'); return; }
   P.treatOk = performance.now() + 60e3;
-  goTo(50, 30, () => { P.happyUntil = performance.now() + 1500; say(`${KP().snack}다!`); setTimeout(() => setAct('eat', 4500, `${petNm()}가 ${KP().snack}를 먹어요`, 'eat'), 900); }, `${petNm()}가 간식 받으러 와요`);
+  emote('bang', 900);
+  goTo(50, 30, () => { P.happyUntil = performance.now() + 1500; fx('hopx', 900); emote('spark', 1400); say(`${KP().snack}다!`); setTimeout(() => setAct('eat', 4500, `${petNm()}가 ${KP().snack}를 먹어요`, 'eat'), 1000); }, `${petNm()}가 간식 받으러 와요`);
 }
 function toiletNow() {
   const c = care(), n = petNm(), k = kindNow();
@@ -646,13 +679,13 @@ function toiletNow() {
 }
 function eatNow() {
   const c = care(), n = petNm();
-  if (c.food < .25) { setAct('sad', 2600, `${n}가 빈 밥그릇을 봐요`, ''); say('밥이 없어…'); P.sadUntil = performance.now() + 2600; return; }
+  if (c.food < .25) { emote('sweat', 2200); setAct('sad', 2600, `${n}가 빈 밥그릇을 봐요`, ''); say('밥이 없어…'); P.sadUntil = performance.now() + 2600; return; }
   c.food = Math.max(0, c.food - .5); saveCare(); P.potty = (P.potty || 0) + .45; P.afterEat = true;
   setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠');
 }
 function drinkNow() {
   const c = care(), n = petNm();
-  if (c.water < .08) { setAct('sad', 2600, `${n}가 물이 없어서 시무룩해요`, ''); say('물이 없어…'); P.sadUntil = performance.now() + 2600; return; }
+  if (c.water < .08) { emote('sweat', 2200); setAct('sad', 2600, `${n}가 물이 없어서 시무룩해요`, ''); say('물이 없어…'); P.sadUntil = performance.now() + 2600; return; }
   c.water = Math.max(0, c.water - .12); saveCare(); P.potty = (P.potty || 0) + .3;
   setAct('drink', rnd(3, 5) * 1000, `${n}가 물 마셔요`, 'eat'); say('할짝할짝');
 }
@@ -725,12 +758,21 @@ function buildRoom() {
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button>
+    <div class="shadow" id="shadow"></div>
     <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear, p.gpos)}</div></div>
     <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
-  $('#room').onclick = e => { if (kindNow() === 'dog' && !P.hidden && P.act !== 'sleep' && e.target.closest('.pet, .prop.house') == null) throwBall(true); };
+  $('#room').onclick = e => {
+    if (e.target.closest('.pet, .prop.house, button') || P.hidden || P.act === 'sleep') return;
+    const r = $('#room').getBoundingClientRect(), x = Math.max(6, Math.min(94, (e.clientX - r.left) / r.width * 100)), yb = (r.bottom - e.clientY) / r.height * 100;
+    if (yb > 32) return;
+    const ring = document.createElement('i'); ring.className = 'tapRing'; ring.style.left = x + '%'; ring.style.bottom = yb + '%'; $('#room').appendChild(ring); setTimeout(() => ring.remove(), 650);
+    if (kindNow() === 'dog') return throwBall(true, x);
+    emote('bang', 800); P.dir = x > P.x ? 1 : -1;
+    setTimeout(() => goTo(x, care().trust >= 30 ? 22 : 12, () => { P.happyUntil = performance.now() + 1200; say(care().trust >= 30 ? '왔어!' : '…여기?', 1100); setAct('idle', 1800, `${petNm()}가 톡 한 곳으로 왔어요`, ''); }, `${petNm()}가 그쪽으로 가요`), 350);
+  };
   const im = $('#roomPet img');
   P.spr = {}; P.cur = 'front';
   if (im) {
@@ -740,6 +782,34 @@ function buildRoom() {
   showPoseNote();
   if (!P.started) { P.started = true; startLife(); requestAnimationFrame(loop); }
 }
+/* 머리 위 아이콘 */
+const EMO = {
+  note: `<svg viewBox="0 0 40 40"><path d="M14 30 V8 L32 4 V26" stroke="${INK}" stroke-width="3.5" fill="none" stroke-linejoin="round"/><ellipse cx="10" cy="30" rx="6" ry="5" fill="#F2A0B3" stroke="${INK}" stroke-width="3"/><ellipse cx="28" cy="26" rx="6" ry="5" fill="#F2A0B3" stroke="${INK}" stroke-width="3"/></svg>`,
+  bang: `<svg viewBox="0 0 40 40"><path d="M16 4 h8 l-2 22 h-4z" fill="#F6C94E" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><circle cx="20" cy="33" r="4" fill="#F6C94E" stroke="${INK}" stroke-width="3"/></svg>`,
+  q: `<svg viewBox="0 0 40 40"><path d="M12 14 Q12 4 21 4 Q31 4 30 13 Q29 19 22 21 V26" stroke="${INK}" stroke-width="4.5" fill="none" stroke-linecap="round"/><circle cx="22" cy="33" r="3.5" fill="${INK}"/></svg>`,
+  mad: `<svg viewBox="0 0 40 40"><g stroke="#E0546A" stroke-width="5" stroke-linecap="round" fill="none"><path d="M8 16 Q16 16 16 8"/><path d="M24 8 Q24 16 32 16"/><path d="M8 24 Q16 24 16 32"/><path d="M24 32 Q24 24 32 24"/></g></svg>`,
+  sweat: `<svg viewBox="0 0 40 40"><path d="M20 4 Q32 20 28 28 Q24 36 16 32 Q8 26 20 4Z" fill="#BFE0F5" stroke="${INK}" stroke-width="3"/><path d="M17 22 q-2 4 1 7" stroke="#FFFFFF" stroke-width="2.5" fill="none"/></svg>`,
+  heart: `<svg viewBox="0 0 40 40"><path d="M20 34 C4 22 6 8 14 8 Q18 8 20 13 Q22 8 26 8 C34 8 36 22 20 34Z" fill="#F2A0B3" stroke="${INK}" stroke-width="3"/></svg>`,
+  spark: `<svg viewBox="0 0 40 40"><path d="M20 2 L24 16 L38 20 L24 24 L20 38 L16 24 L2 20 L16 16Z" fill="#FFE08A" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  think: icon => `<svg viewBox="0 0 60 56"><circle cx="8" cy="50" r="3.5" fill="#FFFFFF" stroke="${INK}" stroke-width="2"/><circle cx="16" cy="42" r="5" fill="#FFFFFF" stroke="${INK}" stroke-width="2"/><ellipse cx="36" cy="22" rx="22" ry="19" fill="#FFFFFF" stroke="${INK}" stroke-width="3"/><g transform="translate(22 9) scale(.7)">${icon}</g></svg>`,
+};
+const THINK = {
+  food: `<path d="M2 12 h36 l-5 14 h-26z" fill="#E58A62" stroke="${INK}" stroke-width="3"/><ellipse cx="20" cy="12" rx="18" ry="4" fill="#E9C7AE" stroke="${INK}" stroke-width="2.5"/>`,
+  water: `<path d="M20 2 Q32 18 28 26 Q24 34 16 30 Q8 24 20 2Z" fill="#8EC3E6" stroke="${INK}" stroke-width="3"/>`,
+  stink: `<g stroke="#9ACB86" stroke-width="4" fill="none" stroke-linecap="round"><path d="M8 34 q-6 -8 0 -16 q6 -8 0 -16"/><path d="M20 34 q-6 -8 0 -16 q6 -8 0 -16"/><path d="M32 34 q-6 -8 0 -16 q6 -8 0 -16"/></g>`,
+  play: `<circle cx="20" cy="18" r="14" fill="#F6C94E" stroke="${INK}" stroke-width="3"/><path d="M8 14 Q20 24 32 14" stroke="#FFFFFF" stroke-width="3" fill="none"/>`,
+};
+function emote(kind, ms = 1600, icon) {
+  const r = $('#room'); if (!r || P.hidden) return;
+  r.querySelector('.emote')?.remove();
+  const e = document.createElement('div'); e.className = 'emote'; e.innerHTML = kind === 'think' ? EMO.think(THINK[icon]) : EMO[kind];
+  if (kind === 'think') e.style.width = '13%';
+  r.appendChild(e); P.emo = e; placeEmote();
+  clearTimeout(emote.t); emote.t = setTimeout(() => { e.classList.add('out'); setTimeout(() => e.remove(), 320); }, ms);
+}
+function headTop() { const b = (P.spr && BOX[P.spr.front]) || { y0: .15 }; return P.y + 23 * 4 / 3 * (1 - b.y0); }
+function placeEmote() { const e = P.emo; if (!e || !e.isConnected) return; e.style.left = (P.x + P.dir * 5) + '%'; e.style.bottom = (headTop() + 1) + '%'; }
+function fx(cls, ms) { P.fx = cls; P.fxUntil = performance.now() + ms; }
 function say(t, ms = 1800) {
   const b = $('#bubble'); if (!b) return;
   b.textContent = t; b.style.left = Math.min(80, Math.max(20, P.x)) + '%'; b.style.bottom = (P.y + 26) + '%';
@@ -749,7 +819,7 @@ function setAct(name, ms, text, cls) {
   P.act = name; P.until = ms ? performance.now() + ms : 0; P.cls = cls || ''; P.actText = text || P.actText;
   statusLine();
 }
-function goTo(x, speed, then, text) { P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
+function goTo(x, speed, then, text) { if (P.act !== 'walk') { P.walkStart = performance.now(); fx('go', 200); } P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
 function tweenY(to, ms, done) { P.tween = { from: P.y, to, t0: performance.now(), ms, done }; }
 function KP() { return KIND_PROPS[kindNow()] || KIND_PROPS.hamster; }
 function kindNow() { return myPet()?.kind || 'hamster'; }
@@ -765,6 +835,7 @@ function statusLine() {
   el.querySelector('b').textContent = P.actText || `${petNm()} 방`;
   el.querySelector('span').textContent = sub;
 }
+function m2() { return modeNow(); }
 function choose() {
   const k = kindNow(), m = modeNow(), own = ownedItems(), ham = k === 'hamster';
   const w = { wander: .3, eat: .15, drink: .15, groom: .12 };
@@ -778,6 +849,7 @@ function choose() {
   if ((P.potty || 0) >= 1) w.toilet = m === 'sleep' ? 1.2 : 2;
   if (m === 'sleep' && Math.random() < .25) { w.drink = .25; }
   if (P.afterEat && m !== 'sleep') { w.groom += 1.2; P.afterEat = false; }
+  if (m !== 'sleep') w.fidget = .35;
   if (m === 'calm' || m === 'settle') w.rest = k === 'cat' ? .45 : .2;
   if ((P.tired || 0) > 1 && m !== 'sleep') { w.nap = (w.nap || 0) + 1.5; P.tired = 0; }
   if (m !== 'sleep') { const c = care(); if (c.food > .25 && Math.random() < .5) w.eat += .1; if (c.food < .25) w.eat += .25; if (c.water < .08) w.drink += .2; }
@@ -797,7 +869,7 @@ function leaveHouse(then) {
     if (pk) pk.classList.remove('look');
     P.hidden = false; P.x = SPOT.house + 2; P.y = FLOOR; $('#roomPet').style.opacity = 1;
     P.face = 'curious'; P.faceUntil = performance.now() + 1500; P.cls = 'popout'; say('빼꼼');
-    setTimeout(() => { P.cls = ''; then(); }, 800);
+    setTimeout(() => { P.cls = ''; fx('stretch', 1400); say('하아암~', 1300); setTimeout(then, 1300); }, 800);
   }, 700);
 }
 function next() {
@@ -811,6 +883,14 @@ function next() {
   }
   if (a === 'eat') return goTo(SPOT.bowl, 12, eatNow, `${n}가 밥그릇으로 가요`);
   if (a === 'drink') return goTo(KP() === KIND_PROPS.hamster ? SPOT.bottle - 3 : SPOT.bottle, 12, drinkNow, `${n}가 물 마시러 가요`);
+  if (a === 'fidget') {
+    const f = ['look', 'stretch', 'twitch', 'hop', m2() === 'settle' || m2() === 'wake' ? 'yawn' : 'look'][Math.floor(Math.random() * 5)];
+    if (f === 'look') { emote('q', 1400); setAct('look', 1800, `${n}가 두리번두리번`, ''); setTimeout(() => P.dir *= -1, 500); setTimeout(() => P.dir *= -1, 1100); return; }
+    if (f === 'stretch') { fx('stretch', 1400); say('으쌰~', 1200); return setAct('idle', 1500, `${n}가 기지개를 쭉 켜요`, ''); }
+    if (f === 'yawn') { fx('stretch', 1400); say('하아암…', 1500); return setAct('idle', 1600, `${n}가 하품해요`, ''); }
+    if (f === 'twitch') { fx('twitch', 750); return setAct('sniff', 1200, `${n}가 코를 실룩실룩`, ''); }
+    fx('hopx', 900); emote('note', 1200); return setAct('idle', 1000, `${n}가 제자리에서 깡총`, '');
+  }
   if (a === 'groom') return setAct('groom', rnd(3, 6) * 1000, `${n}가 세수해요`, 'groom');
   if (a === 'wheel') return goTo(SPOT.wheel, 14, () => { P.y = FLOOR + 4; setAct('wheel', rnd(15, 45) * 1000, `${n}가 쳇바퀴를 달려요`, 'run'); say('다다다다'); });
   if (a === 'tower') return goTo(SPOT.wheel - 4, 13, () => { say('영차영차'); tweenY(48, 900, () => setAct('perch', rnd(10, 22) * 1000, `${n}가 캣타워 꼭대기에서 구경해요`, '')); }, `${n}가 캣타워로 가요`);
@@ -832,9 +912,10 @@ function zoom() {
   if (P.zooms-- <= 0) return setAct('idle', 800, `${petNm()}가 우다다 뛰었어요`, '');
   goTo(rnd(8, 92), 34, zoom, `${petNm()}가 우다다 뛰어요`);
 }
-function throwBall(byPlayer) {
+function throwBall(byPlayer, at) {
   const b = $('#ball'); if (!b) return next();
-  const n = petNm(), to = byPlayer ? rnd(8, 92) : (P.x > 50 ? rnd(8, 35) : rnd(65, 92));
+  if (byPlayer) emote('bang', 900);
+  const n = petNm(), to = at != null ? at : byPlayer ? rnd(8, 92) : (P.x > 50 ? rnd(8, 35) : rnd(65, 92));
   P.carry = false; b.style.left = to + '%'; b.style.bottom = (FLOOR + 1) + '%';
   if (byPlayer) say('공이다!');
   setTimeout(() => goTo(to, 36, () => { P.carry = true; say('멍!'); goTo(rnd(40, 60), 18, () => { P.carry = false; setAct('idle', 1800, `${n}가 공을 물어 왔어요`, ''); }, `${n}가 공을 물고 와요`); }, `${n}가 공을 쫓아가요`), byPlayer ? 300 : 500);
@@ -850,9 +931,10 @@ function loop(now) {
   const pet = $('#roomPet'), room = $('#room');
   if (!pet || !room) { requestAnimationFrame(loop); return; }
   if (P.act === 'walk' || P.act === 'slidedown') {
-    const d = P.target - P.x, step = P.speed * dt;
+    const d = P.target - P.x, ease = P.act === 'walk' ? Math.min(1, .35 + (now - (P.walkStart || 0)) / 350) * Math.min(1, .3 + Math.abs(d) / 5) : 1, step = P.speed * dt * ease;
     if (P.act === 'walk') P.dir = d >= 0 ? 1 : -1;
-    if (Math.abs(d) <= step) { P.x = P.target; const f = P.onArrive; P.onArrive = null; P.act = 'idle'; P.until = now + 500; P.cls = ''; if (f) f(); }
+    if (P.act === 'walk' && P.speed > 25 && P.y <= FLOOR + .5 && now > (P.printT || 0)) { P.printT = now + 230; paw(); }
+    if (Math.abs(d) <= Math.max(step, .05)) { P.x = P.target; const f = P.onArrive; P.onArrive = null; P.act = 'idle'; P.until = now + 500; P.cls = ''; fx('land', 380); if (f) f(); }
     else P.x += d > 0 ? step : -step;
   }
   if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
@@ -863,8 +945,10 @@ function loop(now) {
   else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
   soundTick(now);
   pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
+  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.opacity = P.hidden ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + '%'; }
+  placeEmote(); snot(now);
   const hs = room.querySelector('.prop.house'); if (hs) { hs.classList.toggle('knock', P.hidden); hs.classList.toggle('occupied', P.hidden); }
-  pet.className = 'pet ' + (P.cls || '') + (P.spr && (P.cls === 'run' ? P.spr.run1 : P.spr.walk1) && (P.cls === 'run' || P.cls === 'walk') ? ' framed' : '');
+  pet.className = 'pet ' + (P.cls || '') + (now < (P.fxUntil || 0) && P.fx ? ' ' + P.fx : '') + (P.spr && (P.cls === 'run' ? P.spr.run1 : P.spr.walk1) && (P.cls === 'run' || P.cls === 'walk') ? ' framed' : '');
   if (P.spr) {
     const moving = P.act === 'walk' || P.act === 'slidedown', t = performance.now();
     const want = t < (P.faceUntil || 0) && P.face ? P.face : t < (P.happyUntil || 0) ? 'happy' : moving ? 'side' : (P.act === 'sleep' && !P.hidden) ? 'sleep' : ['eat', 'drink', 'chew'].includes(P.act) ? 'eat' : ['groom', 'scratch'].includes(P.act) ? 'groom' : P.act === 'rest' ? 'flat' : P.act === 'sad' ? 'grumpy' : ['sniff', 'look'].includes(P.act) ? 'curious' : 'front';
@@ -879,6 +963,22 @@ function loop(now) {
   }
   pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '');
   requestAnimationFrame(loop);
+}
+function paw() {
+  const r = $('#room'); if (!r) return;
+  const d = document.createElement('i'); d.className = 'print';
+  d.innerHTML = `<svg viewBox="0 0 20 20"><ellipse cx="10" cy="13" rx="5" ry="4" fill="rgba(74,52,40,.25)"/><circle cx="4" cy="7" r="2" fill="rgba(74,52,40,.25)"/><circle cx="10" cy="4" r="2" fill="rgba(74,52,40,.25)"/><circle cx="16" cy="7" r="2" fill="rgba(74,52,40,.25)"/></svg>`;
+  P.pawAlt = !P.pawAlt; d.style.left = (P.x - P.dir * 6) + '%'; d.style.bottom = (FLOOR - 2 + (P.pawAlt ? 1.2 : -.3)) + '%'; d.style.transform = `rotate(${P.dir * 90}deg)`;
+  r.appendChild(d); setTimeout(() => d.remove(), 1650);
+}
+function snot(now) {
+  const r = $('#room'); if (!r) return;
+  const show = P.act === 'sleep' && !P.hidden;
+  let s = r.querySelector('.snot');
+  if (!show) { if (s) s.remove(); return; }
+  if (!s) { s = document.createElement('i'); s.className = 'snot'; r.appendChild(s); }
+  const b = (P.spr && BOX[P.spr.front]) || { y0: .2, y1: .9 };
+  s.style.left = (P.x + P.dir * 4) + '%'; s.style.bottom = (P.y + 23 * 4 / 3 * (1 - (b.y0 + b.y1) / 2) * .9) + '%';
 }
 function dust() {
   const r = $('#room'); if (!r || P.hidden) return;
@@ -901,11 +1001,20 @@ function dayLook() {
   const c = $('#roomClock'); if (c) { const d = new Date(); c.textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? '오전' : '오후'}`; }
 }
 setInterval(dayLook, 10000);
+setInterval(() => {
+  if (!CARE || P.hidden || P.act === 'sleep' || P.act === 'walk' || document.hidden) return;
+  const c = care();
+  if (c.food < .25) emote('think', 2400, 'food');
+  else if (c.water < .08) emote('think', 2400, 'water');
+  else if (c.poop >= 3) emote('think', 2400, 'stink');
+  else if (modeNow() === 'active' && Math.random() < .25) emote('think', 2000, 'play');
+}, 22000);
 const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
 function poke(e) {
   const p = myPet(); if (!p) return;
   if (P.stroked) { P.stroked = false; return; }
-  if (P.act === 'sleep') { P.awakeUntil = performance.now() + 60e3; if (P.y > FLOOR + 6) tweenY(FLOOR, 600); else P.y = FLOOR; setAct('idle', 1500, `${petNm()}가 잠에서 깼어요`, ''); say('으응… 왜 깨워'); P.face = 'grumpy'; P.faceUntil = performance.now() + 2000; trustUp(-1); return; }
+  if (P.act !== 'sleep') emote(Math.random() < .5 ? 'heart' : 'note', 1300);
+  if (P.act === 'sleep') { emote('mad', 1500); P.awakeUntil = performance.now() + 60e3; if (P.y > FLOOR + 6) tweenY(FLOOR, 600); else P.y = FLOOR; setAct('idle', 1500, `${petNm()}가 잠에서 깼어요`, ''); say('으응… 왜 깨워'); P.face = 'grumpy'; P.faceUntil = performance.now() + 2000; trustUp(-1); return; }
   else { const L = LINES[p.kind] || LINES.hamster; say(L[Math.floor(Math.random() * L.length)], 1500); P.happyUntil = performance.now() + 1600; }
   hearts(e);
 }
@@ -921,10 +1030,10 @@ function stroke(e) {
   P.stroked = true; const t = performance.now(), n = petNm(), k = kindNow(), c = care();
   if (P.act === 'sleep') { poke(e); return; }
   P.strokes = (P.strokes || []).filter(x => t - x < 10000); P.strokes.push(t);
-  if (P.strokes.length > 7) { P.face = 'grumpy'; P.faceUntil = t + 2200; say('그만 만져~'); P.strokes = []; return goTo(P.x > 50 ? rnd(15, 35) : rnd(65, 85), 20, () => setAct('idle', 2000, `${n}가 살짝 삐졌어요`, ''), `${n}가 도망가요`); }
+  if (P.strokes.length > 7) { emote('mad', 1500); P.face = 'grumpy'; P.faceUntil = t + 2200; say('그만 만져~'); P.strokes = []; return goTo(P.x > 50 ? rnd(15, 35) : rnd(65, 85), 20, () => setAct('idle', 2000, `${n}가 살짝 삐졌어요`, ''), `${n}가 도망가요`); }
   if (k === 'hamster' && c.trust < 25 && Math.random() < .2) { P.face = 'grumpy'; P.faceUntil = t + 1800; say('앙!'); trustUp(-1); return goTo(SPOT.house, 26, () => enterHouse(() => setAct('hide', 20000, `${n}가 놀라서 집에 숨었어요`)), `${n}가 놀라서 도망가요`); }
   if (P.act === 'walk') { P.act = 'idle'; P.until = t + 2000; P.cls = ''; }
-  P.happyUntil = t + 1400; hearts(e);
+  P.happyUntil = t + 1400; hearts(e); if (Math.random() < .35) emote('heart', 1100);
   say({ hamster: ['좋아…', '쪼끔 더', '눈 사르르'], cat: ['골골골', '거기 좋아', '그르릉'], dog: ['헤헤헤', '배도!', '꼬리 붕붕'] }[k][Math.floor(Math.random() * 3)], 1200);
   if (!P.strokeGain || t > P.strokeGain) { trustUp(1); P.strokeGain = t + 6000; }
 }
@@ -987,7 +1096,7 @@ function playWith() {
 }
 function knockHouse(e) {
   if (!P.hidden) return;
-  P.awakeUntil = performance.now() + 60e3; say(kindNow() === 'cat' ? '냥…? 왜' : kindNow() === 'dog' ? '멍! 놀자!' : '빼꼼… 놀아 줄 거야?');
+  P.awakeUntil = performance.now() + 60e3; setTimeout(() => emote('bang', 1000), 800); say(kindNow() === 'cat' ? '냥…? 왜' : kindNow() === 'dog' ? '멍! 놀자!' : '빼꼼… 놀아 줄 거야?');
   leaveHouse(() => setAct('idle', 1500, `${petNm()}가 집에서 나왔어요`, ''));
   hearts(e);
 }
@@ -1112,6 +1221,13 @@ function openGearAdjust() {
 $('#btnGearPos').onclick = openGearAdjust;
 
 /* ---------- 친구 방 놀러가기 ---------- */
+function renderFriends() {
+  const st = S.state, ids = Object.keys(st.pets).filter(id => id !== S.id && !st.pets[id].npc && st.pets[id].img);
+  $('#friendsCard').hidden = !ids.length;
+  const key = ids.map(id => id + st.pets[id].v + (st.pets[id].gear || '')).join();
+  if ($('#friends').dataset.key === key) return; $('#friends').dataset.key = key;
+  $('#friends').innerHTML = ids.map(id => { const p = st.pets[id]; return `<button type="button" class="friend" data-visit="${id}"><span class="av">${petFace(id)}</span><b>${esc(p.name)}</b><span>${esc(p.owner || '')}네 · ♥${p.likes || 0}</span></button>`; }).join('');
+}
 function visit(pid) {
   const st = S.state, p = st.pets[pid]; if (!p || p.npc || !p.img || pid === S.id) return;
   const items = new Set(p.items || []), kp = KIND_PROPS[p.kind] || KIND_PROPS.hamster, m = $('#modal'), c = $('#modalCard');
@@ -1129,7 +1245,11 @@ function visit(pid) {
     <button type="button" class="link" id="vClose">우리 집으로 돌아가기</button>`;
   m.hidden = false;
   const im = $('#vpet img'); cutout(im.src).then(u => { if (im.isConnected) im.src = u; });
-  $('#vpet').onclick = e => { const r = $('#vroom').getBoundingClientRect(), h = document.createElement('span'); h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px'; $('#vroom').appendChild(h); setTimeout(() => h.remove(), 1200); };
+  const vp = $('#vpet'); let vx = 52, vdir = 1;
+  vp.style.transition = 'left 2.2s ease-in-out';
+  const wander = () => { if (!vp.isConnected || m.hidden) return; const nx = rnd(14, 86); vdir = nx > vx ? 1 : -1; vx = nx; vp.querySelector('.spr').style.transform = `scaleX(${vdir})`; vp.className = 'pet walk'; vp.style.left = nx + '%'; setTimeout(() => { if (vp.isConnected) vp.className = 'pet land'; }, 2200); setTimeout(wander, rnd(3200, 5200)); };
+  setTimeout(wander, 1200);
+  $('#vpet').onclick = e => { $('#vpet').className = 'pet hopx'; const r = $('#vroom').getBoundingClientRect(), h = document.createElement('span'); h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px'; $('#vroom').appendChild(h); setTimeout(() => h.remove(), 1200); };
   $('#likeBtn').onclick = async () => { try { await api('like', { id: S.id, to: pid }); $('#likeBtn').disabled = true; $('#likeBtn').textContent = '♥ 보냈어요!'; refresh(); } catch (e) { toast(e.message); } };
   $('#vClose').onclick = () => m.hidden = true;
 }
