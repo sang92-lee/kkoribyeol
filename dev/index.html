@@ -103,6 +103,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet.sleep .body { animation: breathe 4s ease-in-out infinite; filter: brightness(.95); }
 .room .pet.sway .spr { animation: sway 2.2s ease-in-out infinite; }
 .room .pet.look .spr { transform: rotate(-8deg); }
+.room .ball { position: absolute; width: 6%; bottom: 12%; transform: translateX(-50%); z-index: 4; pointer-events: none; transition: left .9s cubic-bezier(.2,.8,.3,1), bottom .25s; }
+.room .ball svg { width: 100%; display: block; }
 .room .gear { position: absolute; pointer-events: none; z-index: 2; }
 .room .gear svg { width: 100%; height: auto; display: block; }
 .room .zz { position: absolute; font-family: var(--display); color: #FFFFFF; text-shadow: 0 0 3px var(--ink), 0 0 1px var(--ink); font-size: 18px; pointer-events: none; animation: zzz 2.2s ease-out forwards; z-index: 4; }
@@ -115,6 +117,12 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
 .room .clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
+.care { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cbtn { border: var(--stroke); border-radius: 16px; background: var(--card); padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 0; box-shadow: 0 3px 0 var(--ink); }
+.cbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.cbtn b { font-family: var(--display); font-weight: 400; font-size: 16px; }
+.cbtn small { font-size: 12px; color: var(--soft); letter-spacing: .05em; }
+.cbtn.need { background: #FFE1E6; animation: pulse 1.2s ease-in-out infinite; }
 .petStatus { margin: 0; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
 .petStatus b { font-family: var(--display); font-weight: 400; font-size: 17px; }
 .petStatus span { color: var(--soft); font-size: 14px; }
@@ -256,6 +264,12 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <div class="petName"><h2 id="homeName"></h2><span class="note" id="homeKind"></span></div>
       <div class="room" id="room"></div>
       <p class="petStatus" id="petStatus"><b></b><span></span></p>
+      <div class="care">
+        <button type="button" class="cbtn" id="btnFood"><b>밥 주기</b><small id="careFood"></small></button>
+        <button type="button" class="cbtn" id="btnWater"><b>물 갈아주기</b><small id="careWater"></small></button>
+        <button type="button" class="cbtn" id="btnTreat"><b>간식 주기</b><small id="careSnack"></small></button>
+      </div>
+      <p class="note" id="poseNote" hidden></p>
       <p class="brag" id="brag" hidden></p>
       <p class="note">우리 애는 진짜 시간에 맞춰 살아요. 탭하면 반응하고, 자고 있을 땐 집을 톡 하면 빼꼼 나와요</p>
       <button type="button" class="btn main" id="btnShare">친구한테 자랑하기</button>
@@ -426,7 +440,8 @@ function renderPet() {
   if (S.drawsLeft != null) $('#drawLeft').textContent = `오늘 그리기 ${S.drawsLeft}번 남았어요`;
   if (showMaker) return;
   $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
-  buildRoom(); dayLook(); statusLine();
+  buildRoom(); dayLook(); statusLine(); drawCare();
+  $('#careSnack').textContent = KP().snack;
   const n = S.state.pulledMe;
   $('#brag').hidden = !n; $('#brag').textContent = `${p.name} 굿즈가 친구 캡슐에서 ${n}번 나왔어요`;
 }
@@ -451,11 +466,30 @@ function gearOverlay(g) {
 
 /* ---------- 방 소품 ---------- */
 const PROP_SVG = {
-  house: `<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M8 98 Q8 30 60 22 Q112 30 112 98Z" fill="#E59B74" stroke="${INK}" stroke-width="4"/><path d="M4 30 Q60 0 116 30" stroke="${INK}" stroke-width="4" fill="#F3B48F"/><ellipse cx="60" cy="74" rx="20" ry="24" fill="#6E3F2A" stroke="${INK}" stroke-width="4"/></svg>`,
-  wheel: `<svg viewBox="0 0 120 120" aria-hidden="true"><path d="M36 118 L60 60 L84 118" stroke="#7E95BA" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="60" cy="58" r="52" fill="#EEF3FB" stroke="${INK}" stroke-width="4"/><g class="spokes" stroke="#9FB7D9" stroke-width="3.5"><path d="M60 8 V108 M10 58 H110 M25 23 L95 93 M25 93 L95 23"/></g><circle cx="60" cy="58" r="7" fill="#7E95BA" stroke="${INK}" stroke-width="3"/></svg>`,
-  bowl: `<svg viewBox="0 0 80 40" aria-hidden="true"><path d="M4 12 h72 l-8 26 h-56z" fill="#E58A62" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><ellipse cx="40" cy="12" rx="36" ry="7" fill="#F6C9A8" stroke="${INK}" stroke-width="3"/><g fill="#B98A5A"><circle cx="28" cy="10" r="4"/><circle cx="42" cy="9" r="4"/><circle cx="52" cy="12" r="3.5"/></g></svg>`,
-  bottle: `<svg viewBox="0 0 40 120" aria-hidden="true"><rect x="8" y="4" width="24" height="70" rx="10" fill="#CFE6F5" stroke="${INK}" stroke-width="4"/><rect x="11" y="30" width="18" height="40" rx="7" fill="#8EC3E6"/><path d="M20 74 V100" stroke="#9AA3AE" stroke-width="5" stroke-linecap="round"/><path d="M6 118 h28" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M20 100 V118" stroke="#C9B08A" stroke-width="5"/></svg>`,
+  house: `<svg viewBox="0 0 130 110" aria-hidden="true"><ellipse cx="65" cy="106" rx="58" ry="4" fill="rgba(74,52,40,.15)"/><path d="M10 104 Q8 40 65 28 Q122 40 120 104Z" fill="#E7A979" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M18 88 Q65 80 112 88 M14 70 Q65 60 116 70 M22 52 Q65 42 108 52" stroke="#C98258" stroke-width="3" fill="none"/><path d="M2 46 Q65 -6 128 46 Q120 52 112 46 Q65 8 18 46 Q10 52 2 46Z" fill="#9C6B4A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M40 104 V80 Q40 60 65 60 Q90 60 90 80 V104Z" fill="#5E3524" stroke="${INK}" stroke-width="4"/><circle cx="98" cy="62" r="8" fill="#FFE7A6" stroke="${INK}" stroke-width="3"/><path d="M98 54 V70 M90 62 H106" stroke="${INK}" stroke-width="2"/><path d="M14 100 q6 -12 12 0 M110 100 q6 -12 12 0" fill="#9ACB86" stroke="${INK}" stroke-width="2.5"/><circle cx="24" cy="92" r="3.5" fill="#F2A0B3" stroke="${INK}" stroke-width="1.5"/></svg>`,
+  wheel: `<svg viewBox="0 0 120 124" aria-hidden="true"><path d="M30 120 L60 62 L90 120" stroke="#8FA6CC" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 120 L60 62 L90 120" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="60" cy="58" r="53" fill="#F1F5FC" stroke="${INK}" stroke-width="4"/><circle cx="60" cy="58" r="45" fill="none" stroke="#C9D8F0" stroke-width="7"/><g class="spokes" stroke="#9FB7D9" stroke-width="3.5" stroke-linecap="round"><path d="M60 16 V100 M18 58 H102 M30 28 L90 88 M30 88 L90 28"/></g><circle cx="60" cy="58" r="8" fill="#F2A0B3" stroke="${INK}" stroke-width="3"/></svg>`,
+  bowl: food => { const n = Math.round(Math.max(0, Math.min(4, food)) * 1.5), seeds = [[26,10],[40,8],[52,11],[33,6],[46,5],[38,12]].slice(0, n).map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="5.5" fill="#B98A5A" stroke="${INK}" stroke-width="1.5" transform="rotate(${x * 7} ${x} ${y})"/>`).join('');
+    return `<svg viewBox="0 0 80 44" aria-hidden="true"><path d="M4 14 h72 l-9 26 h-54z" fill="#E58A62" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M14 26 h52" stroke="#F6C9A8" stroke-width="3" stroke-dasharray="4 5"/><ellipse cx="40" cy="14" rx="36" ry="8" fill="${n ? '#F6C9A8' : '#E9C7AE'}" stroke="${INK}" stroke-width="3"/>${seeds}</svg>`; },
+  bottle: water => `<svg viewBox="0 0 40 124" aria-hidden="true"><rect x="12" y="0" width="16" height="8" rx="3" fill="#F2A0B3" stroke="${INK}" stroke-width="3"/><rect x="7" y="7" width="26" height="70" rx="11" fill="#E6F2FB" stroke="${INK}" stroke-width="4"/><rect x="10" y="${12 + 60 * (1 - water)}" width="20" height="${Math.max(0, 60 * water)}" rx="8" fill="#8EC3E6"/><path d="M14 20 v40" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity=".8"/><path d="M20 77 V102" stroke="#9AA3AE" stroke-width="5" stroke-linecap="round"/><circle cx="20" cy="104" r="3" fill="#9AA3AE"/><path d="M20 106 V120" stroke="#C9B08A" stroke-width="5"/><path d="M6 121 h28" stroke="${INK}" stroke-width="5" stroke-linecap="round"/></svg>`,
 };
+const WATER_BOWL = water => `<svg viewBox="0 0 80 40" aria-hidden="true"><path d="M4 12 h72 l-8 26 h-56z" fill="#9FB7D9" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><ellipse cx="40" cy="12" rx="36" ry="7" fill="${water > .08 ? '#8EC3E6' : '#DCE6F0'}" stroke="${INK}" stroke-width="3"/>${water > .08 ? '<path d="M26 11 q6 -3 12 0" stroke="#FFFFFF" stroke-width="2.5" fill="none"/>' : ''}</svg>`;
+/* 종류별 기본 용품: 집 · 놀이 · 물 */
+const KIND_PROPS = {
+  hamster: { house: PROP_SVG.house, play: PROP_SVG.wheel, water: PROP_SVG.bottle, playW: 24, waterW: 6, houseName: '집', snack: '해바라기씨' },
+  cat: {
+    house: `<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M30 40 L38 20 L48 40Z M72 40 L82 20 L90 40Z" fill="#E8BE86" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M14 98 V40 H106 V98Z" fill="#D9A86C" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M14 40 L4 28 H48 L58 40 M106 40 L116 28 H72 L62 40" fill="#E8BE86" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="60" cy="74" r="19" fill="#6E3F2A" stroke="${INK}" stroke-width="4"/><g fill="#B98552"><circle cx="90" cy="56" r="3.5"/><circle cx="84" cy="50" r="2.5"/><circle cx="90" cy="48" r="2.5"/><circle cx="96" cy="50" r="2.5"/></g></svg>`,
+    play: `<svg viewBox="0 0 120 160" aria-hidden="true"><rect x="52" y="34" width="16" height="114" fill="#E8D2A6" stroke="${INK}" stroke-width="4"/><path d="M52 54 h16 M52 70 h16 M52 86 h16 M52 102 h16 M52 118 h16 M52 134 h16" stroke="#C9A877" stroke-width="3"/><rect x="14" y="88" width="58" height="11" rx="5" fill="#BFE3D0" stroke="${INK}" stroke-width="4"/><path d="M22 99 V118" stroke="${INK}" stroke-width="2.5"/><circle cx="22" cy="122" r="6" fill="#F7B6C6" stroke="${INK}" stroke-width="3"/><ellipse cx="66" cy="30" rx="40" ry="11" fill="#F7B6C6" stroke="${INK}" stroke-width="4"/><path d="M28 28 Q66 8 104 28" fill="#FBD3DE" stroke="${INK}" stroke-width="4"/><rect x="24" y="146" width="72" height="10" rx="4" fill="#BFE3D0" stroke="${INK}" stroke-width="4"/></svg>`,
+    water: WATER_BOWL,
+    playW: 20, waterW: 11, houseName: '박스 집', snack: '츄르',
+  },
+  dog: {
+    house: `<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M16 98 V48 H104 V98Z" fill="#F0B48C" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M4 52 L60 10 L116 52Z" fill="#C95F4A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M40 98 V74 Q60 50 80 74 V98Z" fill="#6E3F2A" stroke="${INK}" stroke-width="4"/><g transform="translate(60 34)" fill="#FFF8EE" stroke="${INK}" stroke-width="2.5"><rect x="-12" y="-3" width="24" height="6" rx="3"/><circle cx="-13" cy="-3" r="4"/><circle cx="-13" cy="3" r="4"/><circle cx="13" cy="-3" r="4"/><circle cx="13" cy="3" r="4"/></g></svg>`,
+    play: `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 56 h104 l-8 -30 h-88z" fill="#BFE3D0" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><g transform="translate(40 22) rotate(-20)" fill="#FFF8EE" stroke="${INK}" stroke-width="3"><rect x="-20" y="-5" width="40" height="10" rx="5"/><circle cx="-21" cy="-5" r="6"/><circle cx="-21" cy="5" r="6"/><circle cx="21" cy="-5" r="6"/><circle cx="21" cy="5" r="6"/></g><path d="M70 26 q10 -18 24 -6 q10 8 18 -4" stroke="#E86A6A" stroke-width="7" fill="none" stroke-linecap="round"/></svg>`,
+    water: WATER_BOWL,
+    playW: 18, waterW: 11, houseName: '개집', snack: '육포',
+  },
+};
+const BALL_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="#F6C94E" stroke="${INK}" stroke-width="4"/><path d="M6 16 Q20 26 34 16 M8 28 Q20 18 32 28" stroke="#FFFFFF" stroke-width="3" fill="none"/></svg>`;
 /* 방 안 위치 (가로 %) */
 const SPOT = { house: 13, slide: 33, bowl: 49, bottle: 59, cloud: 71, wheel: 87, hammock: 40, lamp: 63 };
 const FLOOR = 12;
@@ -475,18 +509,75 @@ function phase(k) {
 }
 function wakeHour(k) { const s = (DAY[k] || DAY.hamster).find(x => x[2] === 'sleep'); return s ? s[1] % 24 : 7; }
 
+/* ---------- 돌봄: 밥·물 (이 폰에 저장, 시간이 지나면 줄어듦) ---------- */
+let CARE = null;
+function care() {
+  if (CARE && CARE.id === S.id) return CARE;
+  let c = null; try { c = JSON.parse(store.get('care_' + S.id) || 'null'); } catch (e) {}
+  c = c || { food: 3, water: .8, at: Date.now() };
+  const h = (Date.now() - c.at) / 3.6e6;
+  c.food = Math.max(0, c.food - h * .3); c.water = Math.max(0, c.water - h * .07); c.at = Date.now(); c.id = S.id;
+  return CARE = c;
+}
+function saveCare() { const c = care(); c.at = Date.now(); store.set('care_' + S.id, JSON.stringify({ food: c.food, water: c.water, at: c.at })); drawCare(); }
+function drawCare() {
+  const c = care(), b = $('#room .prop.bowl'), w = $('#room .prop.bottle');
+  if (b) b.innerHTML = PROP_SVG.bowl(c.food);
+  if (w) w.innerHTML = KP().water(c.water);
+  const f = $('#careFood'), wt = $('#careWater');
+  if (f) f.textContent = c.food < .25 ? '텅 빔' : '●'.repeat(Math.ceil(c.food)) + '○'.repeat(4 - Math.ceil(c.food));
+  if (wt) wt.textContent = c.water < .08 ? '없음' : Math.round(c.water * 100) + '%';
+  $('#btnFood')?.classList.toggle('need', c.food < .25); $('#btnWater')?.classList.toggle('need', c.water < .15);
+}
+setInterval(() => { if (CARE) { care(); const c = CARE; c.food = Math.max(0, c.food - (1 / 360) * .3); c.water = Math.max(0, c.water - (1 / 360) * .07); saveCare(); } }, 10000);
+function awakeVisible() { return P.act !== 'sleep' && !P.hidden; }
+function feed() {
+  const c = care(); c.food = 4; saveCare(); SFXp('pour');
+  if (!awakeVisible()) return toast(`밥을 채웠어요. ${petNm()}가 일어나면 먹을 거예요`);
+  P.happyUntil = performance.now() + 1200;
+  goTo(SPOT.bowl, 30, () => eatNow(), `${petNm()}가 밥 먹으러 달려가요`); say('밥이다!');
+}
+function water() {
+  const c = care(); c.water = 1; saveCare(); SFXp('water');
+  if (!awakeVisible()) return toast('새 물로 갈았어요');
+  goTo(KP() === KIND_PROPS.hamster ? SPOT.bottle - 3 : SPOT.bottle, 24, () => drinkNow(), `${petNm()}가 물 마시러 가요`);
+}
+function treat() {
+  if (!awakeVisible()) { toast(`${petNm()}가 자고 있어요. 집을 톡 해서 깨워 보세요`); return; }
+  if (performance.now() < (P.treatOk || 0)) { say('배불러…'); return; }
+  P.treatOk = performance.now() + 60e3;
+  goTo(50, 30, () => { P.happyUntil = performance.now() + 1500; say(`${KP().snack}다!`); setTimeout(() => setAct('eat', 4500, `${petNm()}가 ${KP().snack}를 먹어요`, 'eat'), 900); }, `${petNm()}가 간식 받으러 와요`);
+}
+function eatNow() {
+  const c = care(), n = petNm();
+  if (c.food < .25) { setAct('sad', 2600, `${n}가 빈 밥그릇을 봐요`, ''); say('밥이 없어…'); P.sadUntil = performance.now() + 2600; return; }
+  c.food = Math.max(0, c.food - .5); saveCare();
+  setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠');
+}
+function drinkNow() {
+  const c = care(), n = petNm();
+  if (c.water < .08) { setAct('sad', 2600, `${n}가 물이 없어서 시무룩해요`, ''); say('물이 없어…'); P.sadUntil = performance.now() + 2600; return; }
+  c.water = Math.max(0, c.water - .12); saveCare();
+  setAct('drink', rnd(3, 5) * 1000, `${n}가 물 마셔요`, 'eat'); say('할짝할짝');
+}
+let actx2 = null;
+function SFXp(kind) { try { actx2 = actx2 || new (window.AudioContext || window.webkitAudioContext)(); const t = actx2.currentTime; for (let i = 0; i < (kind === 'pour' ? 6 : 4); i++) { const o = actx2.createOscillator(), g = actx2.createGain(); o.type = 'triangle'; o.frequency.value = kind === 'pour' ? 900 + Math.random() * 600 : 500 + i * 120; g.gain.setValueAtTime(.05, t + i * .06); g.gain.exponentialRampToValueAtTime(.001, t + i * .06 + .08); o.connect(g).connect(actx2.destination); o.start(t + i * .06); o.stop(t + i * .06 + .09); } } catch (e) {} }
+
 /* ---------- 방 엔진 ---------- */
 const P = { x: 50, y: FLOOR, dir: 1, act: 'idle', until: 0, target: null, speed: 0, onArrive: null, hidden: false, tween: null, wheel: 0, ran: 0, awakeUntil: 0, actText: '', built: '' };
 const rnd = (a, b) => a + Math.random() * (b - a);
 function ownedItems() { return new Set((S.state?.mine || []).filter(x => x.kind === 'item').map(x => x.a)); }
 /* 그림 테두리에 붙은 크림 배경만 지워서 방에 자연스럽게 서 있게 (털이 밝아도 안쪽은 안 지움) */
 const cutCache = {};
-function cutout(url) {
-  if (cutCache[url]) return cutCache[url];
-  return cutCache[url] = (async () => {
-    const img = await loadImg(url), W = Math.min(420, img.width), H = Math.round(img.height * W / img.width);
+function cutout(url, crop) {
+  const key = url + (crop ? crop.join() : '');
+  if (cutCache[key]) return cutCache[key];
+  return cutCache[key] = (async () => {
+    const img = await loadImg(url), [x0, y0, x1, y1] = crop || [0, 0, 1, 1];
+    const sw = img.width * (x1 - x0), sh = img.height * (y1 - y0);
+    const W = Math.round(Math.min(crop ? 320 : 420, sw)), H = Math.round(sh * W / sw);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, W, H);
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, img.width * x0, img.height * y0, sw, sh, 0, 0, W, H);
     const d = g.getImageData(0, 0, W, H), px = d.data;
     const at = (x, y) => (y * W + x) * 4;
     const corners = [at(0, 0), at(W - 1, 0), at(0, H - 1), at(W - 1, H - 1)];
@@ -504,11 +595,11 @@ function cutout(url) {
     }
     g.putImageData(d, 0, 0);
     return c.toDataURL('image/png');
-  })().catch(() => url);
+  })().catch(() => crop ? null : url);
 }
 function buildRoom() {
   const p = myPet(); if (!p) return;
-  const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '');
+  const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: 9 }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
@@ -516,16 +607,24 @@ function buildRoom() {
   $('#room').innerHTML = `<div class="sky"></div>${stars}<div class="floor"></div>
     ${owned.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}
     ${owned.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
-    ${prop('house', PROP_SVG.house, 22)}
+    ${prop('house', KP().house, 22)}
     ${owned.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}
-    ${prop('bowl', PROP_SVG.bowl, 12)}${prop('bottle', PROP_SVG.bottle, 6)}
+    ${prop('bowl', PROP_SVG.bowl(care().food), 12)}${prop('bottle', KP().water(care().water), KP().waterW)}
     ${owned.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 18) : ''}
-    ${prop('wheel', PROP_SVG.wheel, 24)}
+    ${prop('wheel', KP().play, KP().playW)}
+    ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
     <div class="pet" id="roomPet"><div class="spr"><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear)}</div></div>
     <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
   $('#roomPet').onclick = poke;
   $('#room .prop.house').onclick = knockHouse;
-  const im = $('#roomPet img'); if (im) cutout(im.src).then(u => { if (im.isConnected) im.src = u; });
+  $('#room').onclick = e => { if (kindNow() === 'dog' && !P.hidden && P.act !== 'sleep' && e.target.closest('.pet, .prop.house') == null) throwBall(true); };
+  const im = $('#roomPet img');
+  P.spr = {}; P.cur = 'front';
+  if (im) {
+    cutout(im.src).then(u => { P.spr.front = u; if (im.isConnected && P.cur === 'front') im.src = u; });
+    for (const k of Object.keys(p.poses || {})) { const u = `/api/img/${encodeURIComponent(S.id)}?p=${k}&v=${p.poses[k]}&c=${encodeURIComponent(S.code)}`; const pre = new Image(); pre.onload = () => P.spr[k] = u; pre.src = u; }
+  }
+  showPoseNote();
   if (!P.started) { P.started = true; startLife(); requestAnimationFrame(loop); }
 }
 function say(t, ms = 1800) {
@@ -539,6 +638,7 @@ function setAct(name, ms, text, cls) {
 }
 function goTo(x, speed, then, text) { P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
 function tweenY(to, ms, done) { P.tween = { from: P.y, to, t0: performance.now(), ms, done }; }
+function KP() { return KIND_PROPS[kindNow()] || KIND_PROPS.hamster; }
 function kindNow() { return myPet()?.kind || 'hamster'; }
 function modeNow() { const k = kindNow(); return performance.now() < P.awakeUntil ? 'calm' : phase(k).mode; }
 function petNm() { return myPet()?.name || '우리 애'; }
@@ -548,6 +648,7 @@ function statusLine() {
   let sub = `지금은 ${MODE_TEXT[m]}`;
   if (phase(k).mode === 'sleep') sub += ` · 보통 ${wakeHour(k)}시쯤 일어나요`;
   if (k === 'hamster' && P.ran > 1) sub += ` · 오늘 쳇바퀴 ${P.ran >= 1000 ? (P.ran / 1000).toFixed(2) + 'km' : Math.round(P.ran) + 'm'}`;
+  const c = care(); if (c.food < .25) sub += ' · 밥그릇이 비었어요'; else if (c.water < .08) sub += ' · 물이 다 떨어졌어요';
   el.querySelector('b').textContent = P.actText || `${petNm()} 방`;
   el.querySelector('span').textContent = sub;
 }
@@ -557,9 +658,11 @@ function choose() {
   if (m === 'sleep') Object.assign(w, { sleep: 2, wander: .02, eat: .02, groom: 0 });
   if (m === 'settle') Object.assign(w, { sleep: .5, groom: .25 });
   if (m === 'wake') Object.assign(w, { drink: .35, eat: .3, groom: .25 });
-  if (m === 'active') Object.assign(w, { zoom: .25, wheel: ham ? .55 : 0, wander: .3 });
+  if (m === 'active') Object.assign(w, { zoom: .25, wander: .3, ...(ham ? { wheel: .55 } : k === 'cat' ? { tower: .45, scratch: .25 } : { ball: .55, chew: .25 }) });
+  if (m === 'calm' && !ham) Object.assign(w, k === 'cat' ? { tower: .25 } : { chew: .2 });
   if (m === 'calm') Object.assign(w, { nap: own.has('cloud') ? .15 : .05, wander: .35 });
   if (m !== 'sleep') { if (own.has('hammock')) w.hammock = .2; if (own.has('slide')) w.slide = m === 'active' ? .3 : .15; if (own.has('lamp') && document.querySelector('#room.night')) w.lamp = .12; }
+  if (m !== 'sleep') { const c = care(); if (c.food > .25 && Math.random() < .5) w.eat += .1; if (c.food < .25) w.eat += .25; if (c.water < .08) w.drink += .2; }
   const list = Object.entries(w).filter(([, v]) => v > 0), sum = list.reduce((a, b) => a + b[1], 0);
   let r = Math.random() * sum; for (const [a, v] of list) if ((r -= v) <= 0) return a;
   return 'wander';
@@ -575,13 +678,16 @@ function next() {
     const deep = modeNow() === 'sleep', ms = deep ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3;
     if (P.hidden) return setAct('sleep', ms, `${n}가 집에서 자요`);
     if (own.has('cloud') && (kindNow() !== 'hamster' || Math.random() < .35)) return goTo(SPOT.cloud, 9, () => { P.y = FLOOR + 6; setAct('sleep', ms, `${n}가 구름 침대에서 자요`, 'sleep'); });
-    if (kindNow() === 'hamster') return goTo(SPOT.house, 9, () => { P.hidden = true; $('#roomPet').style.opacity = 0; setAct('sleep', ms, `${n}가 집에 들어가 자요`); });
-    return goTo(rnd(20, 40), 8, () => setAct('sleep', ms, `${n}가 꾸벅꾸벅 자요`, 'sleep'));
+    return goTo(SPOT.house, 9, () => { P.hidden = true; $('#roomPet').style.opacity = 0; setAct('sleep', ms, `${n}가 ${KP().houseName}에 들어가 자요`); });
   }
-  if (a === 'eat') return goTo(SPOT.bowl, 12, () => { setAct('eat', rnd(4, 8) * 1000, `${n}가 밥 먹어요`, 'eat'); say(kindNow() === 'hamster' ? '냠냠… 볼 빵빵' : '냠냠'); });
-  if (a === 'drink') return goTo(SPOT.bottle - 3, 12, () => { setAct('drink', rnd(3, 5) * 1000, `${n}가 물 마셔요`, 'eat'); say('할짝할짝'); });
+  if (a === 'eat') return goTo(SPOT.bowl, 12, eatNow, `${n}가 밥그릇으로 가요`);
+  if (a === 'drink') return goTo(KP() === KIND_PROPS.hamster ? SPOT.bottle - 3 : SPOT.bottle, 12, drinkNow, `${n}가 물 마시러 가요`);
   if (a === 'groom') return setAct('groom', rnd(3, 6) * 1000, `${n}가 세수해요`, 'groom');
   if (a === 'wheel') return goTo(SPOT.wheel, 14, () => { P.y = FLOOR + 4; setAct('wheel', rnd(15, 45) * 1000, `${n}가 쳇바퀴를 달려요`, 'run'); say('다다다다'); });
+  if (a === 'tower') return goTo(SPOT.wheel - 4, 13, () => { say('영차영차'); tweenY(48, 900, () => setAct('perch', rnd(10, 22) * 1000, `${n}가 캣타워 꼭대기에서 구경해요`, '')); }, `${n}가 캣타워로 가요`);
+  if (a === 'scratch') return goTo(SPOT.wheel - 3, 12, () => { setAct('scratch', rnd(3, 6) * 1000, `${n}가 기둥을 벅벅 긁어요`, 'groom'); say('벅벅벅'); });
+  if (a === 'chew') return goTo(SPOT.wheel - 2, 12, () => { setAct('chew', rnd(5, 9) * 1000, `${n}가 뼈다귀를 오독오독`, 'eat'); say('오독오독'); });
+  if (a === 'ball') return throwBall(false);
   if (a === 'zoom') { P.zooms = 3 + Math.floor(Math.random() * 3); return zoom(); }
   if (a === 'hammock') return goTo(SPOT.hammock, 11, () => { say('영차'); tweenY(52, 700, () => { setAct('hammock', rnd(8, 16) * 1000, `${n}가 해먹에서 흔들흔들`, 'sway'); }); }, `${n}가 해먹으로 가요`);
   if (a === 'slide') return goTo(SPOT.slide - 6, 12, () => { tweenY(40, 800, () => { P.target = SPOT.slide + 12; P.speed = 40; P.act = 'slidedown'; P.cls = ''; say('슝~'); P.actText = `${n}가 미끄럼틀 타요`; statusLine(); tweenY(FLOOR, 650, null); P.onArrive = () => setAct('idle', 1500, null, ''); }); }, `${n}가 미끄럼틀로 가요`);
@@ -593,9 +699,16 @@ function zoom() {
   if (P.zooms-- <= 0) return setAct('idle', 800, `${petNm()}가 우다다 뛰었어요`, '');
   goTo(rnd(8, 92), 34, zoom, `${petNm()}가 우다다 뛰어요`);
 }
+function throwBall(byPlayer) {
+  const b = $('#ball'); if (!b) return next();
+  const n = petNm(), to = byPlayer ? rnd(8, 92) : (P.x > 50 ? rnd(8, 35) : rnd(65, 92));
+  P.carry = false; b.style.left = to + '%'; b.style.bottom = (FLOOR + 1) + '%';
+  if (byPlayer) say('공이다!');
+  setTimeout(() => goTo(to, 36, () => { P.carry = true; say('멍!'); goTo(rnd(40, 60), 18, () => { P.carry = false; setAct('idle', 1800, `${n}가 공을 물어 왔어요`, ''); }, `${n}가 공을 물고 와요`); }, `${n}가 공을 쫓아가요`), byPlayer ? 300 : 500);
+}
 function startLife() {
   const k = kindNow();
-  if (phase(k).mode === 'sleep' && k === 'hamster') { P.hidden = true; P.x = SPOT.house; $('#roomPet').style.opacity = 0; setAct('sleep', rnd(5, 15) * 60e3, `${petNm()}가 집에서 자요`); }
+  if (phase(k).mode === 'sleep') { P.hidden = true; P.x = SPOT.house; $('#roomPet').style.opacity = 0; setAct('sleep', rnd(5, 15) * 60e3, `${petNm()}가 집에서 자요`); }
   else setAct('idle', 1200, `${petNm()} 방`, '');
 }
 let last = performance.now();
@@ -612,11 +725,19 @@ function loop(now) {
   if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
   if (P.act === 'wheel') { P.wheel += dt * 520; P.ran += dt * 1.1; const sp = room.querySelector('.prop.wheel .spokes'); if (sp) sp.setAttribute('transform', `rotate(${P.wheel} 60 58)`); }
   if (P.act === 'sleep' && Math.random() < dt * .45) zz();
-  if (P.act !== 'walk' && P.act !== 'slidedown' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.act === 'hammock') { tweenY(FLOOR, 600, next); P.act = 'idle'; } else { P.y = FLOOR; next(); } }
+  if (P.act !== 'walk' && P.act !== 'slidedown' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.y > FLOOR + 6 && P.act !== 'sleep') { P.act = 'idle'; tweenY(FLOOR, 650, next); } else { P.y = FLOOR; next(); } }
+  if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
+  else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
   pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
   const hs = room.querySelector('.prop.house'); if (hs) hs.classList.toggle('knock', P.hidden);
   pet.className = 'pet ' + (P.cls || '');
-  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden ? ' rotate(-10deg)' : '');
+  if (P.spr) {
+    const moving = P.act === 'walk' || P.act === 'slidedown', t = performance.now();
+    const want = t < (P.happyUntil || 0) ? 'happy' : moving ? 'side' : (P.act === 'sleep' && !P.hidden) ? 'sleep' : ['eat', 'drink', 'chew'].includes(P.act) ? 'eat' : 'front';
+    const use = P.spr[want] ? want : 'front';
+    if (use !== P.cur && P.spr[use]) { P.cur = use; const im = pet.querySelector('.body img'); if (im) im.src = P.spr[use]; }
+  }
+  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '');
   requestAnimationFrame(loop);
 }
 function zz() {
@@ -637,12 +758,12 @@ const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 �
 function poke(e) {
   const p = myPet(); if (!p) return;
   if (P.act === 'sleep') { P.awakeUntil = performance.now() + 60e3; P.y = FLOOR; setAct('idle', 1500, `${petNm()}가 잠에서 깼어요`, ''); say('으응… 왜 깨워'); }
-  else { const L = LINES[p.kind] || LINES.hamster; say(L[Math.floor(Math.random() * L.length)], 1500); }
+  else { const L = LINES[p.kind] || LINES.hamster; say(L[Math.floor(Math.random() * L.length)], 1500); P.happyUntil = performance.now() + 1600; }
   hearts(e);
 }
 function knockHouse(e) {
   if (!P.hidden) return;
-  P.awakeUntil = performance.now() + 60e3; say('빼꼼… 놀아 줄 거야?');
+  P.awakeUntil = performance.now() + 60e3; say(kindNow() === 'cat' ? '냥…? 왜' : kindNow() === 'dog' ? '멍! 놀자!' : '빼꼼… 놀아 줄 거야?');
   leaveHouse(() => setAct('idle', 1500, `${petNm()}가 집에서 나왔어요`, ''));
   hearts(e);
 }
@@ -696,11 +817,40 @@ $('#btnKeep').onclick = async () => {
     await api('pet', { id: S.id, name: $('#petName').value.trim(), kind, img });
     making = false; $('#drawOut').hidden = true; $('#pickRow').hidden = true; $('#btnDraw').hidden = false;
     await refresh(); toast('우리 아이가 꼬리별에 왔어요');
+    makePoses(img);
   } catch (e) { showMakeErr(e.message); }
   $('#btnKeep').disabled = false;
 };
 $('#btnRemake').onclick = () => { making = true; const p = myPet(); if (p) { $('#petName').value = p.name; } renderPet(); };
 $('#btnCancelMake').onclick = () => { making = false; renderPet(); };
+
+/* ---------- 움직이는 모습 (포즈 4장) ---------- */
+const POSE_CELLS = { side: [.03, .03, .47, .47], sleep: [.53, .03, .97, .47], eat: [.03, .53, .47, .97], happy: [.53, .53, .97, .97] };
+let posing = false;
+function showPoseNote() {
+  const p = myPet(), el = $('#poseNote'); if (!p || !el) return;
+  const has = Object.keys(p.poses || {}).length >= 4;
+  if (posing) { el.hidden = false; el.innerHTML = '움직이는 모습(옆모습·자는 모습·먹는 모습·웃는 얼굴) 그리는 중이에요 · 30초쯤'; return; }
+  el.hidden = has;
+  if (!has) { el.innerHTML = `지금은 정면 그림 하나라 표정이 안 바뀌어요 <button type="button" class="link" id="btnPoses">움직이는 모습 그리기</button>`; $('#btnPoses').onclick = () => makePoses(); }
+}
+async function makePoses(srcUrl) {
+  const p = myPet(); if (!p || posing) return;
+  posing = true; showPoseNote();
+  try {
+    const src = srcUrl || `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}`;
+    const jpg = await toJpeg(src, 640, .88);
+    const r = await api('poses', { id: S.id, kind: p.kind, image: jpg.split(',')[1] });
+    S.drawsLeft = r.left;
+    const sheet = `data:${r.mime};base64,${r.image}`;
+    for (const [k, crop] of Object.entries(POSE_CELLS)) {
+      const u = await cutout(sheet, crop); if (!u) continue;
+      await api('pose', { id: S.id, k, img: u });
+    }
+    toast(`${p.name} 움직이는 모습이 생겼어요!`);
+  } catch (e) { toast(e.message); }
+  posing = false; P.built = ''; await refresh(); showPoseNote();
+}
 
 /* ---------- 갓챠 ---------- */
 function machineSVG(st) {
@@ -751,6 +901,7 @@ async function share() {
   try { await navigator.clipboard.writeText(`${text}\n${location.origin}`); toast('자랑 문구를 복사했어요. 카톡에 붙여넣기!'); } catch (e) { toast(location.origin); }
 }
 $('#btnShare').onclick = share;
+$('#btnFood').onclick = feed; $('#btnWater').onclick = water; $('#btnTreat').onclick = treat;
 function tickGacha() {
   const st = S.state; if (!st) return;
   const R = st.round, me = st.me, t = now(), btn = $('#btnLine');

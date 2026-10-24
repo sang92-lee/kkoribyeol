@@ -7,8 +7,8 @@ const SERV = 15e3;            // 한 명당 15초
 const MINWAIT = 20e3;         // 줄 서면 최소 20초는 기다림
 const WINDOW = 120e3;         // 내 차례 오면 2분 안에 뽑기
 const JOIN_CLOSE = 60e3;      // 판 끝나기 1분 전엔 줄 마감
-const DRAW_PER_PLAYER = 4;    // AI 그림: 한 사람 하루 4번
-const DRAW_PER_DAY = 25;      // AI 그림: 전체 하루 25번 (요금 안전장치)
+const DRAW_PER_PLAYER = 6;    // AI 그림: 한 사람 하루 6번 (캐릭터+포즈)
+const DRAW_PER_DAY = 30;      // AI 그림: 전체 하루 30번 (요금 안전장치)
 
 const NPC_PETS = [
   { id: "npc-kongtteok", name: "콩떡", kind: "hamster", fur: "#F3D9B1" },
@@ -47,6 +47,7 @@ export default {
     if (code !== env.ACCESS_CODE) return json({ error: "code", message: "입장 코드가 달라요" }, 401);
     const hub = env.HUB.get(env.HUB.idFromName("main"));
     if (url.pathname === "/api/draw" && req.method === "POST") return draw(req, env, hub);
+    if (url.pathname === "/api/poses" && req.method === "POST") return poses(req, env, hub);
     return hub.fetch(req);
   },
 };
@@ -84,6 +85,38 @@ async function draw(req, env, hub) {
   const lastErr = errs.join(" | ");
   await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id, refund: true }) }));
   return json({ error: "ai", message: "그림을 못 받아왔어요. 잠시 뒤 다시 해 주세요 (횟수는 안 깎였어요)", detail: lastErr }, 502);
+}
+/* 같은 캐릭터의 포즈 4장 (2x2): 옆모습 걷기 / 자기 / 먹기 / 행복 */
+const SNACK = { hamster: "a sunflower seed", dog: "a small bone treat", cat: "a little fish treat" };
+async function poses(req, env, hub) {
+  if (!env.GEMINI_API_KEY) return json({ error: "setup", message: "GEMINI_API_KEY가 아직 설정되지 않았어요" }, 503);
+  let body; try { body = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); }
+  const { id, kind, image } = body || {};
+  if (!validId(id) || typeof image !== "string" || image.length < 1000 || image.length > 1_500_000) return json({ error: "bad", message: "그림을 다시 골라 주세요" }, 400);
+  const q = await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id }) })).then(r => r.json());
+  if (!q.ok) return json({ error: "quota", message: q.message, left: 0 }, 429);
+  const animal = KIND_KO[kind] || "pet";
+  const prompt =
+    `Make a 2x2 sprite sheet of EXACTLY this same ${animal} character, same colors, same markings, same art style (soft dark-brown hand-drawn outline, round chubby body, flat pastel colors). ` +
+    `Square image split into 4 equal square cells. Each cell: the whole character centered with lots of empty margin, plain cream background (#FDF6EC), no text, no frames, no grid lines, no shadows on the ground, nothing else in the cell. ` +
+    `Top-left cell: walking, side view facing RIGHT, full body, one paw lifted. ` +
+    `Top-right cell: sleeping curled up into a round ball, eyes closed, peaceful. ` +
+    `Bottom-left cell: eating ${SNACK[kind] || "a treat"} held in front paws, cheeks puffed, front view. ` +
+    `Bottom-right cell: very happy, eyes closed in ^^ shape, big smile, front view, tiny pink hearts near the head.`;
+  const imgs = [{ mime: "image/jpeg", data: image }];
+  const tries = [
+    () => callInteractions(env, prompt, imgs, true),
+    () => callInteractions(env, prompt, imgs, false),
+    () => callGenerate(env, prompt, imgs, "gemini-3.1-flash-image"),
+    () => callGenerate(env, prompt, imgs, "gemini-2.5-flash-image"),
+  ];
+  const errs = [];
+  for (const t of tries) {
+    try { const out = await t(); if (out) return json({ image: out.data, mime: out.mime, left: q.left }); errs.push("그림 없는 응답"); }
+    catch (e) { errs.push(String(e.message || e).slice(0, 220)); }
+  }
+  await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id, refund: true }) }));
+  return json({ error: "ai", message: "움직이는 모습을 못 받아왔어요 (횟수는 안 깎였어요)", detail: errs.join(" | ") }, 502);
 }
 async function callInteractions(env, prompt, imgs, withFormat) {
   const body = {
@@ -129,6 +162,7 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pets(id TEXT PRIMARY KEY, name TEXT, kind TEXT, img TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS queue(r INTEGER, id TEXT, at INTEGER, PRIMARY KEY(r, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS pulls(uniq TEXT PRIMARY KEY, who TEXT, r INTEGER, t INTEGER, kind TEXT, a TEXT, b TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS poses(id TEXT, k TEXT, img TEXT, at INTEGER, PRIMARY KEY(id, k))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS equip(id TEXT PRIMARY KEY, gear TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
@@ -140,7 +174,8 @@ export class Hub extends DurableObject {
     if (req.method === "POST") { try { b = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); } }
 
     if (p.startsWith("/api/img/")) {
-      const r = this.rows("SELECT img FROM pets WHERE id = ?", p.slice(9))[0];
+      const pk = url.searchParams.get("p");
+      const r = pk ? this.rows("SELECT img FROM poses WHERE id = ? AND k = ?", p.slice(9), pk)[0] : this.rows("SELECT img FROM pets WHERE id = ?", p.slice(9))[0];
       if (!r || !r.img) return new Response("", { status: 404 });
       const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(r.img);
       if (!m) return new Response("", { status: 404 });
@@ -170,7 +205,16 @@ export class Hub extends DurableObject {
       if (!name) return json({ error: "bad", message: "이름을 적어 주세요" }, 400);
       if (typeof b.img !== "string" || !/^data:image\/(jpeg|png|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
       const kind = ["hamster", "dog", "cat"].includes(b.kind) ? b.kind : "hamster";
+      const old = this.rows("SELECT img FROM pets WHERE id = ?", b.id)[0];
+      if (old && old.img !== b.img) this.sql.exec("DELETE FROM poses WHERE id = ?", b.id);
       this.sql.exec("INSERT INTO pets(id, name, kind, img, at) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, img = excluded.img, at = excluded.at", b.id, name, kind, b.img, now);
+      return json({ ok: true });
+    }
+    if (p === "/api/pose") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      if (!["side", "sleep", "eat", "happy"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
+      if (typeof b.img !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
+      this.sql.exec("INSERT INTO poses(id, k, img, at) VALUES(?, ?, ?, ?) ON CONFLICT(id, k) DO UPDATE SET img = excluded.img, at = excluded.at", b.id, b.k, b.img, now);
       return json({ ok: true });
     }
     if (p === "/api/equip") {
@@ -247,7 +291,9 @@ export class Hub extends DurableObject {
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
     const gear = Object.fromEntries(this.rows("SELECT id, gear FROM equip").map(x => [x.id, x.gear]));
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", gear: gear[x.id] || "" };
+    const poseMap = {};
+    for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", gear: gear[x.id] || "", poses: poseMap[x.id] || {} };
 
     const line = [];
     R.entries.forEach((e, i) => {
