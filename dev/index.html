@@ -135,8 +135,12 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .satHead { display: flex; justify-content: space-between; align-items: baseline; } .satHead b { font-family: var(--display); font-weight: 400; font-size: 17px; }
 .satNum { font-family: var(--display); font-size: 24px; color: var(--accent); } .satNum small { font-size: 13px; color: var(--ink-soft); margin-left: 3px; }
 .satBar { height: 10px; border-radius: 999px; background: #F1E8F4; border: 2px solid var(--ink); overflow: hidden; margin: 6px 0 10px; } .satBar i { display: block; height: 100%; background: linear-gradient(90deg, #F7B6C6, #F6C94E); transition: width .8s; }
-.satParts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; } .satParts span { display: flex; flex-direction: column; align-items: center; padding: 5px 2px; border-radius: 10px; background: #F1E8F4; font-size: 12px; opacity: .55; position: relative; }
+.satParts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; } .satParts span { display: flex; flex-direction: column; align-items: center; padding: 5px 2px; border-radius: 10px; background: #F1E8F4; font-size: 11px; white-space: nowrap; opacity: .55; position: relative; }
 .satParts span.ok { opacity: 1; background: #E3F4E1; } .satParts span.fav { outline: 2px solid #F2A0B3; } .satParts em { position: absolute; top: -8px; font-style: normal; font-size: 9px; background: #F2A0B3; color: #fff; border-radius: 6px; padding: 0 4px; } .satParts small { font-size: 10px; color: var(--ink-soft); }
+.dream { margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: #F6EFF7; font-size: 13px; } .dream b { font-family: var(--display); font-weight: 400; font-size: 14px; display: block; }
+.dream span { display: flex; gap: 8px; margin: 6px 0 2px; } .dream i { flex: 1; display: flex; flex-direction: column; align-items: center; font-style: normal; font-size: 22px; padding: 4px; border-radius: 10px; background: #fff; border: 2px dashed #D9C8E0; }
+.dream i.on { border: 2px solid #F2A0B3; } .dream i svg { width: 100%; height: 34px; } .dream i small { font-size: 10px; color: var(--ink-soft); }
+.dream.done { background: linear-gradient(135deg, #FFF3C9, #F6E3F2); animation: dreamGlow 2s ease-in-out infinite; } @keyframes dreamGlow { 50% { box-shadow: 0 0 12px rgba(246,201,78,.7); } }
 .satTip { margin: 10px 0 0; font-size: 14px; }
 .roomBar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
@@ -2727,6 +2731,15 @@ const NEEDS = {
   fun: { n: '구경거리', i: '🔭', items: ['telescope', 'bookshelf', 'piano', 'pool', 'balloon', 'tent'], want: '구경거리' },
 };
 const PERSONA_NEED = { glutton: 'food', scaredy: 'hide', snob: 'fun', rascal: 'play', sleepy: 'rest', sweetie: 'play' };
+/* 성격마다 꿈의 조합(다 모이면 보너스)과 싫어하는 아이템 */
+const DREAM = {
+  glutton: { combo: ['cafe', 'garden', 'cushion'], hate: ['pool'], why: { pool: '물에 빠지면 간식이 젖는대요' }, line: '먹고 자고 먹고! 천국이다' },
+  scaredy: { combo: ['tunnel', 'mushroom', 'hay'], hate: ['piano', 'carousel'], why: { piano: '피아노 소리가 무섭대요', carousel: '빙글빙글 돌아서 무섭대요' }, line: '여기선 하나도 안 무서워' },
+  snob: { combo: ['bookshelf', 'telescope', 'lamp'], hate: ['sandbath', 'hay'], why: { sandbath: '털에 모래 묻는 게 싫대요', hay: '건초는 촌스럽대요' }, line: '흥, 이 정도면 인정해 줄게' },
+  rascal: { combo: ['tube', 'slide', 'seesaw'], hate: ['bookshelf'], why: { bookshelf: '책장은 지루하대요' }, line: '우다다 놀이공원이다!!' },
+  sleepy: { combo: ['hammock', 'cloud', 'cushion'], hate: ['carousel', 'balloon'], why: { carousel: '시끄러워서 못 잔대요', balloon: '풍선 터질까 봐 잠이 안 온대요' }, line: 'zzZ… 여기가 꿈나라야…' },
+  sweetie: { combo: ['swing', 'balloon', 'cafe'], hate: ['tunnel'], why: { tunnel: '깜깜한 데는 싫대요' }, line: '다들 우리 집 놀러와~!' },
+};
 function personaKey() { const p = myPet(); return PERSONA_KEYS[hashStr(S.id + '|' + (p?.v || 0)) % PERSONA_KEYS.length]; }
 function satisfaction() {
   const own = [...ownedItems()].map(bk), fav = PERSONA_NEED[personaKey()], c = care(), slotsN = slots();
@@ -2735,23 +2748,28 @@ function satisfaction() {
   const variety = Math.min(1, new Set(own).size / Math.max(3, slotsN));
   const crowd = own.length > slotsN * .9 && WF < 2 ? .08 : 0;
   const careP = (Math.min(1, c.food / 2) * .4 + Math.min(1, c.water / .5) * .3 + (c.poop >= 3 ? 0 : c.poop >= 1 ? .6 : 1) * .3);
-  const score = Math.round(Math.max(0, Math.min(100, (roomPt * .5 + variety * .15 + careP * .35 - crowd) * 100)));
+  const D = DREAM[personaKey()] || DREAM.sweetie, got = D.combo.filter(x => own.includes(x)), dream = got.length === D.combo.length, hated = D.hate.filter(x => own.includes(x));
+  const score = Math.round(Math.max(0, Math.min(100, (roomPt * .5 + variety * .15 + careP * .35 - crowd) * 100 * (dream ? 1 : .88) + got.length * 2 - hated.length * 10)));
   const miss = parts.filter(p => p.sc < 1).sort((a, b) => (b.fav - a.fav) || (a.sc - b.sc))[0];
   let tip = '지금 집이 딱 좋아요!';
   if (careP < .6) tip = c.poop >= 1 ? '청소해 주면 기분이 좋아질 거예요' : c.food < 1 ? '배고파요. 밥을 채워 주세요' : '목말라요. 물을 갈아 주세요';
+  else if (hated.length) tip = `${ITEMS[hated[0]]}: ${D.why[hated[0]]}`;
   else if (miss) tip = `${miss.fav ? `${PERSONA[personaKey()].name}라서 ` : ''}${miss.want}이 ${miss.fav && miss.c === 1 ? '하나 더 ' : ''}있으면 좋겠대요`;
   else if (crowd) tip = '조금 좁대요. 방을 넓혀 주면 좋아해요';
-  return { score, parts, tip, careP };
+  if (dream && !hated.length && careP >= .6) tip = `🎉 꿈의 조합 완성! “${D.line}”`;
+  return { score, parts, tip, careP, D, got, dream, hated };
 }
 function satLabel(v) { return v >= 90 ? ['꿈의 집', '🏰'] : v >= 75 ? ['아주 만족', '😆'] : v >= 55 ? ['만족', '🙂'] : v >= 35 ? ['그럭저럭', '😐'] : ['불만', '😤']; }
 function renderSat() {
   const el = $('#sat'); if (!el || !myPet()?.img) { if (el) el.innerHTML = ''; return; }
-  const r = satisfaction(), [lb, ic] = satLabel(r.score), key = JSON.stringify([r.score, r.tip, r.parts.map(p => p.c)]);
+  const r = satisfaction(), [lb, ic] = satLabel(r.score), key = JSON.stringify([r.score, r.tip, r.parts.map(p => p.c), r.got]);
   if (el.dataset.key === key) return; el.dataset.key = key;
   el.innerHTML = `<div class="satHead"><b>${ic} 집 만족도</b><span class="satNum">${r.score}<small>점 · ${lb}</small></span></div>
     <div class="satBar"><i style="width:${r.score}%"></i></div>
     <div class="satParts">${r.parts.map(p => `<span class="${p.sc >= 1 ? 'ok' : ''} ${p.fav ? 'fav' : ''}">${p.i} ${p.n}${p.fav ? '<em>최애</em>' : ''}<small>${p.c}개</small></span>`).join('')}</div>
+    <div class="dream ${r.dream ? 'done' : ''}"><b>🎯 ${PERSONA[personaKey()].name}의 꿈의 조합</b><span>${r.D.combo.map(x => r.got.includes(x) ? `<i class="on">${ITEM_SVG[x]}<small>${ITEMS[x]}</small></i>` : `<i>❓<small>???</small></i>`).join('')}</span><small>${r.got.length}/${r.D.combo.length} · 다 모이면 특별한 반응</small></div>
     <p class="satTip">💭 ${esc(r.tip)}</p>`;
+  if (r.dream && renderSat.dream === false) { emote('spark', 2500); say(r.D.line, 2600); toast('꿈의 조합 완성!'); } renderSat.dream = r.dream;
   if (renderSat.last != null && r.score !== renderSat.last && Math.abs(r.score - renderSat.last) >= 5) { if (r.score > renderSat.last) { emote('heart', 1500); say(['여기 좋다!', '내 집 최고', '헤헤 맘에 들어'][Math.floor(Math.random() * 3)], 1500); } else say('흠… 뭔가 아쉬워', 1400); }
   renderSat.last = r.score;
 }
