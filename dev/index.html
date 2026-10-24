@@ -1008,8 +1008,8 @@ function buildRoom() {
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   bindPan();
-  $('#camL').onclick = e => { e.stopPropagation(); P.camTo = Math.max(0, (P.camTo ?? P.cam) - 45); };
-  $('#camR').onclick = e => { e.stopPropagation(); P.camTo = Math.min((WF - 1) * 100, (P.camTo ?? P.cam) + 45); };
+  $('#camL').onclick = e => { e.stopPropagation(); P.userCamT = performance.now() + 4000; P.camTo = Math.max(0, (P.camTo ?? P.cam) - 45); };
+  $('#camR').onclick = e => { e.stopPropagation(); P.userCamT = performance.now() + 4000; P.camTo = Math.min((WF - 1) * 100, (P.camTo ?? P.cam) + 45); };
   $('#room').onclick = e => {
     if (P.panned) { P.panned = false; return; }
     if (DECO.on) return;
@@ -1258,7 +1258,7 @@ function leaveHouse(then) {
   }, 700);
 }
 function next() {
-  if (P.hiding) { const k = P.hiding; P.hiding = null; P.behind = false; P.zt = 0; $('#roomPet').style.opacity = 1; P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
+  if (P.hiding) { const k = P.hiding; P.hiding = null; P.behind = false; P.zt = 0; P.follow = true; $('#roomPet').style.opacity = 1; P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
   const a = choose(), n = petNm(), own = ownedItems();
   if (a !== 'sleep' && P.hidden) return leaveHouse(next);
   if (a === 'sleep' && own.has('tent') && !P.hidden && Math.random() < .6) { const ms = modeNow() === 'sleep' ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3; return goTo(SPOT.tent, 9, () => { emote('spark', 1500); say('별빛 아래서 잘래', 1400); setAct('sleep', ms, `${n}가 무지개 별 텐트에서 쿨쿨`, 'sleep'); }, `${n}가 텐트로 가요`); }
@@ -1318,7 +1318,7 @@ function bindPan() {
   room.onpointermove = e => {
     if (!st) return; const w = $('#world').getBoundingClientRect().width, dx = e.clientX - st.x;
     if (Math.abs(dx) > 8) { st.moved = true; P.panning = true; }
-    if (st.moved) { P.cam = st.cam - dx / w * 100 * WF; const now = performance.now(); P.camV = -(e.clientX - st.lx) / w * 100 * WF / Math.max(.016, (now - st.lt) / 1000); st.lx = e.clientX; st.lt = now; }
+    if (st.moved) { P.userCamT = performance.now() + 4000; P.cam = st.cam - dx / w * 100 * WF; const now = performance.now(); P.camV = -(e.clientX - st.lx) / w * 100 * WF / Math.max(.016, (now - st.lt) / 1000); st.lx = e.clientX; st.lt = now; }
   };
   room.onpointerup = room.onpointercancel = () => { if (st && st.moved) P.panned = true; st = null; P.panning = false; P.camV = Math.max(-260, Math.min(260, P.camV || 0)); };
 }
@@ -1333,7 +1333,7 @@ function hideNow(instant) {
   return true;
 }
 function foundIt(e) {
-  const k = P.hiding, n = petNm(); P.hiding = null; P.behind = false; P.zt = 0;
+  const k = P.hiding, n = petNm(); P.hiding = null; P.behind = false; P.zt = 0; P.follow = true; P.userCamT = performance.now() + 1500;
   $(`#world .prop.${k}`)?.classList.remove('rustle');
   P.x = SPOT[k] + (Math.random() < .5 ? -4 : 4); $('#roomPet').style.opacity = 1; P.cls = 'popout';
   P.face = 'curious'; P.faceUntil = performance.now() + 900; setTimeout(() => { P.happyUntil = performance.now() + 2000; }, 900);
@@ -1380,7 +1380,7 @@ function decoEnd() { DECO.on = false; DECO.lay = null; $('#decoBar').hidden = tr
 function startLife() {
   const k = kindNow();
   if (phase(k).mode === 'sleep') { P.hidden = true; P.x = SPOT.house; P.potty = Math.random() < .3 ? 1 : 0; $('#roomPet').style.opacity = 0; setAct('sleep', rnd(5, 15) * 60e3, `${petNm()}가 집에서 자요`); }
-  else if (!hideNow(true)) setAct('idle', 1200, `${petNm()} 방`, '');
+  else if (!hideNow(true)) { P.follow = true; setAct('idle', 1200, `${petNm()} 방`, ''); }
 }
 let last = performance.now();
 function loop(now) {
@@ -1425,6 +1425,8 @@ function loop(now) {
     const maxC = (WF - 1) * 100; if (P.cam == null) P.cam = rnd(0, maxC);
     if (P.camTo != null) { P.cam += (P.camTo - P.cam) * Math.min(1, dt * 3); if (Math.abs(P.camTo - P.cam) < .2) P.camTo = null; }
     if (!P.panning) { P.cam += (P.camV || 0) * dt; P.camV = (P.camV || 0) * Math.pow(.02, dt); }
+    /* 찾은 뒤엔 자동으로 따라감. 내가 밀면 4초 쉬었다가 다시 따라감 */
+    if (P.follow && !P.hiding && !P.panning && P.camTo == null && now > (P.userCamT || 0)) { const want = Math.max(0, Math.min(maxC, (P.x * WF) - 50)); P.cam += (want - P.cam) * Math.min(1, dt * 2.2); }
     P.cam = Math.max(0, Math.min(maxC, P.cam)); wd.style.transform = `translateX(${-P.cam / WF}%)`;
     const ar = $('#camL'), br = $('#camR'); if (ar) { ar.hidden = P.cam < 1; br.hidden = P.cam > maxC - 1; }
   }
@@ -1590,6 +1592,7 @@ function playWith() {
 }
 function knockHouse(e) {
   if (P.hiding) return;
+  P.follow = true;
   if (!P.hidden) return;
   P.awakeUntil = performance.now() + 60e3; setTimeout(() => emote('bang', 1000), 800); say(kindNow() === 'cat' ? '냥…? 왜' : kindNow() === 'dog' ? '멍! 놀자!' : '빼꼼… 놀아 줄 거야?');
   leaveHouse(() => setAct('idle', 1500, `${petNm()}가 집에서 나왔어요`, ''));
