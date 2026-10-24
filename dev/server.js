@@ -275,11 +275,13 @@ export class Hub extends DurableObject {
     const week = now - 7 * 864e5;
     const rank = this.rows("SELECT a AS pet, COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND t > ? GROUP BY a ORDER BY n DESC LIMIT 5", week);
     const mine = id ? this.rows("SELECT kind, a, b, t FROM pulls WHERE who = ? ORDER BY t DESC LIMIT 300", id) : [];
+    const recent = this.rows("SELECT who, kind, a, b, t FROM pulls WHERE t <= ? ORDER BY t DESC LIMIT 6", now)
+      .map(x => ({ ...x, by: pets[x.who]?.npc ? pets[x.who].name : (players[x.who] || "누군가") }));
     const pulledMe = id ? this.rows("SELECT COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND a = ? AND who != ?", id, id)[0].n : 0;
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe,
+      line, me, pets, rank, mine, pulledMe, recent,
     };
   }
 }

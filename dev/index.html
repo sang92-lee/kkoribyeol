@@ -143,6 +143,19 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .qp.me .av { border-color: var(--pink-deep); box-shadow: 0 0 0 3px var(--pink); }
 .qp.me .nm { color: var(--pink-deep); font-family: var(--display); }
 .qp.turn .av { animation: bob .8s ease-in-out infinite; }
+.qp { position: relative; }
+.qp .gb { position: absolute; top: 14px; right: -2px; width: 26px; z-index: 2; }
+.qp .gb svg, .rank .gb svg { width: 100%; height: auto; display: block; }
+.rank .gb { display: inline-block; width: 20px; vertical-align: middle; margin-left: 4px; }
+.feed { list-style: none; margin: 0; padding: 10px 0 0; border-top: 2px dashed var(--line); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.feed li { display: flex; gap: 8px; align-items: baseline; }
+.feed li b { font-family: var(--display); font-weight: 400; }
+.feed li .rare { color: #B7861A; }
+.feed li time { margin-left: auto; color: var(--soft); font-size: 12px; white-space: nowrap; }
+.room .prop.house.knock::after { content: "톡!"; position: absolute; left: 50%; top: -22%; transform: translateX(-50%); background: var(--card); border: 2px solid var(--ink); border-radius: 999px; padding: 0 8px; font-family: var(--display); font-size: 13px; animation: pulse 1.2s ease-in-out infinite; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 14px; }
+.steps li { display: flex; gap: 8px; align-items: center; }
+.steps i { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); background: var(--butter); font-style: normal; font-family: var(--display); display: flex; align-items: center; justify-content: center; font-size: 13px; }
 .lineEmpty { color: var(--soft); font-size: 14px; padding: 12px 0; }
 .myLine { text-align: center; font-family: var(--display); font-size: 19px; margin: 0; min-height: 1.5em; }
 .myLine small { display: block; font-family: var(--body); font-size: 14px; color: var(--soft); }
@@ -245,6 +258,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <p class="petStatus" id="petStatus"><b></b><span></span></p>
       <p class="brag" id="brag" hidden></p>
       <p class="note">우리 애는 진짜 시간에 맞춰 살아요. 탭하면 반응하고, 자고 있을 땐 집을 톡 하면 빼꼼 나와요</p>
+      <button type="button" class="btn main" id="btnShare">친구한테 자랑하기</button>
       <button type="button" class="link" id="btnRemake">사진으로 다시 그리기</button>
     </div>
   </section>
@@ -262,6 +276,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <p class="myLine" id="myLine"></p>
       <button type="button" class="btn main big" id="btnLine" disabled>줄 서기</button>
       <p class="err" id="lineErr" hidden></p>
+      <ul class="feed" id="feed" hidden></ul>
     </div>
     <div class="card">
       <h2>이번 주 많이 뽑힌 펫</h2>
@@ -297,7 +312,11 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
   <div class="card">
     <img src="/style.jpg" alt="꼬리별 햄찌">
     <h1>꼬리<span>별</span></h1>
-    <p class="note">우리 애를 꼬리별 친구로 만들고, 친구들이랑 같은 갓챠 줄에 서요</p>
+    <ol class="steps">
+      <li><i>1</i>우리 애 사진을 넣으면 꼬리별 캐릭터로 변신</li>
+      <li><i>2</i>진짜 시간대로 방에서 먹고 자고 쳇바퀴 달려요</li>
+      <li><i>3</i>10분마다 친구들이랑 갓챠 줄 서서 굿즈·아이템 뽑기</li>
+    </ol>
     <label class="f">입장 코드<input type="text" id="gCode" autocomplete="off" placeholder="친구가 알려준 코드"></label>
     <label class="f">내 닉네임<input type="text" id="gNick" maxlength="12" autocomplete="off" placeholder="예: 메롱"></label>
     <p class="err" id="gErr" hidden></p>
@@ -595,6 +614,7 @@ function loop(now) {
   if (P.act === 'sleep' && Math.random() < dt * .45) zz();
   if (P.act !== 'walk' && P.act !== 'slidedown' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.act === 'hammock') { tweenY(FLOOR, 600, next); P.act = 'idle'; } else { P.y = FLOOR; next(); } }
   pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
+  const hs = room.querySelector('.prop.house'); if (hs) hs.classList.toggle('knock', P.hidden);
   pet.className = 'pet ' + (P.cls || '');
   pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden ? ' rotate(-10deg)' : '');
   requestAnimationFrame(loop);
@@ -704,15 +724,33 @@ function renderGacha() {
   line.innerHTML = st.line.length ? st.line.map(e => {
     const p = st.pets[e.pet] || {}, me = e.id === S.id;
     const nm = me ? '나' : e.npc ? p.name : (e.nick || p.name || '손님');
-    return `<div class="qp ${me ? 'me' : ''} ${e.st === 'turn' || (e.npc && e.t - now() < 15000) ? 'turn' : ''}"><span class="no">${e.no}번</span><div class="av">${p.name ? petFace(e.pet) : critter('hamster', '#EADCCB')}</div><span class="nm">${esc(nm)}</span></div>`;
+    return `<div class="qp ${me ? 'me' : ''} ${e.st === 'turn' || (e.npc && e.t - now() < 15000) ? 'turn' : ''}"><span class="no">${e.no}번</span><div class="av">${p.name ? petFace(e.pet) : critter('hamster', '#EADCCB')}</div>${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<span class="nm">${esc(nm)}</span></div>`;
   }).join('') : `<p class="lineEmpty">아직 아무도 없어요. 1번으로 서 보세요</p>`;
-  tickGacha();
+  tickGacha(); renderFeed();
   const rank = $('#rank');
   rank.innerHTML = st.rank.length ? st.rank.map((r, i) => {
     const p = st.pets[r.pet] || { name: '???' };
-    return `<li class="${r.pet === S.id ? 'mine' : ''}"><span class="medal">${i + 1}</span><span class="av">${petFace(r.pet)}</span><span class="nm">${esc(p.name)}<small>${p.npc ? '꼬리별 주민' : esc(p.owner ? p.owner + '네' : '')}</small></span><span class="ct">${r.n}번</span></li>`;
+    return `<li class="${r.pet === S.id ? 'mine' : ''}"><span class="medal">${i + 1}</span><span class="av">${petFace(r.pet)}</span><span class="nm">${esc(p.name)}${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<small>${p.npc ? '꼬리별 주민' : esc(p.owner ? p.owner + '네' : '')}</small></span><span class="ct">${r.n}번</span></li>`;
   }).join('') : `<li class="empty">아직 아무도 안 뽑았어요. 첫 캡슐의 주인공이 돼 보세요</li>`;
 }
+function ago(t) { const s = Math.max(0, (now() - t) / 1000); return s < 60 ? '방금' : s < 3600 ? `${Math.floor(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`; }
+function renderFeed() {
+  const f = S.state.recent || [];
+  $('#feed').hidden = !f.length;
+  $('#feed').innerHTML = f.map(x => {
+    const what = x.kind === 'item' ? ITEMS[x.a] : x.kind === 'gear' ? GEAR[x.a] : `${(S.state.pets[x.a] || {}).name || '???'} ${GOODS[x.b]}`;
+    const rare = x.a === 'cloud' || x.a === 'crown' || x.b === 'figure';
+    return `<li><b>${esc(x.by)}</b><span class="${rare ? 'rare' : ''}">${rare ? '★ ' : ''}${esc(what)} 뽑음</span><time>${ago(x.t)}</time></li>`;
+  }).join('');
+}
+async function share() {
+  const p = myPet(); if (!p) return;
+  const r = (S.state.rank || []).findIndex(x => x.pet === S.id);
+  const text = `우리 ${p.name} 꼬리별에 왔어 ㅋㅋ${r >= 0 ? ` 이번 주 뽑힘 랭킹 ${r + 1}위!` : ''} 너네 애도 데려와`;
+  try { if (navigator.share) { await navigator.share({ title: '꼬리별', text, url: location.origin }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(`${text}\n${location.origin}`); toast('자랑 문구를 복사했어요. 카톡에 붙여넣기!'); } catch (e) { toast(location.origin); }
+}
+$('#btnShare').onclick = share;
 function tickGacha() {
   const st = S.state; if (!st) return;
   const R = st.round, me = st.me, t = now(), btn = $('#btnLine');
