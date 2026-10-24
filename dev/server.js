@@ -11,7 +11,9 @@ const DRAW_PER_PLAYER = 8;    // AI 그림: 한 사람 하루 8번 (캐릭터+�
 const DRAW_PER_DAY = 40;      // AI 그림: 전체 하루 40번 (요금 안전장치)
 
 const SPIN_COST = 50;
-const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗         // 씨앗 50개로 언제든 뽑기
+const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
+const ROOM_SLOTS = [3, 5, 7, 9];        // 방 크기별 놓을 수 있는 아이템 수
+const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
 const wkKey = t => String(Math.floor((t + 9 * 3600e3 - 4 * 864e5) / (7 * 864e5)));
 const NPC_PETS = [
@@ -185,6 +187,8 @@ export class Hub extends DurableObject {
     try { this.sql.exec("ALTER TABLE equip ADD COLUMN pos TEXT"); } catch (e) {}
     this.sql.exec("CREATE TABLE IF NOT EXISTS wallet(id TEXT PRIMARY KEY, seeds INTEGER, last INTEGER)");
     try { this.sql.exec("ALTER TABLE wallet ADD COLUMN room INTEGER DEFAULT 0"); } catch (e) {}
+    this.sql.exec("CREATE TABLE IF NOT EXISTS layout(id TEXT PRIMARY KEY, data TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS found(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS visits(too TEXT, fr TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS scores(wk TEXT, id TEXT, best INTEGER, PRIMARY KEY(wk, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS trades(tid TEXT PRIMARY KEY, fr TEXT, give TEXT, wk TEXT, wa TEXT, wb TEXT, at INTEGER, st TEXT, too TEXT)");
@@ -250,6 +254,104 @@ export class Hub extends DurableObject {
       if (q.reset) delete map[g]; else map[g] = { l: num(q.l, -30, 100), t: num(q.t, -40, 100), w: num(q.w, 8, 140), r: num(q.r, -60, 60) };
       this.sql.exec("UPDATE equip SET pos = ? WHERE id = ?", JSON.stringify(map), b.id);
       return json({ ok: true });
+    }
+    if (p === "/api/score") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const w = this.rows("SELECT seeds, last FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, last: 0 };
+      if (now - w.last < 20e3) return json({ error: "fast", message: "너무 빨라요" }, 429);
+      const score = Math.max(0, Math.min(MAX_SCORE, Math.floor(Number(b.score) || 0)));
+      const seeds = w.seeds + score, wk = wkKey(now);
+      this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, last = excluded.last", b.id, seeds, now);
+      const old = (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, b.id)[0] || { best: 0 }).best;
+      if (score > old) this.sql.exec("INSERT INTO scores(wk, id, best) VALUES(?, ?, ?) ON CONFLICT(wk, id) DO UPDATE SET best = excluded.best", wk, b.id, score);
+      return json({ ok: true, seeds, earned: score, best: Math.max(old, score), newBest: score > old && score > 0 });
+    }
+    if (p === "/api/expand") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const w = this.rows("SELECT seeds, room FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, room: 0 };
+      const lv = w.room || 0, cost = ROOM_COST[lv + 1];
+      if (cost == null) return json({ error: "max", message: "이미 제일 넓은 방이에요" }, 409);
+      if (w.seeds < cost) return json({ error: "poor", message: `씨앗이 ${cost - w.seeds}개 모자라요` }, 409);
+      this.sql.exec("INSERT INTO wallet(id, seeds, last, room) VALUES(?, ?, 0, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, room = excluded.room", b.id, w.seeds - cost, lv + 1);
+      return json({ ok: true, room: lv + 1, seeds: w.seeds - cost });
+    }
+    if (p === "/api/eat") {
+      const r = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = 'snack' AND a = ? LIMIT 1", b.id, String(b.a || ""))[0];
+      if (!r) return json({ error: "none", message: "그 간식이 없어요" }, 409);
+      this.sql.exec("DELETE FROM pulls WHERE uniq = ?", r.uniq);
+      return json({ ok: true });
+    }
+    if (p === "/api/layout") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const lv = (this.rows("SELECT room FROM wallet WHERE id = ?", b.id)[0] || { room: 0 }).room || 0;
+      const owned = new Set(this.rows("SELECT DISTINCT a FROM pulls WHERE who = ? AND kind = 'item'", b.id).map(x => x.a));
+      const base = ["house", "bowl", "bottle", "toilet", "wheel"], out = {};
+      let n = 0;
+      for (const [k, v] of Object.entries(b.layout || {})) {
+        const x = Math.max(2, Math.min(98, Number(v) || 50));
+        if (base.includes(k)) out[k] = x;
+        else if (owned.has(k) && n < ROOM_SLOTS[lv]) { out[k] = x; n++; }
+      }
+      this.sql.exec("INSERT INTO layout(id, data) VALUES(?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data", b.id, JSON.stringify(out));
+      return json({ ok: true, layout: out });
+    }
+    if (p === "/api/found") {
+      if (!this.player(b.id)) return json({ error: "who" }, 400);
+      const day = kst(now), n = (this.rows("SELECT n FROM found WHERE day = ? AND id = ?", day, b.id)[0] || { n: 0 }).n;
+      if (n >= FOUND_DAY) return json({ ok: true, seeds: 0 });
+      this.sql.exec("INSERT INTO found(day, id, n) VALUES(?, ?, 1) ON CONFLICT(day, id) DO UPDATE SET n = n + 1", day, b.id);
+      this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, 5, 0) ON CONFLICT(id) DO UPDATE SET seeds = seeds + 5", b.id);
+      return json({ ok: true, seeds: 5 });
+    }
+    if (p === "/api/visit") {
+      if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad" }, 400);
+      this.sql.exec("INSERT INTO visits(too, fr, at) VALUES(?, ?, ?)", b.to, b.id, now);
+      this.sql.exec("DELETE FROM visits WHERE at < ?", now - 3 * 864e5);
+      return json({ ok: true });
+    }
+    if (p === "/api/spin") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const w = this.rows("SELECT seeds FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0 };
+      if (w.seeds < SPIN_COST) return json({ error: "poor", message: `씨앗이 ${SPIN_COST - w.seeds}개 모자라요` }, 409);
+      this.sql.exec("UPDATE wallet SET seeds = seeds - ? WHERE id = ?", SPIN_COST, b.id);
+      const out = this.roll(Math.random, b.id), uniq = `s:${now.toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+      this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, ?, ?, ?)", uniq, b.id, now, out.kind, out.a, out.b);
+      return json({ ok: true, result: out, seeds: w.seeds - SPIN_COST });
+    }
+    if (p === "/api/trade") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const busy = new Set(this.rows("SELECT give FROM trades WHERE st = 'open'").map(x => x.give));
+      if (b.act === "new") {
+        const g = this.rows("SELECT uniq, kind FROM pulls WHERE uniq = ? AND who = ?", String(b.give || ""), b.id)[0];
+        if (!g) return json({ error: "bad", message: "내 진열장에 없는 거예요" }, 400);
+        if (busy.has(g.uniq)) return json({ error: "bad", message: "이미 교환에 내놓은 거예요" }, 400);
+        const w = b.want || {}, wk = ["pet", "item", "gear"].includes(w.kind) ? w.kind : null;
+        if (!wk) return json({ error: "bad", message: "원하는 걸 골라 주세요" }, 400);
+        if (this.rows("SELECT COUNT(*) AS n FROM trades WHERE fr = ? AND st = 'open'", b.id)[0].n >= 5) return json({ error: "bad", message: "교환은 한 번에 5개까지 내놓을 수 있어요" }, 400);
+        const tid = `${now.toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+        this.sql.exec("INSERT INTO trades(tid, fr, give, wk, wa, wb, at, st) VALUES(?, ?, ?, ?, ?, ?, ?, 'open')", tid, b.id, g.uniq, wk, String(w.a || ""), String(w.b || ""), now);
+        return json({ ok: true, tid });
+      }
+      const t = this.rows("SELECT * FROM trades WHERE tid = ? AND st = 'open'", String(b.tid || ""))[0];
+      if (!t) return json({ error: "gone", message: "이미 끝난 교환이에요" }, 409);
+      if (b.act === "cancel") {
+        if (t.fr !== b.id) return json({ error: "bad", message: "내 교환만 취소할 수 있어요" }, 400);
+        this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid);
+        return json({ ok: true });
+      }
+      if (b.act === "accept") {
+        if (t.fr === b.id) return json({ error: "bad", message: "내가 올린 교환이에요" }, 400);
+        const give = this.rows("SELECT uniq FROM pulls WHERE uniq = ? AND who = ?", t.give, t.fr)[0];
+        if (!give) { this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid); return json({ error: "gone", message: "올린 사람이 이미 그걸 안 갖고 있어요" }, 409); }
+        const mine = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = ? AND a = ? AND b = ?", b.id, t.wk, t.wa, t.wb).find(x => !busy.has(x.uniq));
+        if (!mine) return json({ error: "noitem", message: "원하는 걸 갖고 있지 않아요" }, 409);
+        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", b.id, t.give);
+        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", t.fr, mine.uniq);
+        this.sql.exec("UPDATE trades SET st = 'done', too = ? WHERE tid = ?", b.id, t.tid);
+        const got = this.rows("SELECT kind, a, b FROM pulls WHERE uniq = ?", t.give)[0];
+        return json({ ok: true, got });
+      }
+      return json({ error: "bad", message: "요청이 이상해요" }, 400);
     }
     if (p === "/api/like") {
       if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad", message: "좋아요를 못 보냈어요" }, 400);
@@ -337,6 +439,7 @@ export class Hub extends DurableObject {
     const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
+    const layouts = Object.fromEntries(this.rows("SELECT id, data FROM layout").map(x => { try { return [x.id, JSON.parse(x.data)]; } catch (e) { return [x.id, null]; } }));
     const roomLvs = Object.fromEntries(this.rows("SELECT id, room FROM wallet").map(x => [x.id, x.room || 0]));
     const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
     const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { const m = JSON.parse(x.pos); return [x.id, m && m.l == null ? m : {}]; } catch (e) { return [x.id, {}]; } }));
@@ -346,7 +449,7 @@ export class Hub extends DurableObject {
     const likedToday = id ? this.rows("SELECT too FROM likes WHERE day = ? AND fr = ?", kst(now), id).map(x => x.too) : [];
     const poseMap = {};
     for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
 
     const line = [];
     R.entries.forEach((e, i) => {
@@ -389,7 +492,7 @@ export class Hub extends DurableObject {
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, visitors,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors,
     };
   }
 }
