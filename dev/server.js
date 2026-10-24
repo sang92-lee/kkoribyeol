@@ -70,13 +70,15 @@ async function draw(req, env, hub) {
   const tries = [
     () => callInteractions(env, prompt, imgs, true),
     () => callInteractions(env, prompt, imgs, false),
-    () => callGenerate(env, prompt, imgs),
+    () => callGenerate(env, prompt, imgs, "gemini-3.1-flash-image"),
+    () => callGenerate(env, prompt, imgs, "gemini-2.5-flash-image"),
   ];
-  let lastErr = "";
+  const errs = [];
   for (const t of tries) {
-    try { const out = await t(); if (out) return json({ image: out.data, mime: out.mime, left: q.left }); }
-    catch (e) { lastErr = String(e.message || e).slice(0, 300); }
+    try { const out = await t(); if (out) return json({ image: out.data, mime: out.mime, left: q.left }); errs.push("그림 없는 응답"); }
+    catch (e) { errs.push(String(e.message || e).slice(0, 220)); }
   }
+  const lastErr = errs.join(" | ");
   await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id, refund: true }) }));
   return json({ error: "ai", message: "그림을 못 받아왔어요. 잠시 뒤 다시 해 주세요 (횟수는 안 깎였어요)", detail: lastErr }, 502);
 }
@@ -92,12 +94,12 @@ async function callInteractions(env, prompt, imgs, withFormat) {
   if (!r.ok) throw new Error(`interactions ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return findImage(await r.json());
 }
-async function callGenerate(env, prompt, imgs) {
+async function callGenerate(env, prompt, imgs, model) {
   const body = { contents: [{ parts: [{ text: prompt }, ...imgs.map(i => ({ inline_data: { mime_type: i.mime, data: i.data } }))] }], generationConfig: { responseModalities: ["IMAGE"] } };
-  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent", {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY }, body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`generate ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) throw new Error(`${model} ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return findImage(await r.json());
 }
 /* 응답 모양이 바뀌어도 그림 데이터를 찾아냄 (마지막 그림이 결과) */
