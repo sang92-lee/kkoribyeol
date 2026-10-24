@@ -358,10 +358,12 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .stats span { border: 2px solid var(--line); border-radius: 12px; padding: 4px; text-align: center; font-size: 12px; color: var(--soft); display: flex; flex-direction: column; }
 .stats b { font-family: var(--display); font-weight: 400; font-size: 17px; color: var(--ink); }
-.room.mini { aspect-ratio: 16 / 9; pointer-events: none; border-width: 2px; }
+.room.mini { pointer-events: none; border-width: 2px; }
 .room.mini .pet { position: absolute; transform: translateX(-50%); }
 .room.mini .pet .gears { position: absolute; inset: 0; } .room.mini .gear { position: absolute; }
-.room.mini .lvTag { position: absolute; top: 6px; left: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-family: var(--display); font-size: 12px; z-index: 5; }
+.room.mini { aspect-ratio: 4 / 3; } .room.mini.lv3 { box-shadow: 0 0 0 3px #F6C94E, 0 0 14px rgba(246,201,78,.7); } .room.mini.lv2 { box-shadow: 0 0 0 3px #A9D4F2; }
+.room.mini .itTag { position: absolute; top: 6px; right: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-size: 11px; z-index: 7; }
+.room.mini .lvTag { position: absolute; top: 6px; left: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-family: var(--display); font-size: 12px; z-index: 7; }
 .babyRow { display: flex; gap: 10px; } .babyRow span { display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--soft); } .babyRow img { width: 56px; height: 56px; object-fit: contain; }
 .homes { display: flex; flex-direction: column; gap: 12px; }
 .home { border: var(--stroke); border-radius: 18px; background: var(--card); padding: 8px; display: flex; flex-direction: column; gap: 4px; text-align: left; }
@@ -1076,11 +1078,11 @@ function placeLegs(b) {
   L.style.setProperty('--fur', b.fur);
 }
 /* 집 레벨별로 방이 달라짐 */
-function roomDecor(lv) {
-  const p = myPet(); let h = '';
+function roomDecor(lv, pid = S.id) {
+  const p = S.state?.pets?.[pid]; let h = '';
   if (lv >= 1) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
   if (lv >= 2) h += `<div class="loft" style="left:40%;width:42%"></div><div class="ladder" style="left:39%"></div>`;
-  if (lv >= 3) h += `<div class="rug"></div><div class="chand"><svg viewBox="0 0 100 70"><path d="M50 0 V16" stroke="#C9A24A" stroke-width="3"/><path d="M14 30 Q50 52 86 30" stroke="#C9A24A" stroke-width="5" fill="none"/>${[14, 32, 50, 68, 86].map(x => `<path d="M${x} ${x === 50 ? 40 : 34} v-8" stroke="#C9A24A" stroke-width="3"/><path d="M${x} ${x === 50 ? 22 : 16} q-4 6 0 10 q4 -4 0 -10z" fill="#FFE08A"/><circle cx="${x}" cy="${x === 50 ? 46 : 40}" r="3" fill="#C9E8F6"/>`).join('')}<circle cx="50" cy="16" r="6" fill="#F6C94E" stroke="#4A3428" stroke-width="2"/></svg></div><div class="frameW"><div class="ph"><img data-cut="${P.spr?.front || (p ? `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}` : '')}" alt=""></div><small>${esc(p?.name || '')}</small></div>`;
+  if (lv >= 3) h += `<div class="rug"></div><div class="chand"><svg viewBox="0 0 100 70"><path d="M50 0 V16" stroke="#C9A24A" stroke-width="3"/><path d="M14 30 Q50 52 86 30" stroke="#C9A24A" stroke-width="5" fill="none"/>${[14, 32, 50, 68, 86].map(x => `<path d="M${x} ${x === 50 ? 40 : 34} v-8" stroke="#C9A24A" stroke-width="3"/><path d="M${x} ${x === 50 ? 22 : 16} q-4 6 0 10 q4 -4 0 -10z" fill="#FFE08A"/><circle cx="${x}" cy="${x === 50 ? 46 : 40}" r="3" fill="#C9E8F6"/>`).join('')}<circle cx="50" cy="16" r="6" fill="#F6C94E" stroke="#4A3428" stroke-width="2"/></svg></div><div class="frameW"><div class="ph"><img data-cut="${pid === S.id && P.spr?.front ? P.spr.front : (p ? `/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}` : '')}" alt=""></div><small>${esc(p?.name || '')}</small></div>`;
   return h;
 }
 function buildRoom() {
@@ -2003,11 +2005,18 @@ function miniRoom(pid) {
   const W = { cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
   const pr = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (pz[n] || 0); return `<div class="prop ${n}" style="left:${sp[n]}%;width:${w / wf * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;` : ''}${extra}">${svg}</div>`; };
   const items = placed.map(k => pr(k, ITEM_SVG[k], W[k] || 18, k === 'cloud' ? 'bottom:44%;' : k === 'pool' ? 'bottom:9%;' : '')).join('');
-  return `<div class="room mini ${$('#room')?.classList.contains('night') ? 'night' : ''}"><div class="sky"></div><div class="floor"></div>${items}
-    ${pr('house', kp.house, 22)}${pr('bowl', PROP_SVG.bowl(3), 12)}${pr('bottle', kp.water(.8), kp.waterW)}${pr('wheel', kp.play, kp.playW)}
-    <div class="pet" style="left:${(sp.bowl + sp.wheel) / 2}%;bottom:12%;width:${23 / wf}%"><div class="spr"><div class="body"><img data-cut="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt=""></div><div class="gears">${gearOverlay(p.gears || p.gear, p.gpos)}</div></div></div>
-    ${(st.babies || []).filter(b => b.st === 'born' && (b.pa === pid || b.pb === pid)).slice(0, 1).map(b => `<div class="pet" style="left:${(sp.bowl + sp.wheel) / 2 + 9}%;bottom:12%;width:${13 / wf}%"><div class="spr"><div class="body"><img data-cut="/api/img/baby-${b.bid}?c=${encodeURIComponent(S.code)}" alt=""></div></div></div>`).join('')}
-    <span class="lvTag">${ROOM_NAME[lv]}</span></div>`;
+  /* 우리 애가 있는 곳을 가운데로, 실제 방 크기 그대로 */
+  const px = (sp.bowl + sp.wheel) / 2 - 10, cam = Math.max(0, Math.min((wf - 1) * 100, px * wf - 50));
+  const baby = (st.babies || []).filter(b => b.st === 'born' && (b.pa === pid || b.pb === pid))[0];
+  const night = $('#room')?.classList.contains('night');
+  return `<div class="room mini ${night ? 'night' : ''} ${kp.cage ? 'cage' : ''} lv${lv}"><div class="world" style="width:${wf * 100}%;--wf:${wf};transform:translateX(${-cam / wf}%)"><div class="sky"></div><div class="floor"></div>
+    ${roomDecor(lv, pid)}
+    ${kp.cage ? `${pr('platform', HAM_DECOR.platform, 30, 'bottom:13%;')}${pr('pot', HAM_DECOR.pot, 15)}<div class="sticks">${HAM_DECOR.sticks.repeat(Math.round(wf * 2))}</div>` : ''}
+    ${items}${pr('house', kp.house, 22)}${pr('bowl', PROP_SVG.bowl(3), kp.cage ? 10 : 12)}${pr('bottle', kp.water(.8), kp.waterW)}${pr('wheel', kp.play, kp.playW)}
+    <div class="pet" style="left:${px}%;bottom:12%;width:${23 / wf}%"><div class="spr"><div class="body"><img data-cut="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt=""></div><div class="gears">${gearOverlay(p.gears || p.gear, p.gpos)}</div></div></div>
+    ${baby ? `<div class="pet" style="left:${px + 7}%;bottom:12%;width:${13 / wf}%"><div class="spr"><div class="body"><img data-cut="/api/img/baby-${baby.bid}?c=${encodeURIComponent(S.code)}" alt=""></div></div></div>` : ''}
+    ${kp.cage ? '<div class="glass"></div>' : ''}</div>
+    <span class="lvTag">${['🏠', '🏡', '🏘️', '🏰'][lv]} ${ROOM_NAME[lv]}</span><span class="itTag">아이템 ${placed.length}개</span></div>`;
 }
 function cutImgs(root) { root.querySelectorAll('img[data-cut]').forEach(im => { const u = im.dataset.cut; im.removeAttribute('data-cut'); cutout(u).then(x => { if (im.isConnected) im.src = x; }); }); }
 function renderShow() {
