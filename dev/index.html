@@ -99,6 +99,25 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .prop.swing .sw { transform-origin: 50% 6%; transform-box: view-box; }
 .room .prop.swing.swinging .sw { animation: swingA 1.2s ease-in-out infinite; }
 @keyframes swingA { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
+.room .wall { position: absolute; inset: 0 0 30% 0; pointer-events: none; }
+.room .wall.wp1 { background: radial-gradient(circle, rgba(242,160,179,.28) 3px, transparent 4px) 0 0 / 26px 26px; }
+.room .wall.wp2 { background: linear-gradient(90deg, rgba(169,212,242,.22) 50%, transparent 50%) 0 0 / 36px 100%; }
+.room .wall.wp3 { background: linear-gradient(90deg, rgba(246,201,78,.2) 50%, transparent 50%) 0 0 / 30px 100%, radial-gradient(circle, rgba(246,201,78,.4) 2px, transparent 3px) 15px 15px / 30px 30px; }
+.room .win { position: absolute; top: 10%; width: calc(16% / var(--wf)); pointer-events: none; } .room .win svg { width: 100%; display: block; }
+.room.night .win rect { fill: #3F3A6B; }
+.room .loft { position: absolute; bottom: 48%; height: 3.5%; background: #D9A877; border: 2.5px solid var(--ink); border-radius: 4px; box-shadow: 0 4px 0 rgba(74,52,40,.2); z-index: 1; pointer-events: none; }
+.room .loft::before, .room .loft::after { content: ""; position: absolute; top: 100%; width: 6px; height: 1200%; background: #B98558; border: 2px solid var(--ink); }
+.room .loft::before { left: 4%; } .room .loft::after { right: 4%; }
+.room .ladder { position: absolute; bottom: 12%; width: calc(4% / var(--wf)); height: 37%; border-left: 4px solid #9E6B42; border-right: 4px solid #9E6B42; background: repeating-linear-gradient(transparent 0 14%, #9E6B42 14% 18%); z-index: 1; pointer-events: none; }
+.room .rug { position: absolute; left: 30%; width: 40%; bottom: 7%; height: 10%; border-radius: 50%; background: repeating-radial-gradient(ellipse, #F7B6C6 0 10%, #FBE3EA 10% 20%); border: 2.5px solid var(--ink); opacity: .9; pointer-events: none; }
+.room .chand { position: absolute; left: 50%; top: 0; width: calc(18% / var(--wf)); transform: translateX(-50%); pointer-events: none; animation: sway2 4s ease-in-out infinite; transform-origin: 50% 0; }
+.room .chand svg { width: 100%; display: block; } @keyframes sway2 { 0%,100% { rotate: -2deg; } 50% { rotate: 2deg; } }
+.room .frameW { position: absolute; left: 84%; top: 12%; width: calc(9% / var(--wf)); min-width: 48px; background: #F6C94E; border: 2.5px solid var(--ink); border-radius: 6px; padding: 4px 4px 2px; text-align: center; pointer-events: none; }
+.room .frameW .ph { aspect-ratio: 1; background: #FFF8EE; border-radius: 3px; overflow: hidden; } .room .frameW img { width: 100%; } .room .frameW small { font-family: var(--display); font-size: 9px; white-space: nowrap; display: block; overflow: hidden; }
+.room .prop.seesaw.rock .ss { animation: rock 1s ease-in-out infinite; transform-origin: 50% 53%; transform-box: view-box; }
+@keyframes rock { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+.room .prop.carousel.spin .cr { animation: bob2 .5s ease-in-out infinite alternate; }
+@keyframes bob2 { to { transform: translateY(-6px); } }
 .room .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
 .room .sky { position: absolute; inset: 0 0 30% 0; background: linear-gradient(#D9E8FA, #F7E8EF); transition: background 2s; }
 .room .floor { position: absolute; inset: 70% 0 0 0; background: linear-gradient(#F3DDC0, #EBCCA6); border-top: 2.5px solid var(--ink); }
@@ -634,8 +653,8 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = fals
 /* ---------- 그림 조각 ---------- */
 const KIND = { hamster: '햄찌', dog: '강아지', cat: '고양이' };
 const GOODS = { sticker: '스티커', keyring: '키링', plush: '말랑 인형', figure: '잠자는 피규어' };
-const ITEMS = { slide: '미끄럼틀', hammock: '해먹', lamp: '달 조명', sandbath: '모래 목욕탕', balloon: '풍선 다발', garden: '해바라기 정원', cafe: '꼬마 카페', swing: '그네', bookshelf: '꼬마 책장', pool: '튜브 풀장', piano: '장난감 피아노', cloud: '구름 침대', tent: '무지개 별 텐트' };
-const ITEM_ORDER = ['hammock', 'slide', 'lamp', 'sandbath', 'balloon', 'garden', 'cafe', 'swing', 'bookshelf', 'pool', 'piano', 'cloud', 'tent'];
+const ITEMS = { cushion: '딸기 쿠션', mushroom: '버섯 집', tunnel: '통나무 터널', seesaw: '시소', telescope: '별 망원경', carousel: '미니 회전목마', slide: '미끄럼틀', hammock: '해먹', lamp: '달 조명', sandbath: '모래 목욕탕', balloon: '풍선 다발', garden: '해바라기 정원', cafe: '꼬마 카페', swing: '그네', bookshelf: '꼬마 책장', pool: '튜브 풀장', piano: '장난감 피아노', cloud: '구름 침대', tent: '무지개 별 텐트' };
+const ITEM_ORDER = ['hammock', 'slide', 'lamp', 'sandbath', 'balloon', 'cushion', 'garden', 'cafe', 'swing', 'bookshelf', 'mushroom', 'tunnel', 'seesaw', 'pool', 'piano', 'telescope', 'cloud', 'tent', 'carousel'];
 const SNACK = {
   apple: { name: '사과 조각', c: '#E86A6A' }, carrot: { name: '당근', c: '#F29A4A' }, cheese: { name: '치즈', c: '#F6D365' }, worm: { name: '밀웜', c: '#C9A06A' },
   strawberry: { name: '딸기', c: '#F05A78' }, pudding: { name: '푸딩', c: '#F3C969' }, goldseed: { name: '황금 해바라기씨', c: '#F6C94E' },
@@ -677,7 +696,7 @@ function hashStr(t) { let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt
 function persona() { const p = myPet(); return PERSONA[PERSONA_KEYS[hashStr(S.id + '|' + (p?.v || 0)) % PERSONA_KEYS.length]]; }
 function taste() { const ps = persona(), h = hashStr(S.id + '#' + (myPet()?.v || 0)); return { love: ps.love[h % ps.love.length], hate: ps.hate[(h >> 5) % ps.hate.length] }; }
 /* 등급: 0 일반, 1 고급, 2 레어, 3 전설 */
-const RARITY = { swing: 1, bookshelf: 1, piano: 2, bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
+const RARITY = { mushroom: 1, tunnel: 1, seesaw: 1, telescope: 2, carousel: 3, swing: 1, bookshelf: 1, piano: 2, bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
   pool: 2, cloud: 2, wings: 2, figure: 2, strawberry: 2, pudding: 2, tent: 3, crown: 3, goldseed: 3 };
 const RLABEL = ['일반', '고급', '★ 레어', '★★ 전설'];
 function rarityOf(a, b) { return Math.max(RARITY[a] || 0, RARITY[b] || 0); }
@@ -698,6 +717,12 @@ function petFace(petId, label) {
   return critter(p?.kind || 'hamster', p?.fur);
 }
 const ITEM_SVG = {
+  cushion: `<svg viewBox="0 0 100 60"><path d="M8 40 Q2 14 50 10 Q98 14 92 40 Q88 58 50 58 Q12 58 8 40Z" fill="#F57C93" stroke="${INK}" stroke-width="4"/><path d="M30 12 Q50 -2 70 12 Q60 20 50 14 Q40 20 30 12Z" fill="#7FB069" stroke="${INK}" stroke-width="3"/><g fill="#FFE08A">${[[26, 28], [44, 22], [62, 26], [76, 36], [34, 44], [54, 42], [18, 40]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2" ry="3"/>`).join('')}</g></svg>`,
+  mushroom: `<svg viewBox="0 0 100 100"><path d="M24 98 V56 H76 V98Z" fill="#FFF3E0" stroke="${INK}" stroke-width="4"/><path d="M38 98 V76 Q50 64 62 76 V98Z" fill="#8A5A3B" stroke="${INK}" stroke-width="3"/><circle cx="66" cy="70" r="5" fill="#C9E8F6" stroke="${INK}" stroke-width="2.5"/><path d="M4 58 Q4 8 50 6 Q96 8 96 58Z" fill="#E86A6A" stroke="${INK}" stroke-width="4"/><g fill="#FFFFFF" stroke="${INK}" stroke-width="2"><circle cx="30" cy="30" r="8"/><circle cx="62" cy="22" r="6"/><circle cx="76" cy="42" r="7"/><circle cx="48" cy="46" r="5"/></g></svg>`,
+  tunnel: `<svg viewBox="0 0 120 60"><path d="M14 8 H106 V56 H14Z" fill="#B98558" stroke="${INK}" stroke-width="4"/><path d="M26 18 h76 M24 34 h80 M28 48 h70" stroke="#9E6B42" stroke-width="2.5"/><ellipse cx="14" cy="32" rx="12" ry="24" fill="#D9A877" stroke="${INK}" stroke-width="4"/><ellipse cx="14" cy="32" rx="8" ry="18" fill="#4A2E1C"/><ellipse cx="106" cy="32" rx="12" ry="24" fill="#D9A877" stroke="${INK}" stroke-width="4"/><path d="M60 8 q4 -8 10 -6" stroke="#7FB069" stroke-width="3" fill="none"/></svg>`,
+  seesaw: `<svg viewBox="0 0 120 60"><path d="M50 58 L60 34 L70 58Z" fill="#FFD58A" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/><g class="ss"><rect x="6" y="28" width="108" height="8" rx="4" fill="#A9D4F2" stroke="${INK}" stroke-width="3.5"/><circle cx="14" cy="24" r="5" fill="#F7A3B5" stroke="${INK}" stroke-width="2.5"/><circle cx="106" cy="24" r="5" fill="#F7A3B5" stroke="${INK}" stroke-width="2.5"/></g></svg>`,
+  telescope: `<svg viewBox="0 0 70 100"><path d="M20 98 L35 56 L50 98 M35 56 V98" stroke="#7E95BA" stroke-width="4" fill="none" stroke-linecap="round"/><g transform="rotate(-35 35 50)"><rect x="12" y="40" width="50" height="16" rx="6" fill="#6C7FD8" stroke="${INK}" stroke-width="3.5"/><rect x="56" y="36" width="10" height="24" rx="3" fill="#FFE08A" stroke="${INK}" stroke-width="3"/><g fill="#FFE08A"><circle cx="26" cy="48" r="2"/><circle cx="38" cy="46" r="1.6"/></g></g><path d="M58 8 l2 4 l4 0 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 0z" fill="#FFE08A" stroke="${INK}" stroke-width="1.5"/></svg>`,
+  carousel: `<svg viewBox="0 0 110 110"><path d="M8 40 L55 6 L102 40Z" fill="#F7A3B5" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M8 40 Q20 50 31 40 Q43 50 55 40 Q67 50 79 40 Q91 50 102 40" fill="#FFF1C2" stroke="${INK}" stroke-width="3"/><circle cx="55" cy="6" r="5" fill="#FFE08A" stroke="${INK}" stroke-width="2"/><g class="cr"><path d="M24 46 V92 M55 46 V92 M86 46 V92" stroke="#F6C94E" stroke-width="3.5"/>${[[24, 72, '#FFFFFF'], [55, 66, '#C9E8F6'], [86, 74, '#FBE3EA']].map(([x, y, c]) => `<g transform="translate(${x} ${y})"><ellipse rx="11" ry="7" fill="${c}" stroke="${INK}" stroke-width="2.5"/><circle cx="9" cy="-6" r="5" fill="${c}" stroke="${INK}" stroke-width="2.5"/><path d="M-11 -2 q-6 -2 -6 4" stroke="#F7A3B5" stroke-width="3" fill="none"/></g>`).join('')}</g><ellipse cx="55" cy="98" rx="50" ry="9" fill="#CDB4F0" stroke="${INK}" stroke-width="4"/></svg>`,
   sandbath: `<svg viewBox="0 0 100 44"><path d="M6 14 h88 l-8 28 h-72z" fill="#C9D8F6" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><ellipse cx="50" cy="14" rx="44" ry="8" fill="#F1E2BF" stroke="${INK}" stroke-width="3"/><g fill="#D9C499"><circle cx="30" cy="13" r="2"/><circle cx="56" cy="15" r="2"/><circle cx="70" cy="12" r="2"/></g><path d="M20 26 h60" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="6 6"/></svg>`,
   balloon: `<svg viewBox="0 0 70 120"><g stroke="${INK}" stroke-width="1.5" fill="none"><path d="M35 118 Q30 90 18 60"/><path d="M35 118 Q36 80 36 46"/><path d="M35 118 Q42 90 54 62"/></g>${[[18, 40, '#F7A3B5'], [36, 26, '#FFD58A'], [54, 42, '#A9D4F2']].map(([x, y, c]) => `<ellipse cx="${x}" cy="${y}" rx="14" ry="17" fill="${c}" stroke="${INK}" stroke-width="3"/><ellipse cx="${x - 5}" cy="${y - 7}" rx="3" ry="5" fill="#FFFFFF" opacity=".7"/>`).join('')}<path d="M28 112 h14 l-2 8 h-10z" fill="#F7B6C6" stroke="${INK}" stroke-width="2.5"/></svg>`,
   swing: `<svg viewBox="0 0 100 100"><path d="M10 98 L22 6 L78 6 L90 98" stroke="#B98558" stroke-width="7" fill="none" stroke-linejoin="round"/><path d="M10 98 L22 6 L78 6 L90 98" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linejoin="round"/><g class="sw"><path d="M38 8 V72 M62 8 V72" stroke="${INK}" stroke-width="2.5"/><rect x="32" y="70" width="36" height="8" rx="4" fill="#F7B6C6" stroke="${INK}" stroke-width="3"/></g></svg>`,
@@ -835,7 +860,7 @@ const BALL_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy
 /* 방 안 위치 (가로 %) */
 let WF = 1.3; /* 방 너비 = 화면의 몇 배인지, 방 넓히기로 커짐 */
 const ROOM_WF = [1.3, 1.7, 2.2, 2.8], ROOM_NAME = ['원룸', '투룸', '복층 하우스', '꼬리별 대저택'];
-const BASE_SPOT = { platform: 22, pot: 70,  sandbath: 26, balloon: 35, swing: 53, bookshelf: 61, piano: 80, house: 6, hammock: 15, slide: 20, garden: 31, bowl: 41, bottle: 46, lamp: 50, cafe: 57, toilet: 65, cloud: 70, pool: 75, tent: 85, wheel: 95 };
+const BASE_SPOT = { cushion: 14, mushroom: 34, tunnel: 47, seesaw: 58, telescope: 66, carousel: 89,  platform: 22, pot: 70,  sandbath: 26, balloon: 35, swing: 53, bookshelf: 61, piano: 80, house: 6, hammock: 15, slide: 20, garden: 31, bowl: 41, bottle: 46, lamp: 50, cafe: 57, toilet: 65, cloud: 70, pool: 75, tent: 85, wheel: 95 };
 let SPOT = { ...BASE_SPOT }, PZ = {};
 const HANG = ['hammock', 'lamp', 'cloud'];
 function zOfX(x) { for (const k in SPOT) if (Math.abs(SPOT[k] - x) < .01) return PZ[k] || 0; return 0; }
@@ -844,7 +869,7 @@ const HAM_DECOR = {
   pot: `<svg viewBox="0 0 100 60"><path d="M6 58 Q6 6 50 6 Q94 6 94 58Z" fill="#C97B4F" stroke="${INK}" stroke-width="3.5"/><path d="M16 50 Q50 40 84 50" stroke="#A85F38" stroke-width="2.5" fill="none"/><path d="M36 58 Q36 34 50 34 Q64 34 64 58Z" fill="#5E3524" stroke="${INK}" stroke-width="3"/></svg>`,
   sticks: `<svg viewBox="0 0 140 20"><g stroke="${INK}" stroke-width="1.5" fill="#B98558"><rect x="6" y="8" width="30" height="5" rx="2" transform="rotate(-12 21 10)"/><rect x="58" y="10" width="26" height="5" rx="2" transform="rotate(18 71 12)"/><rect x="100" y="6" width="32" height="5" rx="2" transform="rotate(-6 116 8)"/></g><g fill="#8DB87A"><ellipse cx="46" cy="12" rx="5" ry="2.5"/><ellipse cx="92" cy="14" rx="4" ry="2"/></g></svg>`,
 };
-const HIDE_SPOTS = ['pot', 'bedding', 'bookshelf', 'piano', 'house', 'garden', 'tent', 'cafe', 'slide', 'wheel', 'pool', 'toilet'];
+const HIDE_SPOTS = ['pot', 'bedding', 'mushroom', 'tunnel', 'bookshelf', 'piano', 'house', 'garden', 'tent', 'cafe', 'slide', 'wheel', 'pool', 'toilet'];
 function TOILET_SVG(k, poop) {
   const n = Math.min(4, poop || 0), dots = [[30, 18], [44, 16], [56, 19], [38, 22]].slice(0, n);
   if (k === 'dog') return `<svg viewBox="0 0 80 30" aria-hidden="true"><path d="M4 26 L12 6 H70 L76 26Z" fill="#E4F3EC" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/><path d="M14 10 H68 M10 18 H72" stroke="#BFE3D0" stroke-width="2"/>${dots.map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="7" ry="3.5" fill="#F3E08A" opacity=".85"/>`).join('')}</svg>`;
@@ -1050,6 +1075,14 @@ function placeLegs(b) {
   L.style.left = (b.x0 * 100 + w * .14) + '%'; L.style.width = (w * .72) + '%'; L.style.top = (b.y1 * 100 - w * .72 * .1) + '%';
   L.style.setProperty('--fur', b.fur);
 }
+/* 집 레벨별로 방이 달라짐 */
+function roomDecor(lv) {
+  const p = myPet(); let h = '';
+  if (lv >= 1) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
+  if (lv >= 2) h += `<div class="loft" style="left:40%;width:42%"></div><div class="ladder" style="left:39%"></div>`;
+  if (lv >= 3) h += `<div class="rug"></div><div class="chand"><svg viewBox="0 0 100 70"><path d="M50 0 V16" stroke="#C9A24A" stroke-width="3"/><path d="M14 30 Q50 52 86 30" stroke="#C9A24A" stroke-width="5" fill="none"/>${[14, 32, 50, 68, 86].map(x => `<path d="M${x} ${x === 50 ? 40 : 34} v-8" stroke="#C9A24A" stroke-width="3"/><path d="M${x} ${x === 50 ? 22 : 16} q-4 6 0 10 q4 -4 0 -10z" fill="#FFE08A"/><circle cx="${x}" cy="${x === 50 ? 46 : 40}" r="3" fill="#C9E8F6"/>`).join('')}<circle cx="50" cy="16" r="6" fill="#F6C94E" stroke="#4A3428" stroke-width="2"/></svg></div><div class="frameW"><div class="ph"><img data-cut="${P.spr?.front || (p ? `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}` : '')}" alt=""></div><small>${esc(p?.name || '')}</small></div>`;
+  return h;
+}
 function buildRoom() {
   const p = myPet(); if (!p) return;
   WF = ROOM_WF[S.state?.roomLv || 0] || 1.3;
@@ -1063,6 +1096,7 @@ function buildRoom() {
   const prop = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (PZ[n] || 0); return `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w / WF * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;filter:brightness(${1 - z * .06});` : ''}${extra}">${svg}</div>`; };
   $('#room').classList.toggle('cage', !!KP().cage);
   $('#room').innerHTML = `<div class="world" id="world" style="width:${WF * 100}%;--wf:${WF}"><div class="sky"></div>${stars}<div class="floor"></div>
+    ${roomDecor(S.state?.roomLv || 0)}
     ${KP().cage ? `${prop('platform', HAM_DECOR.platform, 30, 'bottom:13%;')}${prop('pot', HAM_DECOR.pot, 15)}<div class="sticks">${HAM_DECOR.sticks.repeat(Math.round(WF * 2))}</div><div class="glass"></div>` : ''}
     ${owned.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}
     ${owned.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
@@ -1070,7 +1104,7 @@ function buildRoom() {
     ${owned.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}
     ${prop('bowl', PROP_SVG.bowl(care().food), KP().cage ? 10 : 12)}${prop('bottle', KP().water(care().water), KP().waterW)}
     ${owned.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}
-    ${['sandbath', 'balloon', 'swing', 'bookshelf', 'piano'].filter(k => owned.has(k)).map(k => prop(k, ITEM_SVG[k], { sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 }[k])).join('')}
+    ${['sandbath', 'balloon', 'swing', 'bookshelf', 'piano', 'cushion', 'mushroom', 'tunnel', 'seesaw', 'telescope', 'carousel'].filter(k => owned.has(k)).map(k => prop(k, ITEM_SVG[k], { sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22 }[k])).join('')}
     ${owned.has('garden') ? prop('garden', ITEM_SVG.garden, 22) : ''}${owned.has('cafe') ? prop('cafe', ITEM_SVG.cafe, 18) : ''}
     ${owned.has('pool') ? prop('pool', ITEM_SVG.pool, 24, 'bottom:9%;') : ''}${owned.has('tent') ? prop('tent', ITEM_SVG.tent, 22) : ''}
     ${prop('toilet', TOILET_SVG(kindNow(), care().poop), 12)}
@@ -1081,7 +1115,7 @@ function buildRoom() {
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="camArrow l" id="camL" aria-label="왼쪽 보기">‹</button><button type="button" class="camArrow r" id="camR" aria-label="오른쪽 보기">›</button>
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
-  $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
+  cutImgs($('#world')); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   bindPan();
@@ -1299,6 +1333,8 @@ function choose() {
   if (m === 'calm' && !ham) Object.assign(w, k === 'cat' ? { tower: .25 } : { chew: .2 });
   if (m === 'calm') Object.assign(w, { nap: own.has('cloud') ? .15 : .05, wander: .35 });
   if (m !== 'sleep' && KP().cage) { w.dig = .18; w.climb = .16; }
+  if (m !== 'sleep' && (S.state?.roomLv || 0) >= 2) w.loft = .16;
+  if (m !== 'sleep') { if (own.has('cushion')) w.cushion = .15; if (own.has('tunnel')) w.tunnel = .15; if (own.has('seesaw')) w.seesaw = .12; if (own.has('telescope')) w.scope = document.querySelector('#room.night') ? .2 : .05; if (own.has('carousel')) w.carousel = .14; }
   if (m !== 'sleep') { if (own.has('sandbath')) w.sandbath = .15; if (own.has('swing')) w.swing = .15; if (own.has('bookshelf')) w.books = .1; if (own.has('piano')) w.piano = m === 'active' ? .15 : .08; }
   if (m !== 'sleep') { if (own.has('garden')) w.garden = .15; if (own.has('cafe')) w.cafe = .15; if (own.has('pool')) w.pool = m === 'active' ? .3 : .12; }
   if (m !== 'sleep') { if (own.has('hammock')) w.hammock = .2; if (own.has('slide')) w.slide = m === 'active' ? .3 : .15; if (own.has('lamp') && document.querySelector('#room.night')) w.lamp = .12; }
@@ -1350,11 +1386,17 @@ function next() {
   }
   if (a === 'eat') return goTo(SPOT.bowl, 12, eatNow, `${n}가 밥그릇으로 가요`);
   if (a === 'drink') return goTo(KP() === KIND_PROPS.hamster ? SPOT.bottle - 3 : SPOT.bottle, 12, drinkNow, `${n}가 물 마시러 가요`);
+  if (a === 'cushion') return goTo(SPOT.cushion, 10, () => { say('푹신푹신~', 1200); fx('land', 400); setAct('sleep', rnd(20, 50) * 1000, `${n}가 딸기 쿠션에서 꾸벅`, 'sleep'); }, `${n}가 딸기 쿠션으로 가요`);
+  if (a === 'tunnel') return goTo(SPOT.tunnel - 9, 13, () => { $('#roomPet').style.opacity = 0; say('쏘옥', 800); setTimeout(() => { P.x = SPOT.tunnel + 9; $('#roomPet').style.opacity = 1; P.cls = 'popout'; emote('note', 1000); say('뿅!', 900); setAct('idle', 1500, `${n}가 터널을 통과했어요`, ''); }, 1500); P.act = 'enter'; P.until = 0; }, `${n}가 터널로 가요`);
+  if (a === 'seesaw') return goTo(SPOT.seesaw - 6, 12, () => { const ss = $('#world .prop.seesaw'); ss?.classList.add('rock'); say('올라가라~', 1200); setAct('seesaw', rnd(5, 8) * 1000, `${n}가 시소 타요`, 'sway'); setTimeout(() => ss?.classList.remove('rock'), 8000); }, `${n}가 시소로 가요`);
+  if (a === 'scope') return goTo(SPOT.telescope - 4, 10, () => { emote('spark', 1800); say(['별이다…', '저기 꼬리별!', '반짝반짝'][Math.floor(Math.random() * 3)], 1600); setAct('look', rnd(5, 8) * 1000, `${n}가 별을 봐요`, ''); }, `${n}가 망원경으로 가요`);
+  if (a === 'carousel') return goTo(SPOT.carousel, 12, () => { const c = $('#world .prop.carousel'); c?.classList.add('spin'); P.happyUntil = performance.now() + 6000; emote('note', 1500); say('빙글빙글~', 1400); setAct('ride', rnd(6, 9) * 1000, `${n}가 회전목마를 타요`, 'sway'); setTimeout(() => c?.classList.remove('spin'), 9000); }, `${n}가 회전목마로 가요`);
   if (a === 'sandbath') return goTo(SPOT.sandbath, 12, () => { say('데굴데굴~', 1400); P.happyUntil = performance.now() + 4000; setAct('bath', rnd(4, 7) * 1000, `${n}가 모래 목욕해요`, 'groom'); }, `${n}가 모래 목욕탕으로 가요`);
   if (a === 'swing') return goTo(SPOT.swing, 11, () => { say('슝~ 슝~', 1400); $('#world .prop.swing')?.classList.add('swinging'); setAct('swing', rnd(6, 10) * 1000, `${n}가 그네 타요`, 'sway'); setTimeout(() => $('#world .prop.swing')?.classList.remove('swinging'), 9000); }, `${n}가 그네로 가요`);
   if (a === 'books') return goTo(SPOT.bookshelf, 10, () => { emote('q', 1600); say('흠… 어려운 책이다', 1500); setAct('look', rnd(4, 7) * 1000, `${n}가 책 읽는 척해요`, ''); }, `${n}가 책장으로 가요`);
   if (a === 'piano') return goTo(SPOT.piano, 11, () => { say('도레미~', 1200); setAct('piano', rnd(4, 7) * 1000, `${n}가 피아노를 쳐요`, 'eat'); }, `${n}가 피아노로 가요`);
   if (a === 'dig' && KP().cage) return digIn(false);
+  if (a === 'loft') return goTo(39, 12, () => { say('사다리 영차!', 1200); tweenY(48, 1400, () => goTo(rnd(46, 78), 9, () => { emote('spark', 1200); say(['높다!', '여기 내 자리', '다 보인다~'][Math.floor(Math.random() * 3)], 1400); setAct('perch', rnd(8, 15) * 1000, `${n}가 다락방에서 놀아요`, ''); }, `${n}가 다락방을 탐험해요`, 0)); }, `${n}가 다락방으로 가요`);
   if (a === 'climb' && KP().cage) return goTo(SPOT.platform - 10, 11, () => { say('영차 영차', 1200); P.x = SPOT.platform - 8; tweenY(FLOOR + 3, 500, () => goTo(SPOT.platform + 2, 10, () => { tweenY(FLOOR + 15, 400, () => setAct('perch', rnd(8, 16) * 1000, `${n}가 2층에서 사료를 먹어요`, 'eat')); })); }, `${n}가 2층으로 올라가요`);
   if (a === 'garden') return goTo(SPOT.garden, 11, () => { emote('q', 1200); say('숨었다!', 1200); setAct('look', rnd(5, 9) * 1000, `${n}가 해바라기 사이에 숨었어요`, ''); }, `${n}가 정원으로 가요`);
   if (a === 'cafe') return goTo(SPOT.cafe, 11, () => { say('홀짝~', 1400); emote('note', 1400); fatUp(.01); setAct('eat', rnd(5, 8) * 1000, `${n}가 꼬마 카페에서 티타임`, 'eat'); }, `${n}가 카페로 가요`);
@@ -1958,7 +2000,7 @@ function miniRoom(pid) {
   const sp = { ...BASE_SPOT }, pz = {};
   for (const [k, v] of Object.entries(p.layout || {})) { if (v && typeof v === 'object') { sp[k] = v.x; pz[k] = v.y || 0; } else sp[k] = v; }
   const all = new Set(p.items || []), placed = p.layout ? Object.keys(p.layout).filter(k => all.has(k)) : ITEM_ORDER.filter(k => all.has(k)).slice(0, (st.roomSlots || [3])[lv] || 3);
-  const W = { hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
+  const W = { cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
   const pr = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (pz[n] || 0); return `<div class="prop ${n}" style="left:${sp[n]}%;width:${w / wf * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;` : ''}${extra}">${svg}</div>`; };
   const items = placed.map(k => pr(k, ITEM_SVG[k], W[k] || 18, k === 'cloud' ? 'bottom:44%;' : k === 'pool' ? 'bottom:9%;' : '')).join('');
   return `<div class="room mini ${$('#room')?.classList.contains('night') ? 'night' : ''}"><div class="sky"></div><div class="floor"></div>${items}

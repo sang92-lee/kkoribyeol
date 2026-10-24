@@ -25,7 +25,8 @@ const NPC_PETS = [
 const ITEMS = [
   { id: "slide", w: 22 }, { id: "hammock", w: 22 }, { id: "lamp", w: 22 }, { id: "garden", w: 16 }, { id: "cafe", w: 14 },
   { id: "sandbath", w: 18 }, { id: "balloon", w: 18 }, { id: "swing", w: 12 }, { id: "bookshelf", w: 12 },
-  { id: "pool", w: 9 }, { id: "piano", w: 6 }, { id: "cloud", w: 7 }, { id: "tent", w: 3 },
+  { id: "cushion", w: 18 }, { id: "mushroom", w: 14 }, { id: "tunnel", w: 14 }, { id: "seesaw", w: 11 },
+  { id: "pool", w: 9 }, { id: "piano", w: 6 }, { id: "telescope", w: 5 }, { id: "cloud", w: 7 }, { id: "carousel", w: 2.5 }, { id: "tent", w: 3 },
 ];
 const GEAR = [
   { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "bowtie", w: 16 }, { id: "beret", w: 14 }, { id: "bunny", w: 9 }, { id: "heartglass", w: 9 },
