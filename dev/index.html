@@ -128,7 +128,9 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes rock { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
 .room .prop.carousel.spin .cr { animation: bob2 .5s ease-in-out infinite alternate; }
 @keyframes bob2 { to { transform: translateY(-6px); } }
-.room .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
+.roomBar { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
+.roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
+.wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
 .room .sky { position: absolute; inset: 0 0 30% 0; background: linear-gradient(#D9E8FA, #F7E8EF); transition: background 2s; }
 .room .floor { position: absolute; inset: 70% 0 0 0; background: linear-gradient(#F3DDC0, #EBCCA6); border-top: 2.5px solid var(--ink); }
 .room.cage .sky { background: linear-gradient(#EEF1F4, #F7F4EF); }
@@ -222,7 +224,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .friend .av { width: 64px; height: 64px; border-radius: 50%; border: var(--stroke); overflow: hidden; background: var(--bg); position: relative; }
 .friend .av img, .friend .av svg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .friend b { font-family: var(--display); font-weight: 400; color: var(--ink); font-size: 14px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.room .sndBtn { position: absolute; top: 8px; left: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 13px; }
+.sndBtn { position: absolute; top: 8px; left: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 13px; }
 .room .sndBtn[aria-pressed="true"] { background: var(--butter); }
 .room .pet .legs { position: absolute; left: 25%; width: 50%; top: 80%; z-index: -1; display: none; --fur: #D9B48A; }
 .room .pet .legs svg { width: 100%; height: auto; display: block; overflow: visible; }
@@ -235,7 +237,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet.run:not(.framed) .l3, .room .pet.run:not(.framed) .l4 { animation: legR .22s linear infinite; animation-delay: -.11s; }
 @keyframes legA { 0%,100% { transform: rotate(28deg); } 50% { transform: rotate(-28deg); } }
 @keyframes legR { 0% { transform: rotate(50deg) scaleY(1.1); } 50% { transform: rotate(-50deg) scaleY(1.1); } 100% { transform: rotate(50deg) scaleY(1.1); } }
-.room .clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
+.clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
 .care { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .care.play { grid-template-columns: repeat(3, 1fr); }
 .trust { margin: 0; font-size: 14px; color: var(--soft); display: flex; align-items: center; gap: 6px; }
@@ -521,6 +523,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
     <div class="card" id="home" hidden>
       <div class="petName"><h2 id="homeName"></h2><span class="note" id="homeKind"></span></div>
       <div class="room" id="room"></div>
+      <div class="roomBar"><button type="button" class="sndBtn" id="sndBtn">소리 켜기</button><span class="clockTag" id="roomClock"></span><span class="wtTag" id="wtTag"></span></div>
       <p class="petStatus" id="petStatus"><b></b><span></span></p>
       <p class="trust" id="trust"></p>
       <div class="care">
@@ -1144,7 +1147,7 @@ function buildRoom() {
     <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div><div class="paws" id="paws"><i class="snk"></i><i class="pw pl"></i><i class="pw pr"></i></div><div class="gears" id="gearsWrap">${gearOverlay(p.gears || p.gear, p.gpos)}</div></div></div>
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="camArrow l" id="camL" aria-label="왼쪽 보기">‹</button><button type="button" class="camArrow r" id="camR" aria-label="오른쪽 보기">›</button>
-    <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
+    `; $('#sndBtn').setAttribute('aria-pressed', SND.on); $('#sndBtn').textContent = SND.on ? '소리 끄기' : '소리 켜기';
   cutImgs($('#world')); if (DECO.on) setTimeout(decoBind); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
