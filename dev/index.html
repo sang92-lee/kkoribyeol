@@ -294,6 +294,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .adj > img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 16px; }
 .adj .gear { position: absolute; cursor: grab; outline: 2px dashed var(--pink-deep); outline-offset: 2px; border-radius: 6px; }
 .adj .gear svg { width: 100%; display: block; pointer-events: none; }
+.adj .gear.ghost { outline: none; opacity: .55; pointer-events: none; }
+.gearGrid .item span { font-size: 11px; color: var(--soft); }
 .slider { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 14px; color: var(--soft); }
 .slider input { flex: 1; accent-color: var(--pink-deep); }
 .row2 { display: flex; gap: 8px; width: 100%; } .row2 .btn { flex: 1; }
@@ -484,7 +486,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
     </div>
     <div class="card">
       <h2>펫 장비</h2>
-      <p class="note">탭하면 우리 애가 착용해요. 다시 탭하면 벗어요</p>
+      <p class="note">머리·얼굴·몸에 하나씩, 최대 3개까지 같이 쓸 수 있어요. 탭하면 쓰고 다시 탭하면 벗어요</p>
       <div class="items gearGrid" id="gears"></div>
       <div class="chips" id="gearTrade"></div>
     </div>
@@ -581,7 +583,7 @@ function snackSVG(id) {
 /* 입맛: 애마다 정해진 최애·싫어하는 간식 */
 function taste() { let h = 7; for (const ch of S.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const love = ['cheese', 'worm', 'strawberry', 'pudding', 'apple'][h % 5], hate = ['carrot', 'apple', 'cheese', 'worm'].filter(x => x !== love)[(h >> 4) % 3]; return { love, hate }; }
 /* 등급: 0 일반, 1 고급, 2 레어, 3 전설 */
-const RARITY = { egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
+const RARITY = { bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
   pool: 2, cloud: 2, wings: 2, figure: 2, strawberry: 2, pudding: 2, tent: 3, crown: 3, goldseed: 3 };
 const RLABEL = ['일반', '고급', '★ 레어', '★★ 전설'];
 function rarityOf(a, b) { return Math.max(RARITY[a] || 0, RARITY[b] || 0); }
@@ -663,7 +665,7 @@ function renderPet() {
   if (showMaker) return;
   $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
   buildRoom(); dayLook(); statusLine(); drawCare(); renderFriends();
-  $('#btnGearPos').hidden = !p.gear;
+  $('#btnGearPos').hidden = !(p.gears || []).length;
   { const lv = S.state.roomLv || 0, cost = (S.state.roomCost || [])[lv + 1], eb = $('#btnExpand');
     eb.hidden = cost == null; if (cost != null) { eb.textContent = `방 넓히기: ${ROOM_NAME[lv]} → ${ROOM_NAME[lv + 1]} (씨앗 ${cost}개)`; eb.disabled = (S.state.seeds || 0) < cost; } }
   $('#careSnack').textContent = KP().snack; $('#callName').textContent = `"${myPet()?.name || ''}~"`;
@@ -673,11 +675,19 @@ function renderPet() {
   $('#brag').hidden = !msg; $('#brag').textContent = `${p.name} ${msg}`;
 }
 /* ---------- 펫 장비 ---------- */
-const GEAR = { ribbon: '리본', strawhat: '밀짚모자', scarf: '목도리', glasses: '동글 안경', flower: '꽃핀', wings: '천사 날개', crown: '왕관' };
-const GEAR_ORDER = ['ribbon', 'strawhat', 'scarf', 'glasses', 'flower', 'wings', 'crown'];
+const GEAR = { ribbon: '리본', strawhat: '밀짚모자', scarf: '목도리', glasses: '동글 안경', flower: '꽃핀', bowtie: '나비넥타이', beret: '베레모', bunny: '토끼 귀', heartglass: '하트 선글라스', wings: '천사 날개', witch: '마법사 모자', crown: '왕관', halo: '천사 링' };
+const GEAR_ORDER = ['ribbon', 'strawhat', 'flower', 'beret', 'bunny', 'witch', 'crown', 'halo', 'glasses', 'heartglass', 'scarf', 'bowtie', 'wings'];
+const SLOT = { ribbon: 'head', strawhat: 'head', flower: 'head', beret: 'head', bunny: 'head', witch: 'head', crown: 'head', halo: 'head', glasses: 'face', heartglass: 'face', scarf: 'body', bowtie: 'body', wings: 'body' };
+const SLOT_NAME = { head: '머리', face: '얼굴', body: '몸' };
 /* 캐릭터 그림 위 어디에 얹는지 (그림 너비 기준 %) */
-const GEAR_POS = { ribbon: [56, 4, 30], strawhat: [20, -10, 60], crown: [31, -6, 38], flower: [14, 10, 24], glasses: [24, 34, 52], scarf: [20, 60, 60], wings: [-14, 26, 128] };
+const GEAR_POS = { ribbon: [56, 4, 30], strawhat: [20, -10, 60], crown: [31, -6, 38], flower: [14, 10, 24], glasses: [24, 34, 52], scarf: [20, 60, 60], wings: [-14, 26, 128], bowtie: [36, 60, 28], beret: [22, -6, 52], bunny: [24, -30, 52], heartglass: [22, 32, 56], witch: [18, -34, 64], halo: [26, -16, 48] };
 const GEAR_SVG = {
+  bowtie: `<svg viewBox="0 0 80 44"><path d="M40 22 L6 4 Q0 22 6 40Z M40 22 L74 4 Q80 22 74 40Z" fill="#6C7FD8" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><rect x="32" y="14" width="16" height="16" rx="5" fill="#4F60B8" stroke="${INK}" stroke-width="4"/><g fill="#FFFFFF" opacity=".8"><circle cx="16" cy="16" r="2.5"/><circle cx="20" cy="28" r="2.5"/><circle cx="62" cy="18" r="2.5"/><circle cx="58" cy="30" r="2.5"/></g></svg>`,
+  beret: `<svg viewBox="0 0 100 50"><ellipse cx="50" cy="30" rx="46" ry="16" fill="#E05A5A" stroke="${INK}" stroke-width="4"/><path d="M8 34 Q50 48 92 34" stroke="#B94444" stroke-width="4" fill="none"/><path d="M48 14 q2 -10 8 -12" stroke="${INK}" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`,
+  bunny: `<svg viewBox="0 0 100 80"><g stroke="${INK}" stroke-width="4"><path d="M30 78 Q14 30 26 6 Q40 0 42 40 Q44 66 40 78Z" fill="#FFFFFF"/><path d="M70 78 Q86 30 74 6 Q60 0 58 40 Q56 66 60 78Z" fill="#FFFFFF"/></g><path d="M30 66 Q22 34 29 14 Q36 14 37 40 Q38 58 36 66Z M70 66 Q78 34 71 14 Q64 14 63 40 Q62 58 64 66Z" fill="#F7B6C6"/><path d="M18 76 Q50 64 82 76" stroke="#F2A0B3" stroke-width="8" fill="none" stroke-linecap="round"/></svg>`,
+  heartglass: `<svg viewBox="0 0 120 50"><g fill="#F05A78" stroke="${INK}" stroke-width="4" stroke-linejoin="round"><path d="M32 44 C8 30 8 8 22 8 Q30 8 32 16 Q34 8 42 8 C56 8 56 30 32 44Z"/><path d="M88 44 C64 30 64 8 78 8 Q86 8 88 16 Q90 8 98 8 C112 8 112 30 88 44Z"/></g><path d="M54 20 Q60 14 66 20" stroke="${INK}" stroke-width="4" fill="none"/><g fill="#FFFFFF" opacity=".7"><ellipse cx="22" cy="18" rx="4" ry="3"/><ellipse cx="78" cy="18" rx="4" ry="3"/></g></svg>`,
+  witch: `<svg viewBox="0 0 110 90"><ellipse cx="55" cy="78" rx="52" ry="10" fill="#5B4A8B" stroke="${INK}" stroke-width="4"/><path d="M26 78 Q40 40 50 22 Q58 6 82 4 Q66 14 66 30 Q72 56 84 78Z" fill="#6E5BA8" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M30 70 Q55 62 82 70 L82 76 Q55 68 30 76Z" fill="#F6C94E" stroke="${INK}" stroke-width="2.5"/><path d="M60 40 l3 6 l6 1 l-5 4 l1 6 l-5 -3 l-5 3 l1 -6 l-5 -4 l6 -1z" fill="#FFE08A" stroke="${INK}" stroke-width="1.5"/></svg>`,
+  halo: `<svg viewBox="0 0 100 40"><ellipse cx="50" cy="22" rx="44" ry="12" fill="rgba(255,236,150,.35)"/><ellipse cx="50" cy="20" rx="38" ry="10" fill="none" stroke="${INK}" stroke-width="9"/><ellipse cx="50" cy="20" rx="38" ry="10" fill="none" stroke="#FFE08A" stroke-width="5"/><g fill="#FFFFFF"><circle cx="22" cy="14" r="2"/><circle cx="76" cy="26" r="2"/></g></svg>`,
   wings: `<svg viewBox="0 0 160 70" aria-hidden="true"><g fill="#FFFFFF" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"><path d="M40 40 Q10 4 2 20 Q8 30 14 30 Q4 38 12 46 Q20 50 26 46 Q22 58 34 58 Q42 54 44 44Z"/><path d="M120 40 Q150 4 158 20 Q152 30 146 30 Q156 38 148 46 Q140 50 134 46 Q138 58 126 58 Q118 54 116 44Z"/></g><g stroke="#C9D8F6" stroke-width="2.5" fill="none"><path d="M12 22 Q24 30 36 40 M22 46 Q30 44 38 44"/><path d="M148 22 Q136 30 124 40 M138 46 Q130 44 122 44"/></g></svg>`,
   ribbon: `<svg viewBox="0 0 100 60" aria-hidden="true"><path d="M50 30 L12 8 Q4 30 12 52Z M50 30 L88 8 Q96 30 88 52Z" fill="#F2A0B3" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="30" r="10" fill="#E07C95" stroke="${INK}" stroke-width="4"/></svg>`,
   strawhat: `<svg viewBox="0 0 120 60" aria-hidden="true"><ellipse cx="60" cy="44" rx="56" ry="12" fill="#F3D27A" stroke="${INK}" stroke-width="4"/><path d="M30 44 Q30 8 60 8 Q90 8 90 44Z" fill="#F7DE95" stroke="${INK}" stroke-width="4"/><path d="M31 34 Q60 42 89 34 L89 42 Q60 50 31 42Z" fill="#E07C95" stroke="${INK}" stroke-width="3"/></svg>`,
@@ -688,7 +698,9 @@ const GEAR_SVG = {
 };
 function gearPos(g, pos) { if (pos) return pos; const [l, t, w] = GEAR_POS[g] || [30, 0, 40]; return { l, t, w, r: 0 }; }
 function gearOverlay(g, pos) {
+  if (Array.isArray(g)) { const order = { body: 0, face: 1, head: 2 }; return [...g].sort((a, b) => order[SLOT[a]] - order[SLOT[b]]).map(x => gearOverlay(x, (pos || {})[x])).join(''); }
   if (!g || !GEAR_SVG[g]) return '';
+  if (pos && pos.l == null) pos = pos[g];
   const q = gearPos(g, pos);
   return `<div class="gear" style="left:${q.l}%;top:${q.t}%;width:${q.w}%;transform:rotate(${q.r}deg)">${GEAR_SVG[g]}</div>`;
 }
@@ -913,7 +925,7 @@ function placeLegs(b) {
 function buildRoom() {
   const p = myPet(); if (!p) return;
   WF = ROOM_WF[S.state?.roomLv || 0] || 1.3;
-  const owned = ownedItems(), key = WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
+  const owned = ownedItems(), key = WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gears || []).join(',') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: Math.round(10 * WF) }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
@@ -931,7 +943,7 @@ function buildRoom() {
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
     <div class="shadow" id="shadow"></div>
-    <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div><div class="paws" id="paws"><i class="snk"></i><i class="pw pl"></i><i class="pw pr"></i></div>${gearOverlay(p.gear, p.gpos)}</div></div>
+    <div class="pet" id="roomPet"><div class="spr"><div class="legs" id="legs">${LEGS_SVG}</div><div class="body${p.img ? ' cv' : ''}">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"><canvas id="petCv" aria-hidden="true"></canvas>` : critter(p.kind)}</div><div class="paws" id="paws"><i class="snk"></i><i class="pw pl"></i><i class="pw pr"></i></div>${gearOverlay(p.gears || p.gear, p.gpos)}</div></div>
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
@@ -1500,12 +1512,17 @@ async function makePoses(srcUrl, set = 'faces') {
 
 
 /* ---------- 장비 위치 맞추기 ---------- */
-function openGearAdjust() {
-  const p = myPet(); if (!p || !p.gear) return;
-  const q = { ...gearPos(p.gear, p.gpos) }, m = $('#modal'), c = $('#modalCard');
+function openGearAdjust(which) {
+  const p = myPet(); if (!p || !(p.gears || []).length) return;
+  const gid = which && p.gears.includes(which) ? which : p.gears[p.gears.length - 1];
+  const others = p.gears.filter(x => x !== gid);
+  const q = { ...gearPos(gid, (p.gpos || {})[gid]) }, m = $('#modal'), c = $('#modalCard');
   const src = P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}`;
-  c.innerHTML = `<h3 style="font-size:20px">${GEAR[p.gear]} 위치 맞추기</h3><p class="note">끌어서 옮기고, 아래에서 크기·기울기를 바꿔요</p>
-    <div class="adj" id="adj"><img src="${src}" alt=""><div class="gear" id="adjG">${GEAR_SVG[p.gear]}</div></div>
+  c.classList.remove('legendCard');
+  c.innerHTML = `<h3 style="font-size:20px">${GEAR[gid]} 위치 맞추기</h3>
+    <div class="chips">${p.gears.map(x => `<button type="button" class="chip" data-adj="${x}" aria-pressed="${x === gid}">${GEAR[x]}</button>`).join('')}</div>
+    <p class="note">끌어서 옮기고, 아래에서 크기·기울기를 바꿔요</p>
+    <div class="adj" id="adj"><img src="${src}" alt="">${others.map(x => gearOverlay(x, (p.gpos || {})[x]).replace('class="gear"', 'class="gear ghost"')).join('')}<div class="gear" id="adjG">${GEAR_SVG[gid]}</div></div>
     <label class="slider">크기<input type="range" id="adjW" min="10" max="100" value="${q.w}"></label>
     <label class="slider">기울기<input type="range" id="adjR" min="-45" max="45" value="${q.r}"></label>
     <div class="row2"><button type="button" class="btn" id="adjReset">처음대로</button><button type="button" class="btn main" id="adjSave">저장</button></div>
@@ -1520,8 +1537,9 @@ function openGearAdjust() {
   g.onpointerup = g.onpointercancel = () => drag = null;
   $('#adjW').oninput = e => { q.w = +e.target.value; draw(); };
   $('#adjR').oninput = e => { q.r = +e.target.value; draw(); };
-  $('#adjReset').onclick = async () => { await api('gearpos', { id: S.id, pos: { reset: true } }); m.hidden = true; await refresh(); toast('처음 위치로 돌렸어요'); };
-  $('#adjSave').onclick = async () => { await api('gearpos', { id: S.id, pos: q }); m.hidden = true; await refresh(); toast('위치를 저장했어요. 친구들 화면에도 이렇게 보여요'); };
+  c.querySelectorAll('[data-adj]').forEach(b => b.onclick = () => openGearAdjust(b.dataset.adj));
+  $('#adjReset').onclick = async () => { await api('gearpos', { id: S.id, gear: gid, pos: { reset: true } }); m.hidden = true; await refresh(); toast('처음 위치로 돌렸어요'); };
+  $('#adjSave').onclick = async () => { await api('gearpos', { id: S.id, gear: gid, pos: q }); P.built = ''; m.hidden = true; await refresh(); toast('위치를 저장했어요. 친구들 화면에도 이렇게 보여요'); };
   $('#adjClose').onclick = () => m.hidden = true;
 }
 $('#btnGearPos').onclick = openGearAdjust;
@@ -1545,7 +1563,7 @@ function visit(pid) {
       ${items.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}${items.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
       ${prop('house', kp.house, 22)}${items.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}${prop('bowl', PROP_SVG.bowl(3), 12)}${prop('bottle', kp.water(.8), kp.waterW)}
       ${items.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}${prop('wheel', kp.play, kp.playW)}
-      <div class="pet" id="vpet" style="left:52%;bottom:12%"><div class="spr"><div class="body"><img src="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"></div>${gearOverlay(p.gear, p.gpos)}</div></div>
+      <div class="pet" id="vpet" style="left:52%;bottom:12%"><div class="spr"><div class="body"><img src="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"></div>${gearOverlay(p.gears || p.gear, p.gpos)}</div></div>
     </div></div>
     <p class="note">♥ ${p.likes || 0} · ${KIND[p.kind] || ''} · 방 아이템 ${items.size}개</p>
     ${myPet()?.img ? `<button type="button" class="btn big" id="bringBtn">우리 ${esc(myPet().name)} 데려가기</button>` : ''}
@@ -1564,7 +1582,7 @@ function visit(pid) {
   if (bb) bb.onclick = () => {
     bb.disabled = true; bb.textContent = '같이 노는 중!';
     const me = myPet(), el = document.createElement('div'); el.className = 'pet popout'; el.style.cssText = 'left:10%;bottom:12%;transition:left 2.2s ease-in-out';
-    el.innerHTML = `<div class="spr"><div class="body"><img src="${P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${me.v}&c=${encodeURIComponent(S.code)}`}" alt=""></div>${gearOverlay(me.gear, me.gpos)}</div>`;
+    el.innerHTML = `<div class="spr"><div class="body"><img src="${P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${me.v}&c=${encodeURIComponent(S.code)}`}" alt=""></div>${gearOverlay(me.gears || me.gear, me.gpos)}</div>`;
     $('#vroom').appendChild(el);
     api('visit', { id: S.id, to: pid }).catch(() => {});
     const vr = $('#vroom'), say2 = (txt, x) => { const b = document.createElement('span'); b.className = 'heart'; b.style.cssText = `left:${x}%;top:30%;font-size:15px;color:#4A3428;font-family:Jua`; b.textContent = txt; vr.appendChild(b); setTimeout(() => b.remove(), 1200); };
@@ -2038,9 +2056,9 @@ function renderShelf() {
   mine.filter(x => x.kind === 'item').forEach(x => own[x.a] = (own[x.a] || 0) + 1);
   $('#items').innerHTML = ITEM_ORDER.map(i => `<div ${own[i] ? `data-offer="item|${i}|"` : ''} class="item ${RARITY[i] > 1 ? 'rare' : ''} ${RARITY[i] > 2 ? 'legend' : ''} ${own[i] ? '' : 'locked'}">${ITEM_SVG[i]}<b>${own[i] ? ITEMS[i] : '???'}</b>${own[i] > 1 ? `<span>×${own[i]}</span>` : ''}</div>`).join('');
   const gOwn = {}; mine.filter(x => x.kind === 'gear').forEach(x => gOwn[x.a] = (gOwn[x.a] || 0) + 1);
-  const cur = myPet()?.gear || '';
-  $('#gears').innerHTML = GEAR_ORDER.map(gid => `<div class="item ${RARITY[gid] > 1 ? 'rare' : ''} ${RARITY[gid] > 2 ? 'legend' : ''} ${gOwn[gid] ? '' : 'locked'} ${cur === gid ? 'on' : ''}" data-gear="${gOwn[gid] ? gid : ''}" role="button" tabindex="0">${GEAR_SVG[gid]}<b>${gOwn[gid] ? GEAR[gid] : '???'}</b></div>`).join('');
-  $('#gears').querySelectorAll('[data-gear]').forEach(el => el.onclick = () => { if (el.dataset.gear) equip(el.dataset.gear === cur ? '' : el.dataset.gear); });
+  const curs = myPet()?.gears || [];
+  $('#gears').innerHTML = GEAR_ORDER.map(gid => `<div class="item ${RARITY[gid] > 1 ? 'rare' : ''} ${RARITY[gid] > 2 ? 'legend' : ''} ${gOwn[gid] ? '' : 'locked'} ${curs.includes(gid) ? 'on' : ''}" data-gear="${gOwn[gid] ? gid : ''}" role="button" tabindex="0">${GEAR_SVG[gid]}<b>${gOwn[gid] ? GEAR[gid] : '???'}</b><span>${SLOT_NAME[SLOT[gid]]} · ${RLABEL[RARITY[gid] || 0]}</span></div>`).join('');
+  $('#gears').querySelectorAll('[data-gear]').forEach(el => el.onclick = () => { if (el.dataset.gear) equip(el.dataset.gear); });
   $('#gearTrade').innerHTML = GEAR_ORDER.filter(gid => gOwn[gid]).map(gid => `<button type="button" class="chip" data-offer="gear|${gid}|">${GEAR[gid]} 내놓기</button>`).join('');
   const g = {};
   mine.filter(x => x.kind === 'pet').forEach(x => { const k = x.a + '|' + x.b; g[k] = (g[k] || 0) + 1; });
@@ -2050,7 +2068,12 @@ function renderShelf() {
 
 async function equip(gid) {
   if (!myPet()) { toast('먼저 우리 아이를 만들어 주세요'); return; }
-  try { await api('equip', { id: S.id, gear: gid }); await refresh(); toast(gid ? `${GEAR[gid]} 착용!` : '장비를 벗었어요'); }
+  const was = (myPet().gears || []).includes(gid), swap = !was && (myPet().gears || []).find(x => SLOT[x] === SLOT[gid]);
+  try {
+    await api('equip', { id: S.id, gear: gid }); P.built = ''; await refresh();
+    toast(was ? `${GEAR[gid]}를 벗었어요` : swap ? `${GEAR[swap]} 대신 ${GEAR[gid]} 착용!` : `${GEAR[gid]} 착용!`);
+    if (!was && awakeVisible()) { const t = RARITY[gid] || 0; P.happyUntil = performance.now() + 1500 + t * 600; emote(t >= 2 ? 'spark' : 'note', 1600); say(t >= 3 ? '나 반짝반짝 해!!' : t >= 2 ? '멋져? 멋지지?' : '어때?', 1500); fx('hopx', 900); }
+  }
   catch (e) { toast(e.message); }
 }
 

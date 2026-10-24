@@ -25,8 +25,11 @@ const ITEMS = [
   { id: "pool", w: 9 }, { id: "cloud", w: 7 }, { id: "tent", w: 3 },
 ];
 const GEAR = [
-  { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "wings", w: 5 }, { id: "crown", w: 4 },
+  { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "bowtie", w: 16 }, { id: "beret", w: 14 }, { id: "bunny", w: 9 }, { id: "heartglass", w: 9 },
+  { id: "wings", w: 5 }, { id: "witch", w: 4 }, { id: "crown", w: 2.5 }, { id: "halo", w: 2 },
 ];
+const SLOT = { ribbon: "head", strawhat: "head", flower: "head", beret: "head", bunny: "head", witch: "head", crown: "head", halo: "head",
+  glasses: "face", heartglass: "face", scarf: "body", bowtie: "body", wings: "body" };
 const SNACKS = [
   { id: "apple", w: 16 }, { id: "carrot", w: 15 }, { id: "pumpkin", w: 13 }, { id: "corn", w: 13 }, { id: "banana", w: 12 },
   { id: "cheese", w: 9 }, { id: "worm", w: 8 }, { id: "egg", w: 8 }, { id: "blueberry", w: 7 },
@@ -241,86 +244,12 @@ export class Hub extends DurableObject {
     }
     if (p === "/api/gearpos") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const q = b.pos || {}, num = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
-      const pos = q.reset ? null : JSON.stringify({ l: num(q.l, -30, 100), t: num(q.t, -40, 100), w: num(q.w, 8, 110), r: num(q.r, -60, 60) });
-      this.sql.exec("UPDATE equip SET pos = ? WHERE id = ?", pos, b.id);
+      const row = this.rows("SELECT gear, pos FROM equip WHERE id = ?", b.id)[0]; if (!row) return json({ error: "bad", message: "장비를 먼저 씌워 주세요" }, 400);
+      let map = {}; try { map = JSON.parse(row.pos || "{}") || {}; if (map.l != null) map = {}; } catch (e) {}
+      const g = String(b.gear || ""), q = b.pos || {}, num = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
+      if (q.reset) delete map[g]; else map[g] = { l: num(q.l, -30, 100), t: num(q.t, -40, 100), w: num(q.w, 8, 140), r: num(q.r, -60, 60) };
+      this.sql.exec("UPDATE equip SET pos = ? WHERE id = ?", JSON.stringify(map), b.id);
       return json({ ok: true });
-    }
-    if (p === "/api/score") {
-      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const w = this.rows("SELECT seeds, last FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, last: 0 };
-      if (now - w.last < 20e3) return json({ error: "fast", message: "너무 빨라요" }, 429);
-      const score = Math.max(0, Math.min(MAX_SCORE, Math.floor(Number(b.score) || 0)));
-      const seeds = w.seeds + score, wk = wkKey(now);
-      this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, last = excluded.last", b.id, seeds, now);
-      const old = (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, b.id)[0] || { best: 0 }).best;
-      if (score > old) this.sql.exec("INSERT INTO scores(wk, id, best) VALUES(?, ?, ?) ON CONFLICT(wk, id) DO UPDATE SET best = excluded.best", wk, b.id, score);
-      return json({ ok: true, seeds, earned: score, best: Math.max(old, score), newBest: score > old && score > 0 });
-    }
-    if (p === "/api/expand") {
-      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const w = this.rows("SELECT seeds, room FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, room: 0 };
-      const lv = w.room || 0, cost = ROOM_COST[lv + 1];
-      if (cost == null) return json({ error: "max", message: "이미 제일 넓은 방이에요" }, 409);
-      if (w.seeds < cost) return json({ error: "poor", message: `씨앗이 ${cost - w.seeds}개 모자라요` }, 409);
-      this.sql.exec("INSERT INTO wallet(id, seeds, last, room) VALUES(?, ?, 0, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, room = excluded.room", b.id, w.seeds - cost, lv + 1);
-      return json({ ok: true, room: lv + 1, seeds: w.seeds - cost });
-    }
-    if (p === "/api/eat") {
-      const r = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = 'snack' AND a = ? LIMIT 1", b.id, String(b.a || ""))[0];
-      if (!r) return json({ error: "none", message: "그 간식이 없어요" }, 409);
-      this.sql.exec("DELETE FROM pulls WHERE uniq = ?", r.uniq);
-      return json({ ok: true });
-    }
-    if (p === "/api/visit") {
-      if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad" }, 400);
-      this.sql.exec("INSERT INTO visits(too, fr, at) VALUES(?, ?, ?)", b.to, b.id, now);
-      this.sql.exec("DELETE FROM visits WHERE at < ?", now - 3 * 864e5);
-      return json({ ok: true });
-    }
-    if (p === "/api/spin") {
-      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const w = this.rows("SELECT seeds FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0 };
-      if (w.seeds < SPIN_COST) return json({ error: "poor", message: `씨앗이 ${SPIN_COST - w.seeds}개 모자라요` }, 409);
-      this.sql.exec("UPDATE wallet SET seeds = seeds - ? WHERE id = ?", SPIN_COST, b.id);
-      const out = this.roll(Math.random, b.id), uniq = `s:${now.toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
-      this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, ?, ?, ?)", uniq, b.id, now, out.kind, out.a, out.b);
-      return json({ ok: true, result: out, seeds: w.seeds - SPIN_COST });
-    }
-    if (p === "/api/trade") {
-      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const busy = new Set(this.rows("SELECT give FROM trades WHERE st = 'open'").map(x => x.give));
-      if (b.act === "new") {
-        const g = this.rows("SELECT uniq, kind FROM pulls WHERE uniq = ? AND who = ?", String(b.give || ""), b.id)[0];
-        if (!g) return json({ error: "bad", message: "내 진열장에 없는 거예요" }, 400);
-        if (busy.has(g.uniq)) return json({ error: "bad", message: "이미 교환에 내놓은 거예요" }, 400);
-        const w = b.want || {}, wk = ["pet", "item", "gear"].includes(w.kind) ? w.kind : null;
-        if (!wk) return json({ error: "bad", message: "원하는 걸 골라 주세요" }, 400);
-        if (this.rows("SELECT COUNT(*) AS n FROM trades WHERE fr = ? AND st = 'open'", b.id)[0].n >= 5) return json({ error: "bad", message: "교환은 한 번에 5개까지 내놓을 수 있어요" }, 400);
-        const tid = `${now.toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-        this.sql.exec("INSERT INTO trades(tid, fr, give, wk, wa, wb, at, st) VALUES(?, ?, ?, ?, ?, ?, ?, 'open')", tid, b.id, g.uniq, wk, String(w.a || ""), String(w.b || ""), now);
-        return json({ ok: true, tid });
-      }
-      const t = this.rows("SELECT * FROM trades WHERE tid = ? AND st = 'open'", String(b.tid || ""))[0];
-      if (!t) return json({ error: "gone", message: "이미 끝난 교환이에요" }, 409);
-      if (b.act === "cancel") {
-        if (t.fr !== b.id) return json({ error: "bad", message: "내 교환만 취소할 수 있어요" }, 400);
-        this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid);
-        return json({ ok: true });
-      }
-      if (b.act === "accept") {
-        if (t.fr === b.id) return json({ error: "bad", message: "내가 올린 교환이에요" }, 400);
-        const give = this.rows("SELECT uniq FROM pulls WHERE uniq = ? AND who = ?", t.give, t.fr)[0];
-        if (!give) { this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid); return json({ error: "gone", message: "올린 사람이 이미 그걸 안 갖고 있어요" }, 409); }
-        const mine = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = ? AND a = ? AND b = ?", b.id, t.wk, t.wa, t.wb).find(x => !busy.has(x.uniq));
-        if (!mine) return json({ error: "noitem", message: "원하는 걸 갖고 있지 않아요" }, 409);
-        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", b.id, t.give);
-        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", t.fr, mine.uniq);
-        this.sql.exec("UPDATE trades SET st = 'done', too = ? WHERE tid = ?", b.id, t.tid);
-        const got = this.rows("SELECT kind, a, b FROM pulls WHERE uniq = ?", t.give)[0];
-        return json({ ok: true, got });
-      }
-      return json({ error: "bad", message: "요청이 이상해요" }, 400);
     }
     if (p === "/api/like") {
       if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad", message: "좋아요를 못 보냈어요" }, 400);
@@ -331,10 +260,15 @@ export class Hub extends DurableObject {
     }
     if (p === "/api/equip") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      const gear = String(b.gear || "");
-      if (gear && !this.rows("SELECT 1 FROM pulls WHERE who = ? AND kind = 'gear' AND a = ?", b.id, gear)[0]) return json({ error: "bad", message: "아직 없는 장비예요" }, 400);
-      this.sql.exec("INSERT INTO equip(id, gear, pos) VALUES(?, ?, NULL) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear, pos = CASE WHEN equip.gear = excluded.gear THEN equip.pos ELSE NULL END", b.id, gear);
-      return json({ ok: true });
+      const g = String(b.gear || "");
+      if (g && !this.rows("SELECT 1 FROM pulls WHERE who = ? AND kind = 'gear' AND a = ?", b.id, g)[0]) return json({ error: "bad", message: "아직 없는 장비예요" }, 400);
+      const row = this.rows("SELECT gear, pos FROM equip WHERE id = ?", b.id)[0] || { gear: "", pos: "{}" };
+      let list = (row.gear || "").split(",").filter(Boolean);
+      if (b.clear) list = [];
+      else if (list.includes(g)) list = list.filter(x => x !== g);
+      else if (g) { list = list.filter(x => SLOT[x] !== SLOT[g]); list.push(g); }
+      this.sql.exec("INSERT INTO equip(id, gear, pos) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear", b.id, list.join(","), row.pos || "{}");
+      return json({ ok: true, gears: list });
     }
     if (p === "/api/join") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
@@ -405,14 +339,14 @@ export class Hub extends DurableObject {
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
     const roomLvs = Object.fromEntries(this.rows("SELECT id, room FROM wallet").map(x => [x.id, x.room || 0]));
     const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
-    const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { return [x.id, JSON.parse(x.pos)]; } catch (e) { return [x.id, null]; } }));
+    const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { const m = JSON.parse(x.pos); return [x.id, m && m.l == null ? m : {}]; } catch (e) { return [x.id, {}]; } }));
     const likes = Object.fromEntries(this.rows("SELECT too, COUNT(*) AS n FROM likes GROUP BY too").map(x => [x.too, x.n]));
     const rooms = {};
     for (const x of this.rows("SELECT DISTINCT who, a FROM pulls WHERE kind = 'item'")) (rooms[x.who] = rooms[x.who] || []).push(x.a);
     const likedToday = id ? this.rows("SELECT too FROM likes WHERE day = ? AND fr = ?", kst(now), id).map(x => x.too) : [];
     const poseMap = {};
     for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, gear: gear[x.id] || "", gpos: gpos[x.id] || null, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
 
     const line = [];
     R.entries.forEach((e, i) => {
