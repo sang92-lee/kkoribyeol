@@ -109,6 +109,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .loft::before, .room .loft::after { content: ""; position: absolute; top: 100%; width: 6px; height: 1200%; background: #B98558; border: 2px solid var(--ink); }
 .room .loft::before { left: 4%; } .room .loft::after { right: 4%; }
 .room .ladder { position: absolute; bottom: 12%; width: calc(4% / var(--wf)); height: 37%; border-left: 4px solid #9E6B42; border-right: 4px solid #9E6B42; background: repeating-linear-gradient(transparent 0 14%, #9E6B42 14% 18%); z-index: 1; pointer-events: none; }
+.room .world:has(.bars)::before { display: none; }
+.room .world:has(.noWall)::before { display: none; }
 .room .bars { position: absolute; inset: 0 0 30% 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(160,160,175,.55) 22px 24px); border-top: 6px solid #B8B8C8; }
 .room .loft.hi { bottom: 62%; } .room .loft.hi::before, .room .loft.hi::after { height: 1500%; }
 .room .ladder.hi { height: 50%; transform: rotate(14deg); transform-origin: 50% 100%; }
@@ -1105,12 +1107,12 @@ function placeLegs(b) {
 /* 집 레벨별로 방이 달라짐 */
 function roomDecor(lv, pid = S.id) {
   const p = S.state?.pets?.[pid]; let h = '';
-  if (lv >= 1) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
+  if (lv >= 1 && lv < 3) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
   if (lv >= 2) h += `<div class="loft" style="left:40%;width:42%"></div><div class="ladder" style="left:39%"></div>`;
   if (lv >= 3) {
     const tube = `<svg viewBox="0 0 300 120" preserveAspectRatio="none"><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#4A3428" stroke-width="17" stroke-linecap="round"/><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#BDEBD9" stroke-width="12" stroke-linecap="round" opacity=".92"/><path d="M14 13 H118" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/><path d="M184 95 H288" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/>${[[60, 18], [150, 58], [235, 100]].map(([x, y]) => `<rect x="${x - 6}" y="${y - 11}" width="12" height="22" rx="3" fill="#F7B6C6" stroke="#4A3428" stroke-width="3" transform="${x === 150 ? `rotate(90 ${x} ${y})` : ''}"/>`).join('')}</svg>`;
     const bridge = `<svg viewBox="0 0 120 50"><path d="M4 46 Q60 -4 116 46" fill="none" stroke="#4A3428" stroke-width="4"/>${Array.from({ length: 9 }, (_, i) => { const t = (i + .5) / 9, x = 4 + t * 112, y = 46 - Math.sin(t * Math.PI) * 34; return `<rect x="${x - 5}" y="${y - 6}" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/>`; }).join('')}</svg>`;
-    h += `<div class="bars"></div><div class="loft hi" style="left:5%;width:24%"></div><div class="ladder hi" style="left:27%"></div>
+    h += `<i class="noWall"></i><div class="loft hi" style="left:5%;width:24%"></div><div class="ladder hi" style="left:27%"></div>
       <div class="tubeW">${tube}</div><div class="bridgeW">${bridge}</div>
       <div class="hay" style="left:8%"></div><div class="hay" style="left:57%"></div><div class="hay" style="left:88%"></div>
       <div class="signW"><b>${esc(p?.name || '')}</b><small>햄찌 저택</small></div>`;
