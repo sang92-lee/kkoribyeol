@@ -137,11 +137,13 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .satBar { height: 10px; border-radius: 999px; background: #F1E8F4; border: 2px solid var(--ink); overflow: hidden; margin: 6px 0 10px; } .satBar i { display: block; height: 100%; background: linear-gradient(90deg, #F7B6C6, #F6C94E); transition: width .8s; }
 .satParts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; } .satParts span { display: flex; flex-direction: column; align-items: center; padding: 5px 2px; border-radius: 10px; background: #F1E8F4; font-size: 11px; white-space: nowrap; opacity: .55; position: relative; }
 .satParts span.ok { opacity: 1; background: #E3F4E1; } .satParts span.fav { outline: 2px solid #F2A0B3; } .satParts em { position: absolute; top: -8px; font-style: normal; font-size: 9px; background: #F2A0B3; color: #fff; border-radius: 6px; padding: 0 4px; } .satParts small { font-size: 10px; color: var(--ink-soft); }
+.hexBox { text-align: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #E2D3C4; } .hexBox b { font-family: var(--display); font-weight: 400; font-size: 17px; display: block; text-align: left; } .hexBox .hex { width: min(260px, 100%); display: block; margin: 0 auto; } .hexBox small { font-size: 12px; color: var(--ink-soft); }
 .dream { margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: #F6EFF7; font-size: 13px; } .dream b { font-family: var(--display); font-weight: 400; font-size: 14px; display: block; }
 .dream span { display: flex; gap: 8px; margin: 6px 0 2px; } .dream i { flex: 1; display: flex; flex-direction: column; align-items: center; font-style: normal; font-size: 22px; padding: 4px; border-radius: 10px; background: #fff; border: 2px dashed #D9C8E0; }
 .dream i.on { border: 2px solid #F2A0B3; } .dream i svg { width: 100%; height: 34px; } .dream i small { font-size: 10px; color: var(--ink-soft); }
 .dream.done { background: linear-gradient(135deg, #FFF3C9, #F6E3F2); animation: dreamGlow 2s ease-in-out infinite; } @keyframes dreamGlow { 50% { box-shadow: 0 0 12px rgba(246,201,78,.7); } }
 .satTip { margin: 10px 0 0; font-size: 14px; }
+.room .prop.movedNew { animation: movedNew 1s ease-in-out 6; } @keyframes movedNew { 50% { filter: drop-shadow(0 0 6px #F6C94E) brightness(1.15); } }
 .roomBar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
 .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
@@ -1041,7 +1043,7 @@ function showPersona(reveal) {
 async function giveSnack(id) {
   const n = petNm(), c = care(), t = taste();
   if (id === 'basic') { if (performance.now() < (P.treatOk || 0)) { say('배불러…'); return; } P.treatOk = performance.now() + 60e3; }
-  else { try { await api('eat', { id: S.id, a: id }); refresh(); } catch (e) { return toast(e.message); } }
+  else { try { await api('eat', { id: S.id, a: id }); traitUp('glutton', .5); refresh(); } catch (e) { return toast(e.message); } }
   const col = id === 'basic' ? '#B98A5A' : SNACK[id].c;
   emote('bang', 900);
   goTo(50, 30, () => {
@@ -1413,7 +1415,7 @@ function choose() {
   if (m === 'sleep' && Math.random() < .25) { w.drink = .25; }
   if (P.afterEat && m !== 'sleep') { w.groom += 1.2; P.afterEat = false; }
   if (m !== 'sleep') w.fidget = .35;
-  if (m !== 'sleep' && !DECO.on && myPet()?.layout && carryables().length) w.tidy = .1;
+  if (m !== 'sleep' && !DECO.on && carryables().length) w.tidy = .14;
   if ((m === 'active' || m === 'calm') && hideSpots().length) w.seek = .1;
   if (m === 'calm' || m === 'settle') w.rest = k === 'cat' ? .45 : .2;
   if ((P.tired || 0) > 1 && m !== 'sleep') { w.nap = (w.nap || 0) + 1.5; P.tired = 0; }
@@ -1447,12 +1449,12 @@ function leaveHouse(then) {
 }
 function next() {
   if (P.hiding) { const k = P.hiding; P.hiding = null; P.behind = false; P.zt = 0; P.follow = true; if (P.mound) { P.mound.remove(); P.mound = null; } $('#roomPet').style.opacity = 1; if (SPOT[k] != null) P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
-  const a = choose(), n = petNm(), own = ownedItems();
+  const a = choose(), n = petNm(), own = ownedItems(); traitUp(ACT_TRAIT[a], .15);
   if (a !== 'sleep' && P.hidden) return leaveHouse(next);
   if (a === 'tidy') { const ks = carryables(), k = ks[Math.floor(Math.random() * ks.length)], pr = $(`#world .prop[data-k="${k}"]`); if (!pr) return setAct('idle', 1500, '', '');
     const to = Math.max(6, Math.min(94, SPOT[k] + (Math.random() < .5 ? -1 : 1) * rnd(15, 40)));
-    return goTo(SPOT[k], 10, () => { say(['영차', '이건 저기가 좋겠어', '흠흠 정리 정리'][Math.floor(Math.random() * 3)], 1300); P.carryEl = pr; pr.style.transition = 'none'; pr.style.zIndex = 29;
-      setTimeout(() => goTo(to, 7, () => { P.carryEl = null; SPOT[k] = to; pr.style.left = to + '%'; pr.style.bottom = ''; pr.style.zIndex = ZI(PZ[k]); emote('spark', 1200); say('여기!', 1000); moveSaved(k, to); setAct('idle', 2500, '', ''); }, `${n}가 ${ITEMS[bk(k)]}을 옮겨요`), 500); }, `${n}가 ${ITEMS[bk(k)]} 쪽으로 가요`); }
+    return goTo(SPOT[k], 10, () => { say(['앙! 물었다', '이건 저기가 좋겠어', '흠흠 정리 정리', '영차영차'][Math.floor(Math.random() * 4)], 1300); P.carryEl = pr; pr.style.transition = 'none'; pr.style.zIndex = 29;
+      setTimeout(() => goTo(to, 7, () => { P.carryEl = null; SPOT[k] = to; pr.style.left = to + '%'; pr.style.bottom = ''; pr.style.transform = ''; pr.style.zIndex = ZI(PZ[k]); emote('spark', 1200); say('여기!', 1000); moveSaved(k, to); setAct('idle', 2500, '', ''); }, `${n}가 ${ITEMS[bk(k)]}을 옮겨요`), 500); }, `${n}가 ${ITEMS[bk(k)]} 쪽으로 가요`); }
   if (a === 'sleep' && own.has('tent') && !P.hidden && Math.random() < .6) { const ms = modeNow() === 'sleep' ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3; return goTo(SPOT.tent, 9, () => { emote('spark', 1500); say('별빛 아래서 잘래', 1400); setAct('sleep', ms, `${n}가 무지개 별 텐트에서 쿨쿨`, 'sleep'); }, `${n}가 텐트로 가요`); }
   if (a === 'sleep') {
     const deep = modeNow() === 'sleep', ms = deep ? rnd(10, 25) * 60e3 : rnd(1, 3) * 60e3;
@@ -1648,7 +1650,7 @@ function loop(now) {
   if (P.act === 'piano' && now > (P.noteT || 0)) { P.noteT = now + rnd(220, 480); emote('note', 500); { const f = [523, 587, 659, 698, 784, 880][Math.floor(Math.random() * 6)]; gTone(f, f * 1.01, .05, .25, 'triangle'); } }
   if (P.act === 'bath') { P.tilt = Math.sin(now / 90) * 35; }
   if (P.act !== 'walk' && P.act !== 'slidedown' && P.act !== 'enter' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.y > FLOOR + 6 && P.act !== 'sleep') { P.act = 'idle'; tweenY(FLOOR, 650, next); } else { P.y = FLOOR; next(); } }
-  if (P.carryEl) { const c = P.carryEl; c.style.left = (P.x + P.dir * 6) + '%'; c.style.bottom = (P.y + (P.z || 0) * DEPTH + 9) + '%'; }
+  if (P.carryEl) { const c = P.carryEl; c.style.left = (P.x + P.dir * 7) + '%'; c.style.bottom = (P.y + (P.z || 0) * DEPTH + 4) + '%'; c.style.transform = `translateX(-50%) scale(.55) rotate(${P.dir * 8}deg)`; c.style.transformOrigin = '50% 100%'; }
   if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
   else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
   soundTick(now);
@@ -1745,6 +1747,7 @@ setInterval(() => {
 }, 22000);
 const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
 function poke(e) {
+  traitUp('sweetie', .3);
   const p = myPet(); if (!p) return;
   if (P.stroked) { P.stroked = false; return; }
   if (P.act !== 'sleep') emote(Math.random() < .5 ? 'heart' : 'note', 1300);
@@ -2703,23 +2706,25 @@ document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
   if (S.tab === 'vGacha') document.title = '꼬리별';
 });
 
-const CARRY = ['hay', 'cushion', 'garden', 'balloon', 'mushroom', 'telescope', 'lamp'];
+const CARRY = ['hay', 'cushion', 'garden', 'balloon', 'mushroom'];
+function curLayout() { const o = {}; ['house', 'bowl', 'bottle', 'toilet', 'wheel', ...ownedItems()].forEach(k => o[k] = PZ[k] ? { x: SPOT[k], y: PZ[k] } : SPOT[k]); return o; }
 function carryables() { return [...ownedItems()].filter(k => CARRY.includes(bk(k))); }
 /* 옮긴 자리 저장 (내 배치에 반영) */
 function moveSaved(k, x) {
-  const p = myPet(); if (!p?.layout) return; const v = p.layout[k]; p.layout[k] = v && typeof v === 'object' ? { ...v, x } : x;
+  const p = myPet(); if (!p) return; p.layout = p.layout || curLayout(); const v = p.layout[k]; p.layout[k] = v && typeof v === 'object' ? { ...v, x } : x;
   clearTimeout(moveSaved.t); moveSaved.t = setTimeout(() => api('layout', { id: S.id, layout: p.layout }).catch(() => {}), 1500);
   P.built = ''; setTimeout(() => { if (!P.carryEl && P.act !== 'walk') { P.built = ''; } }, 0);
 }
 /* 안 들어온 사이에 혼자 방을 바꿔놓기 */
 function awayRearrange() {
   const last = +store.get('seen') || 0, now = Date.now(); store.set('seen', now);
-  const p = myPet(); if (!last || now - last < 3600e3 || !p?.layout) return;
+  const p = myPet(); if (!last || now - last < 3600e3 || !p) return; p.layout = p.layout || curLayout();
   const ks = carryables(); if (!ks.length) return;
-  const n = Math.min(ks.length, 1 + Math.floor(Math.random() * 2)), moved = [];
-  for (let i = 0; i < n; i++) { const k = ks.splice(Math.floor(Math.random() * ks.length), 1)[0]; const x = Math.round(rnd(8, 92)); const v = p.layout[k]; p.layout[k] = v && typeof v === 'object' ? { ...v, x } : x; moved.push(ITEMS[bk(k)]); }
-  api('layout', { id: S.id, layout: p.layout }).catch(() => {}); P.built = '';
-  setTimeout(() => toast(`없는 사이에 ${petNm()}가 ${moved.join(', ')}을 옮겨놨어요`), 1500);
+  const n = Math.min(ks.length, 1 + Math.floor(Math.random() * 2)), moved = [], movedKeys = [];
+  for (let i = 0; i < n; i++) { const k = ks.splice(Math.floor(Math.random() * ks.length), 1)[0]; const x = Math.round(rnd(8, 92)); const v = p.layout[k]; p.layout[k] = v && typeof v === 'object' ? { ...v, x } : x; moved.push(ITEMS[bk(k)]); movedKeys.push(k); }
+  api('layout', { id: S.id, layout: p.layout }).catch(() => {}); P.built = ''; awayRearrange.keys = movedKeys;
+  setTimeout(() => { toast(`없는 사이에 ${petNm()}가 ${moved.join(', ')}을 옮겨놨어요`); say('내가 옮겼지롱~', 2000); emote('spark', 1800);
+    for (const k of movedKeys) { const pr = $(`#world .prop[data-k="${k}"]`); if (pr) { pr.classList.add('movedNew'); setTimeout(() => pr.classList.remove('movedNew'), 6000); } } }, 1800);
 }
 setInterval(() => { if (!document.hidden) store.set('seen', Date.now()); }, 60e3);
 /* ---------- 집 만족도: 방 구성 × 성격 × 돌봄 ---------- */
@@ -2760,11 +2765,31 @@ function satisfaction() {
   return { score, parts, tip, careP, D, got, dream, hated };
 }
 function satLabel(v) { return v >= 90 ? ['꿈의 집', '🏰'] : v >= 75 ? ['아주 만족', '😆'] : v >= 55 ? ['만족', '🙂'] : v >= 35 ? ['그럭저럭', '😐'] : ['불만', '😤']; }
+/* ---------- 성격 육각형: 타고난 값 + 생활하면서 자람 ---------- */
+const TRAITS = [['glutton', '식탐', '🍰'], ['rascal', '장난', '⚡'], ['sweetie', '애교', '💗'], ['sleepy', '잠', '💤'], ['scaredy', '겁', '💦'], ['snob', '새침', '🎀']];
+const ACT_TRAIT = { eat: 'glutton', cafe: 'glutton', zoom: 'rascal', wheel: 'rascal', seek: 'scaredy', hide: 'scaredy', nap: 'sleepy', sleep: 'sleepy', rest: 'sleepy', groom: 'snob', fidget: 'sweetie', tidy: 'snob' };
+function traits() {
+  const p = myPet(), pk = personaKey(), base = {}, k = 'traits_' + S.id + '_' + (p?.v || 0);
+  TRAITS.forEach(([t], i) => base[t] = 30 + hashStr(S.id + t + (p?.v || 0)) % 30 + (t === pk ? 35 : 0));
+  let g = {}; try { g = JSON.parse(store.get(k) || '{}'); } catch (e) {}
+  return Object.fromEntries(TRAITS.map(([t]) => [t, Math.min(100, Math.round(base[t] + (g[t] || 0)))]));
+}
+function traitUp(t, d = .25) { if (!t) return; const p = myPet(), k = 'traits_' + S.id + '_' + (p?.v || 0); let g = {}; try { g = JSON.parse(store.get(k) || '{}'); } catch (e) {} g[t] = Math.min(40, (g[t] || 0) + d); store.set(k, JSON.stringify(g)); }
+function hexSVG(v, sz = 200) {
+  const c = sz / 2, R = sz * .34, pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [c + Math.cos(a) * r, c + Math.sin(a) * r]; };
+  const ring = f => TRAITS.map((_, i) => pt(i, R * f).map(n => n.toFixed(1)).join(',')).join(' ');
+  const poly = TRAITS.map(([t], i) => pt(i, R * v[t] / 100).map(n => n.toFixed(1)).join(',')).join(' ');
+  return `<svg viewBox="0 0 ${sz} ${sz}" class="hex">${[1, .66, .33].map(f => `<polygon points="${ring(f)}" fill="${f === 1 ? '#FFF8EE' : 'none'}" stroke="#E2D3C4" stroke-width="1.5"/>`).join('')}
+    ${TRAITS.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="#E2D3C4" stroke-width="1"/>`; }).join('')}
+    <polygon points="${poly}" fill="rgba(242,160,179,.45)" stroke="#E07A93" stroke-width="2.5" stroke-linejoin="round"/>
+    ${TRAITS.map(([t, n, ic], i) => { const [x, y] = pt(i, R + 22); return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#4A3428">${ic}${n}</text><text x="${x}" y="${y + 13}" text-anchor="middle" font-size="10" fill="#9C8576">${v[t]}</text>`; }).join('')}</svg>`;
+}
 function renderSat() {
   const el = $('#sat'); if (!el || !myPet()?.img) { if (el) el.innerHTML = ''; return; }
-  const r = satisfaction(), [lb, ic] = satLabel(r.score), key = JSON.stringify([r.score, r.tip, r.parts.map(p => p.c), r.got]);
+  const r = satisfaction(), [lb, ic] = satLabel(r.score), key = JSON.stringify([r.score, r.tip, r.parts.map(p => p.c), r.got, traits()]);
   if (el.dataset.key === key) return; el.dataset.key = key;
-  el.innerHTML = `<div class="satHead"><b>${ic} 집 만족도</b><span class="satNum">${r.score}<small>점 · ${lb}</small></span></div>
+  const tv = traits(); el.dataset.tv = JSON.stringify(tv);
+  el.innerHTML = `<div class="hexBox"><b>🧬 ${esc(myPet().name)}의 성격 육각형</b>${hexSVG(tv)}<small>생활하면서 조금씩 바뀌어요. 간식을 자주 주면 식탐이, 쓰다듬으면 애교가 자라요</small></div><div class="satHead"><b>${ic} 집 만족도</b><span class="satNum">${r.score}<small>점 · ${lb}</small></span></div>
     <div class="satBar"><i style="width:${r.score}%"></i></div>
     <div class="satParts">${r.parts.map(p => `<span class="${p.sc >= 1 ? 'ok' : ''} ${p.fav ? 'fav' : ''}">${p.i} ${p.n}${p.fav ? '<em>최애</em>' : ''}<small>${p.c}개</small></span>`).join('')}</div>
     <div class="dream ${r.dream ? 'done' : ''}"><b>🎯 ${PERSONA[personaKey()].name}의 꿈의 조합</b><span>${r.D.combo.map(x => r.got.includes(x) ? `<i class="on">${ITEM_SVG[x]}<small>${ITEMS[x]}</small></i>` : `<i>❓<small>???</small></i>`).join('')}</span><small>${r.got.length}/${r.D.combo.length} · 다 모이면 특별한 반응</small></div>
