@@ -1134,8 +1134,9 @@ function pawsTick(now) {
   const box = $('#paws'); if (!box) return;
   const k = kindNow(), groom = P.act === 'groom' && !P.hidden, eat = P.act === 'eat' && !P.hidden && (k === 'hamster' || P.atTreat);
   P.tilt = 0;
-  if (!groom && !eat) { if (box.style.display) box.style.display = ''; return; }
-  box.style.display = 'block';
+  box.style.display = '';
+  if (groom) P.tilt = Math.sin(now / 1000 * 2.2) * 3;
+  return;
   const b = (P.spr && BOX[P.spr.front]) || { x0: .15, y0: .12, x1: .85, y1: .92 };
   const w = (b.x1 - b.x0) * 100, fx = (b.x0 + b.x1) / 2 * 100, top = b.y0 * 100, hgt = (b.y1 - b.y0) * 100;
   const faceY = top + hgt * .5, mouthY = top + hgt * .6, bellyY = top + hgt * .78;
@@ -1432,6 +1433,8 @@ function loop(now) {
       if (P.spr[pre + f]) use = pre + f; else if (P.spr.side) use = 'side';
       if (running && t > (P.dustT || 0)) { P.dustT = t + 140; dust(); }
     }
+    if (P.act === 'groom' && P.spr.groom1) use = Math.floor(t / 260) % 2 ? 'groom2' : 'groom1';
+    else if (['eat', 'chew'].includes(P.act) && P.spr.eat1) use = Math.floor(t / 200) % 2 ? 'eat2' : 'eat1';
     if (use !== P.cur && P.spr[use]) { P.cur = use; const im = pet.querySelector('.body img'); if (im) im.src = P.spr[use]; }
     gearFollow();
   }
@@ -1646,13 +1649,15 @@ const POSE_KEYS = [['side', 'back', 'sleep'], ['eat', 'happy', 'curious'], ['gru
 const POSE_CELLS = {};
 POSE_KEYS.forEach((row, r) => row.forEach((k, c) => { const m = .02; POSE_CELLS[k] = [c / 3 + m, r / 3 + m, (c + 1) / 3 - m, (r + 1) / 3 - m]; }));
 let posing = false;
+const HAND_CELLS = { groom1: [.02, .02, .48, .48], groom2: [.52, .02, .98, .48], eat1: [.02, .52, .48, .98], eat2: [.52, .52, .98, .98] };
 const MOTION_CELLS = { walk1: [.02, .02, .48, .48], walk2: [.52, .02, .98, .48], run1: [.02, .52, .48, .98], run2: [.52, .52, .98, .98] };
 function showPoseNote() {
   const p = myPet(), el = $('#poseNote'); if (!p || !el) return;
-  const ps = p.poses || {}, faces = Object.keys(POSE_CELLS).every(k => ps[k]), motion = Object.keys(MOTION_CELLS).every(k => ps[k]);
-  if (posing) { el.hidden = false; el.innerHTML = posing === 'motion' ? '걷기·달리기 동작 그리는 중이에요 · 30초쯤' : '표정·동작 9가지 그리는 중이에요 · 30초쯤'; return; }
-  el.hidden = faces && motion;
+  const ps = p.poses || {}, faces = Object.keys(POSE_CELLS).every(k => ps[k]), motion = Object.keys(MOTION_CELLS).every(k => ps[k]), hands = Object.keys(HAND_CELLS).every(k => ps[k]);
+  if (posing) { el.hidden = false; el.innerHTML = posing === 'motion' ? '걷기·달리기 동작 그리는 중이에요 · 30초쯤' : posing === 'hands' ? '세수·먹는 동작 그리는 중이에요 · 30초쯤' : '표정·동작 9가지 그리는 중이에요 · 30초쯤'; return; }
+  el.hidden = faces && motion && hands;
   if (!faces) { el.innerHTML = `지금은 표정이 적어요 <button type="button" class="link" id="btnPoses">표정·동작 9가지 그리기</button>`; $('#btnPoses').onclick = () => makePoses(null, 'faces'); }
+  else if (!hands && motion) { el.innerHTML = `세수·먹는 동작이 아직 없어요 <button type="button" class="link" id="btnPoses">세수·먹기 동작 그리기</button>`; $('#btnPoses').onclick = () => makePoses(null, 'hands'); }
   else if (!motion) { el.innerHTML = `아직 걷고 뛰는 모습이 없어요 <button type="button" class="link" id="btnPoses">걷기·달리기 동작 그리기</button>`; $('#btnPoses').onclick = () => makePoses(null, 'motion'); }
 }
 async function makePoses(srcUrl, set = 'faces') {
@@ -1665,15 +1670,16 @@ async function makePoses(srcUrl, set = 'faces') {
     const r = await api('poses', { id: S.id, kind: p.kind, image: jpg.split(',')[1], set });
     S.drawsLeft = r.left;
     const sheet = `data:${r.mime};base64,${r.image}`;
-    for (const [k, crop] of Object.entries(set === 'motion' ? MOTION_CELLS : POSE_CELLS)) {
+    for (const [k, crop] of Object.entries(set === 'motion' ? MOTION_CELLS : set === 'hands' ? HAND_CELLS : POSE_CELLS)) {
       const u = await cutout(sheet, crop); if (!u) continue;
       await api('pose', { id: S.id, k, img: u });
     }
     ok = true;
-    toast(set === 'motion' ? `${p.name}가 이제 걷고 달려요!` : `${p.name} 표정이 생겼어요!`);
+    toast(set === 'hands' ? `${p.name}가 이제 세수하고 오물오물 먹어요!` : set === 'motion' ? `${p.name}가 이제 걷고 달려요!` : `${p.name} 표정이 생겼어요!`);
   } catch (e) { toast(e.message); }
   posing = false; P.built = ''; await refresh(); showPoseNote();
   if (ok && set === 'faces' && srcUrl) makePoses(srcUrl, 'motion');
+  else if (ok && set === 'motion' && srcUrl) makePoses(srcUrl, 'hands');
 }
 
 

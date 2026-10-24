@@ -112,7 +112,12 @@ async function poses(req, env, hub) {
   const q = await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id }) })).then(r => r.json());
   if (!q.ok) return json({ error: "quota", message: q.message, left: 0 }, 429);
   const animal = KIND_KO[kind] || "pet";
-  const prompt = set === "motion"
+  const prompt = set === "hands"
+    ? `Make a 2x2 animation sprite sheet of EXACTLY this same ${animal} character: same colors, same markings, same face, same art style (soft dark-brown hand-drawn outline, round chubby body, flat pastel colors). ` +
+      `Square image split into 4 equal square cells. ALL FOUR cells: front view, the same size and same position in the cell, whole body with empty margin, plain cream background (#FDF6EC), no text, no grid lines, no shadows. ` +
+      `Top-left: washing its face, both front paws pressed on its cheeks, eyes closed. Top-right: washing its face, both front paws rubbing up over its eyes and forehead, eyes closed, head tilted slightly. ` +
+      `Bottom-left: holding ${SNACK[kind] || "a treat"} with both front paws right at its mouth, cheeks puffed, mouth closed. Bottom-right: same as bottom-left but taking a tiny bite, mouth open, snack slightly smaller, crumbs.`
+    : set === "motion"
     ? `Make a 2x2 animation sprite sheet of EXACTLY this same ${animal} character: same colors, same markings, same face, same art style (soft dark-brown hand-drawn outline, round chubby body, flat pastel colors). ` +
       `Square image split into 4 equal square cells. ALL FOUR cells show the character in SIDE VIEW FACING RIGHT, the same size and the same position in the cell, whole body visible with empty margin, plain cream background (#FDF6EC), no text, no grid lines, no ground, no shadows. ` +
       `Top-left: walking, front-left paw forward and back-right paw back. Top-right: walking, the other step, front-right paw forward and back-left paw back. ` +
@@ -241,7 +246,7 @@ export class Hub extends DurableObject {
     }
     if (p === "/api/pose") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      if (!["side", "back", "sleep", "eat", "happy", "curious", "grumpy", "groom", "flat", "walk1", "walk2", "run1", "run2"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
+      if (!["side", "back", "sleep", "eat", "happy", "curious", "grumpy", "groom", "flat", "walk1", "walk2", "run1", "run2", "groom1", "groom2", "eat1", "eat2"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
       if (typeof b.img !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
       this.sql.exec("INSERT INTO poses(id, k, img, at) VALUES(?, ?, ?, ?) ON CONFLICT(id, k) DO UPDATE SET img = excluded.img, at = excluded.at", b.id, b.k, b.img, now);
       return json({ ok: true });
