@@ -98,7 +98,7 @@ async function draw(req, env, hub) {
   ];
   const errs = [];
   for (const t of tries) {
-    try { const out = await t(); if (out) return json({ image: out.data, mime: out.mime, left: q.left }); errs.push("그림 없는 응답"); }
+    try { const out = await t(); if (out) { if (photo.length < 1_400_000) await hub.fetch(new Request(new URL("/api/photo", req.url), { method: "POST", body: JSON.stringify({ id, photo: "data:image/jpeg;base64," + photo }) })).catch(() => {}); return json({ image: out.data, mime: out.mime, left: q.left }); } errs.push("그림 없는 응답"); }
     catch (e) { errs.push(String(e.message || e).slice(0, 220)); }
   }
   const lastErr = errs.join(" | ");
@@ -227,6 +227,7 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS scores(wk TEXT, id TEXT, best INTEGER, PRIMARY KEY(wk, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS trades(tid TEXT PRIMARY KEY, fr TEXT, give TEXT, wk TEXT, wa TEXT, wb TEXT, at INTEGER, st TEXT, too TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS likes(day TEXT, fr TEXT, too TEXT, PRIMARY KEY(day, fr, too))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS photos(id TEXT PRIMARY KEY, img TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -236,6 +237,17 @@ export class Hub extends DurableObject {
     let b = {};
     if (req.method === "POST") { try { b = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); } }
 
+    if (p === "/api/photo" && req.method === "POST") {
+      if (!validId(b.id) || typeof b.photo !== "string" || !/^data:image\/jpeg;base64,/.test(b.photo) || b.photo.length > 1_500_000) return json({ error: "bad", message: "사진을 다시 골라 주세요" }, 400);
+      this.sql.exec("INSERT OR REPLACE INTO photos(id, img, at) VALUES(?, ?, ?)", b.id, b.photo, Date.now());
+      return json({ ok: true });
+    }
+    if (p.startsWith("/api/img/photo-")) {
+      const r = this.rows("SELECT img FROM photos WHERE id = ?", p.slice(15))[0];
+      const m = r && /^data:(image\/[a-z]+);base64,(.+)$/.exec(r.img);
+      if (!m) return new Response("", { status: 404 });
+      return new Response(Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)), { headers: { "content-type": m[1], "cache-control": "public, max-age=86400" } });
+    }
     if (p.startsWith("/api/img/baby-")) {
       const r = this.rows("SELECT img FROM babies WHERE bid = ?", p.slice(14))[0];
       const m = r && r.img && /^data:(image\/[a-z]+);base64,(.+)$/.exec(r.img);
@@ -533,7 +545,8 @@ export class Hub extends DurableObject {
     const likedToday = id ? this.rows("SELECT too FROM likes WHERE day = ? AND fr = ?", kst(now), id).map(x => x.too) : [];
     const poseMap = {};
     for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
+    const phs = Object.fromEntries(this.rows("SELECT id, at FROM photos").map(x => [x.id, x.at]));
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [], ph: phs[x.id] || 0 };
 
     const line = [];
     R.entries.forEach((e, i) => {

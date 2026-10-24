@@ -361,6 +361,23 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room.mini { pointer-events: none; border-width: 2px; }
 .room.mini .pet { position: absolute; transform: translateX(-50%); }
 .room.mini .pet .gears { position: absolute; inset: 0; } .room.mini .gear { position: absolute; }
+.room[data-th="1"]:not(.night) .sky{background:linear-gradient(#FBE3EC,#FFF4E6)}.room[data-th="1"]:not(.night) .floor{background:linear-gradient(#E9C9D6,#D9AFC0)}
+.room[data-th="2"]:not(.night) .sky{background:linear-gradient(#DDF2E3,#F4FAE6)}.room[data-th="2"]:not(.night) .floor{background:linear-gradient(#CFE3B8,#B7D19A)}
+.room[data-th="3"]:not(.night) .sky{background:linear-gradient(#E6DEFA,#F6EEFF)}.room[data-th="3"]:not(.night) .floor{background:linear-gradient(#D6CBEA,#BFB0DD)}
+.room[data-th="4"]:not(.night) .sky{background:linear-gradient(#FFF1C9,#FFF9EA)}.room[data-th="4"]:not(.night) .floor{background:linear-gradient(#E8C79A,#D2A877)}
+.room[data-th="5"]:not(.night) .sky{background:linear-gradient(#D3EEF7,#EAF8FB)}.room[data-th="5"]:not(.night) .floor{background:linear-gradient(#BFD9E6,#A6C6D6)}
+.room[data-th="1"] .world::before,.room[data-th="2"] .world::before,.room[data-th="3"] .world::before,.room[data-th="4"] .world::before,.room[data-th="5"] .world::before{content:"";position:absolute;inset:0 0 30% 0;pointer-events:none;opacity:.5}
+.room[data-th="1"] .world::before{background:radial-gradient(circle,#F2A0B3 2.5px,transparent 3.5px) 0 0/22px 22px}
+.room[data-th="2"] .world::before{background:radial-gradient(circle at 50% 60%,#8FC79A 3px,transparent 4px) 0 0/30px 30px}
+.room[data-th="3"] .world::before{background:linear-gradient(45deg,transparent 46%,#C7B6EE 46% 54%,transparent 54%) 0 0/24px 24px}
+.room[data-th="4"] .world::before{background:linear-gradient(90deg,#F6D98A 3px,transparent 3px) 0 0/28px 100%}
+.room[data-th="5"] .world::before{background:radial-gradient(circle,#fff 3px,transparent 4px) 0 0/34px 26px}
+.showTop .realPh{flex:none;position:relative;width:72px;padding:5px 5px 18px;background:#fff;border:2px solid var(--ink);border-radius:6px;transform:rotate(5deg);box-shadow:2px 3px 0 rgba(74,52,40,.18);cursor:pointer;align-self:center}
+.showTop .realPh img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px}
+.showTop .realPh span{display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#F6EFF7;font-size:11px;text-align:center;line-height:1.3;color:var(--ink-soft)}
+.showTop .realPh small{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:11px;color:var(--ink-soft)}
+.homeReal{position:absolute;top:30px;right:8px;width:56px;padding:3px 3px 3px;background:#fff;border:2px solid var(--ink);border-radius:5px;transform:rotate(6deg);z-index:5}.homeReal img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.home{position:relative}
 .room.mini { aspect-ratio: 4 / 3; } .room.mini.lv3 { box-shadow: 0 0 0 3px #F6C94E, 0 0 14px rgba(246,201,78,.7); } .room.mini.lv2 { box-shadow: 0 0 0 3px #A9D4F2; }
 .room.mini .itTag { position: absolute; top: 6px; right: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-size: 11px; z-index: 7; }
 .room.mini .lvTag { position: absolute; top: 6px; left: 8px; background: rgba(255,255,255,.85); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 8px; font-family: var(--display); font-size: 12px; z-index: 7; }
@@ -1096,7 +1113,7 @@ function buildRoom() {
   P.built = key;
   const stars = Array.from({ length: Math.round(10 * WF) }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
   const prop = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (PZ[n] || 0); return `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w / WF * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;filter:brightness(${1 - z * .06});` : ''}${extra}">${svg}</div>`; };
-  $('#room').classList.toggle('cage', !!KP().cage);
+  $('#room').classList.toggle('cage', !!KP().cage); $('#room').dataset.th = themeOf(S.id);
   $('#room').innerHTML = `<div class="world" id="world" style="width:${WF * 100}%;--wf:${WF}"><div class="sky"></div>${stars}<div class="floor"></div>
     ${roomDecor(S.state?.roomLv || 0)}
     ${KP().cage ? `${prop('platform', HAM_DECOR.platform, 30, 'bottom:13%;')}${prop('pot', HAM_DECOR.pot, 15)}<div class="sticks">${HAM_DECOR.sticks.repeat(Math.round(WF * 2))}</div><div class="glass"></div>` : ''}
@@ -1996,6 +2013,7 @@ function babiesTick(dt, now) {
   }
 }
 /* ---------- 뽐내기 ---------- */
+function themeOf(pid){let h=0;for(const c of String(pid))h=(h*31+c.charCodeAt(0))>>>0;return h%6}
 function miniRoom(pid) {
   const st = S.state, p = st.pets[pid]; if (!p) return '';
   const lv = p.room || 0, wf = ROOM_WF[lv] || 1.3, kp = KIND_PROPS[p.kind] || KIND_PROPS.hamster;
@@ -2009,7 +2027,7 @@ function miniRoom(pid) {
   const px = (sp.bowl + sp.wheel) / 2 - 10, cam = Math.max(0, Math.min((wf - 1) * 100, px * wf - 50));
   const baby = (st.babies || []).filter(b => b.st === 'born' && (b.pa === pid || b.pb === pid))[0];
   const night = $('#room')?.classList.contains('night');
-  return `<div class="room mini ${night ? 'night' : ''} ${kp.cage ? 'cage' : ''} lv${lv}"><div class="world" style="width:${wf * 100}%;--wf:${wf};transform:translateX(${-cam / wf}%)"><div class="sky"></div><div class="floor"></div>
+  return `<div data-th="${themeOf(pid)}" class="room mini ${night ? 'night' : ''} ${kp.cage ? 'cage' : ''} lv${lv}"><div class="world" style="width:${wf * 100}%;--wf:${wf};transform:translateX(${-cam / wf}%)"><div class="sky"></div><div class="floor"></div>
     ${roomDecor(lv, pid)}
     ${kp.cage ? `${pr('platform', HAM_DECOR.platform, 30, 'bottom:13%;')}${pr('pot', HAM_DECOR.pot, 15)}<div class="sticks">${HAM_DECOR.sticks.repeat(Math.round(wf * 2))}</div>` : ''}
     ${items}${pr('house', kp.house, 22)}${pr('bowl', PROP_SVG.bowl(3), kp.cage ? 10 : 12)}${pr('bottle', kp.water(.8), kp.waterW)}${pr('wheel', kp.play, kp.playW)}
@@ -2023,7 +2041,7 @@ function renderShow() {
   const st = S.state, p = myPet(), me = $('#showMe'); if (!me) return;
   if (!p || !p.img) { me.innerHTML = '<p class="note">우리 아이를 먼저 만들어 주세요</p>'; }
   else {
-    const key = JSON.stringify([p.v, p.gears, p.gpos, p.likes, p.layout, p.room, st.babies, st.myBest, (st.mine || []).length, CARE?.fat?.toFixed?.(2)]);
+    const key = JSON.stringify([p.ph, p.v, p.gears, p.gpos, p.likes, p.layout, p.room, st.babies, st.myBest, (st.mine || []).length, CARE?.fat?.toFixed?.(2)]);
     if (me.dataset.key !== key) {
       me.dataset.key = key;
       const ps = persona(), c = care(), [b, u] = BASE_WT[p.kind] || BASE_WT.hamster, wt = b * (.85 + c.fat * .55);
@@ -2031,6 +2049,7 @@ function renderShow() {
       const own = new Set((st.mine || []).map(x => `${x.kind}|${x.a}|${x.b || ''}`)), pets = Object.keys(st.pets).filter(id => st.pets[id].img || st.pets[id].npc);
       const total = pets.length * 4 + ITEM_ORDER.length + GEAR_ORDER.length, have = [...own].filter(k => !k.startsWith('snack')).length;
       me.innerHTML = `<div class="showTop"><div class="frame"><div class="spr"><div class="body"><img data-cut="${P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}`}" alt=""></div><div class="gears">${gearOverlay(p.gears || p.gear, p.gpos)}</div></div></div>
+        <label class="realPh" title="실제 사진">${p.ph ? `<img src="/api/img/photo-${encodeURIComponent(S.id)}?v=${p.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습">` : '<span>📷<br>실물 사진<br>올리기</span>'}<small>실물</small><input type="file" accept="image/*" id="realIn" hidden></label>
         <div class="showInfo"><h2>${esc(p.name)}</h2><p>${KIND[p.kind]} · ${ps.icon} ${ps.name}</p><p>${u === 'g' ? Math.round(wt) : wt.toFixed(1)}${u} · ${fatLabel(c.fat)}</p><p class="likes">♥ ${p.likes || 0}</p></div></div>
         <div class="stats"><span><b>${ROOM_NAME[st.roomLv || 0]}</b>집</span><span><b>${ownedItems().size}</b>방 아이템</span><span><b>${(p.gears || []).length}</b>장비</span><span><b>${Math.min(100, Math.round(have / Math.max(1, total) * 100))}%</b>도감</span><span><b>${st.myBest || 0}</b>씨앗 최고</span><span><b>${babies.length}</b>애기</span></div>
         ${miniRoom(S.id)}
@@ -2038,14 +2057,15 @@ function renderShow() {
         <button type="button" class="btn main big" id="showShare">이 카드로 자랑하기</button>`;
       cutImgs(me);
       $('#showShare').onclick = share;
+      $('#realIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; const u = URL.createObjectURL(f); try { const photo = await toJpeg(u, 640, .82); const r = await api('/api/photo', { id: S.id, photo }); if (r && r.ok !== false) { toast?.('실물 사진 올렸어요'); refresh?.(); } } catch { } finally { URL.revokeObjectURL(u); } };
     }
   }
   const ids = Object.keys(st.pets).filter(id => !st.pets[id].npc && st.pets[id].img && id !== S.id).sort((a, b) => (st.pets[b].likes || 0) - (st.pets[a].likes || 0));
-  const hk = ids.map(id => id + st.pets[id].v + st.pets[id].likes + JSON.stringify(st.pets[id].layout) + (st.pets[id].gears || []).join()).join('|');
+  const hk = ids.map(id => id + st.pets[id].ph + st.pets[id].v + st.pets[id].likes + JSON.stringify(st.pets[id].layout) + (st.pets[id].gears || []).join()).join('|');
   const hm = $('#homes');
   if (hm.dataset.key !== hk) {
     hm.dataset.key = hk;
-    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}">${miniRoom(id)}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
+    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}">${miniRoom(id)}${q.ph ? `<span class="homeReal"><img src="/api/img/photo-${encodeURIComponent(id)}?v=${q.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습"></span>` : ''}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
     cutImgs(hm);
   }
 }
