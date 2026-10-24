@@ -1075,7 +1075,7 @@ function emote(kind, ms = 1600, icon) {
   clearTimeout(emote.t); emote.t = setTimeout(() => { e.classList.add('out'); setTimeout(() => e.remove(), 320); }, ms);
 }
 function headTop() { const b = (P.spr && BOX[P.spr.front]) || { y0: .15 }, z = P.z || 0; return P.y + z * DEPTH + 23 * 4 / 3 * (1 - b.y0) * (1 - z * .25); }
-const DEPTH = 9; /* 뒤쪽 줄이 몇 % 위에 있는지 */
+const DEPTH = 13; /* 뒤쪽 줄이 몇 % 위에 있는지 */
 function placeEmote() { const e = P.emo; if (!e || !e.isConnected) return; e.style.left = (P.x + P.dir * 5) + '%'; e.style.bottom = (headTop() + 1) + '%'; }
 function fx(cls, ms) {
   P.fx = cls; P.fxUntil = performance.now() + ms;
@@ -1209,7 +1209,7 @@ function setAct(name, ms, text, cls) {
   P.act = name; P.until = ms ? performance.now() + ms : 0; P.cls = cls || ''; P.actText = text || P.actText;
   statusLine();
 }
-function goTo(x, speed, then, text, z) { if (z != null) P.zt = z; if (P.act !== 'walk') { P.walkStart = performance.now(); fx('go', 200); } P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
+function goTo(x, speed, then, text, z) { P.zt = z != null ? z : 0; if (P.act !== 'walk') { P.walkStart = performance.now(); fx('go', 200); } P.target = x; P.speed = speed; P.onArrive = then; P.act = 'walk'; P.cls = speed > 25 ? 'run' : 'walk'; if (text) P.actText = text; statusLine(); }
 function tweenY(to, ms, done) { P.tween = { from: P.y, to, t0: performance.now(), ms, done }; }
 function KP() { return KIND_PROPS[kindNow()] || KIND_PROPS.hamster; }
 function kindNow() { return myPet()?.kind || 'hamster'; }
@@ -1313,7 +1313,9 @@ function next() {
     : goTo(rnd(25, 75), 9, () => setAct('sleep', rnd(30, 70) * 1000, `${n}가 꾸벅꾸벅 낮잠`, 'sleep'), `${n}가 낮잠 잘 곳을 찾아요`);
   if (a === 'rest') return setAct('rest', rnd(6, 14) * 1000, kindNow() === 'cat' ? `${n}가 식빵 굽는 중` : kindNow() === 'dog' ? `${n}가 배 깔고 쉬어요` : `${n}가 납작 엎드려 쉬어요`, '');
   if (a === 'toilet') return goTo(SPOT.toilet, 11, toiletNow, `${n}가 화장실 가요`);
-  return goTo(rnd(8, 92), rnd(8, 12), () => setAct('idle', rnd(1.5, 4) * 1000, `${n}가 방을 구경해요`, ''), Math.random() < .45 ? `${n}가 뒤쪽을 탐험해요` : `${n}가 돌아다녀요`, Math.random() < .45 ? 1 : 0);
+  { const zt = Math.random(), far = Math.random() < .35;
+    const x = far ? rnd(8, 92) : Math.max(6, Math.min(94, P.x + rnd(-22, 22)));
+    return goTo(x, rnd(8, 12), () => { setAct('idle', rnd(1.2, 3.5) * 1000, `${n}가 방을 구경해요`, ''); if (Math.random() < .4) setTimeout(() => { if (P.act === 'idle') goTo(Math.max(6, Math.min(94, P.x + rnd(-8, 8))), 8, null, null, Math.max(0, Math.min(1, (P.zt || 0) + rnd(-.35, .35)))); }, 900); }, zt > .6 ? `${n}가 뒤쪽을 탐험해요` : zt < .25 ? `${n}가 앞쪽으로 나와요` : `${n}가 요리조리 돌아다녀요`, zt); }
 }
 function zoom() {
   if (P.zooms-- <= 0) return setAct('idle', 800, `${petNm()}가 우다다 뛰었어요`, '');
@@ -1418,8 +1420,8 @@ function loop(now) {
     const ease = P.act === 'walk' ? Math.min(1, .35 + (now - (P.walkStart || 0)) / 350) * Math.min(1, .3 + Math.abs(d) / 5) : 1, step = P.speed * burst * dt * ease;
     if (P.act === 'walk') P.dir = d >= 0 ? 1 : -1;
     if (P.act === 'walk' && P.speed > 25 && P.y <= FLOOR + .5 && now > (P.printT || 0)) { P.printT = now + 230; paw(); }
-    if (Math.abs(d) <= Math.max(step, .05)) { P.x = P.target; const f = P.onArrive; P.onArrive = null; P.act = 'idle'; P.until = now + 500; P.cls = ''; fx('land', 380); if (f) f(); }
-    else P.x += d > 0 ? step : -step;
+    if (Math.abs(d) <= Math.max(step, .05) && Math.abs(((P.zt ?? P.z) || 0) - (P.z || 0)) < .03) { P.x = P.target; const f = P.onArrive; P.onArrive = null; P.act = 'idle'; P.until = now + 500; P.cls = ''; fx('land', 380); if (f) f(); }
+    else if (Math.abs(d) > Math.max(step, .05)) P.x += d > 0 ? step : -step;
   }
   if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
   if (P.act === 'wheel') { P.wheel += dt * 520; P.ran += dt * 1.1; const sp = room.querySelector('.prop.wheel .spokes'); if (sp) sp.setAttribute('transform', `rotate(${P.wheel} 60 58)`); }
@@ -1429,12 +1431,13 @@ function loop(now) {
   if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
   else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
   soundTick(now);
-  P.z = (P.z || 0) + (((P.zt ?? P.z) || 0) - (P.z || 0)) * Math.min(1, dt * 2.2);
+  { const zt = (P.zt ?? P.z) || 0, dz = zt - (P.z || 0); P.z = (P.z || 0) + Math.sign(dz) * Math.min(Math.abs(dz), dt * (P.act === 'walk' ? Math.max(.35, P.speed / 22) : .8)); }
+  if (P.act === 'walk' && Math.abs(P.target - P.x) < .3 && Math.abs(((P.zt ?? P.z) || 0) - P.z) > .02) P.pauseUntil = 0;
   const zs = 1 - P.z * .25;
   pet.style.left = P.x + '%'; pet.style.bottom = (P.y + P.z * DEPTH) + '%';
-  pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = P.z > .5 ? 1 : 4;
+  pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = P.z > .55 ? 1 : 4;
   pet.style.filter = P.z > .5 ? `brightness(${1 - P.z * .08})` : '';
-  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = P.z > .5 ? 0 : 2; sh.style.marginBottom = (P.z * DEPTH) + '%'; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
+  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = P.z > .5 ? 0 : 2; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
   placeEmote(); snot(now); jelly(dt, now); babiesTick(dt, now); guestsTick(dt, now);
   const wd = $('#world'); if (wd) {
     const maxC = (WF - 1) * 100; if (P.cam == null) P.cam = rnd(0, maxC);
@@ -1464,7 +1467,8 @@ function loop(now) {
     gearFollow();
   }
   pawsTick(now); if (P.spr) gearFollow();
-  pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '') + (P.tilt ? ` rotate(${P.tilt}deg)` : '');
+  const fb = P.spr && BOX[P.spr[P.cur]] || (P.spr && BOX[P.spr.front]); const footGap = fb ? (1 - fb.y1) * 100 : 0;
+  pet.querySelector('.spr').style.transform = `translateY(${footGap}%) scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '') + (P.tilt ? ` rotate(${P.tilt}deg)` : '');
   requestAnimationFrame(loop);
 }
 function paw() {
