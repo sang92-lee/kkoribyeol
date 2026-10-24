@@ -300,6 +300,19 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .persCard { border: var(--stroke); border-radius: 18px; background: linear-gradient(160deg, #FFF1C2, #FBE3EA); padding: 14px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .persCard.reveal { animation: pop .6s cubic-bezier(.3,1.6,.5,1); }
 .persCard .pi { font-size: 40px; line-height: 1; } .persCard b { font-family: var(--display); font-weight: 400; font-size: 26px; } .persCard p { margin: 0; font-size: 14px; color: var(--soft); }
+.babyAsk { background: linear-gradient(160deg, #FFF1F4, #FFF8EE); }
+.couple { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.couple .av { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: var(--stroke); background: var(--bg); }
+.couple .av img, .couple .av svg { width: 100%; height: 100%; object-fit: cover; }
+.couple b { font-size: 28px; color: var(--pink-deep); font-weight: 400; animation: pulse 1s ease-in-out infinite; }
+.bondBar { width: 100%; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.bondBar b { font-family: var(--display); font-weight: 400; color: var(--pink-deep); }
+.room .pet.guest { width: calc(23% / var(--wf)); z-index: 3; transform: translateX(-50%); }
+.room .pet.guest .gears { position: absolute; inset: 0; pointer-events: none; }
+.room .pet.guest.bye { transition: opacity .5s; opacity: 0; }
+.room .gtag { position: absolute; left: 50%; bottom: -14%; transform: translateX(-50%); white-space: nowrap; font-family: var(--display); font-size: 11px; background: var(--butter); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 6px; }
+.room .pet.baby { width: calc(23% / var(--wf)); z-index: 4; cursor: pointer; transition: none; }
+.room .pet.baby.hopx .body { animation: hopx .45s cubic-bezier(.3,.7,.4,1) 2; }
 .snackGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
 .snackT { border: var(--stroke); border-radius: 14px; background: var(--card); padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 0; }
 .snackT svg { width: 42px; height: 42px; } .snackT b { font-family: var(--display); font-weight: 400; font-size: 14px; } .snackT small { font-size: 11px; color: var(--soft); }
@@ -419,6 +432,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <button type="button" class="link" id="btnCancelMake" hidden>그냥 원래 그림 쓸래요</button>
     </div>
 
+    <div class="card babyAsk" id="babyCard" hidden></div>
     <div class="card" id="home" hidden>
       <div class="petName"><h2 id="homeName"></h2><span class="note" id="homeKind"></span></div>
       <div class="room" id="room"></div>
@@ -700,7 +714,7 @@ function renderPet() {
   if (S.drawsLeft != null) $('#drawLeft').textContent = `오늘 그리기 ${S.drawsLeft}번 남았어요`;
   if (showMaker) return;
   $('#homeName').textContent = p.name; { const ps = persona(); $('#homeKind').innerHTML = `${KIND[p.kind] || ''} · <button type="button" class="link persBtn" id="persBtn">${ps.icon} ${ps.name}</button>`; $('#persBtn').onclick = showPersona; }
-  buildRoom(); dayLook(); statusLine(); drawCare(); renderFriends();
+  buildRoom(); dayLook(); statusLine(); drawCare(); renderFriends(); renderBabyAsk(); syncGuests();
   $('#btnGearPos').hidden = !(p.gears || []).length;
   { const lv = S.state.roomLv || 0, cost = (S.state.roomCost || [])[lv + 1], eb = $('#btnExpand');
     eb.hidden = cost == null; if (cost != null) { eb.textContent = `방 넓히기: ${ROOM_NAME[lv]} → ${ROOM_NAME[lv + 1]} (씨앗 ${cost}개)`; eb.disabled = (S.state.seeds || 0) < cost; } }
@@ -982,7 +996,8 @@ function buildRoom() {
   const p = myPet(); if (!p) return;
   WF = ROOM_WF[S.state?.roomLv || 0] || 1.3;
   SPOT = { ...BASE_SPOT, ...((DECO.on ? DECO.lay : p.layout) || {}) };
-  const owned = ownedItems(), key = (DECO.on ? 'deco' + JSON.stringify(DECO.lay) : JSON.stringify(p.layout || '')) + WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gears || []).join(',') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
+  const babyKey = (S.state?.babies || []).filter(x => x.st === 'born').map(x => x.bid).join();
+  const owned = ownedItems(), key = babyKey + (DECO.on ? 'deco' + JSON.stringify(DECO.lay) : JSON.stringify(p.layout || '')) + WF + '|' + [...owned].sort().join(',') + '|' + p.v + '|' + (p.gears || []).join(',') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: Math.round(10 * WF) }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
@@ -1004,7 +1019,7 @@ function buildRoom() {
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="camArrow l" id="camL" aria-label="왼쪽 보기">‹</button><button type="button" class="camArrow r" id="camR" aria-label="오른쪽 보기">›</button>
     <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button><div class="clockTag" id="roomClock"></div><div class="wtTag" id="wtTag"></div>`;
-  $('#roomPet').onclick = poke; bindStroke();
+  $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   bindPan();
@@ -1420,7 +1435,7 @@ function loop(now) {
   pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = P.z > .5 ? 1 : 4;
   pet.style.filter = P.z > .5 ? `brightness(${1 - P.z * .08})` : '';
   const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = P.z > .5 ? 0 : 2; sh.style.marginBottom = (P.z * DEPTH) + '%'; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
-  placeEmote(); snot(now); jelly(dt, now);
+  placeEmote(); snot(now); jelly(dt, now); babiesTick(dt, now); guestsTick(dt, now);
   const wd = $('#world'); if (wd) {
     const maxC = (WF - 1) * 100; if (P.cam == null) P.cam = rnd(0, maxC);
     if (P.camTo != null) { P.cam += (P.camTo - P.cam) * Math.min(1, dt * 3); if (Math.abs(P.camTo - P.cam) < .2) P.camTo = null; }
@@ -1729,13 +1744,106 @@ $('#btnGearPos').onclick = () => openGearAdjust();
 $('#btnDeco').onclick = decoStart;
 $('#btnExpand').onclick = async () => { try { const r = await api('expand', { id: S.id }); P.built = ''; await refresh(); toast(`${ROOM_NAME[r.room]}로 이사했어요!`); emote('spark', 2000); say('우와 넓다!', 1800); } catch (e) { toast(e.message); } };
 
+/* ---------- 우정·커플·애기 ---------- */
+function bondOf(pid) { return (S.state?.bonds || {})[pid] || 0; }
+function bondLv(pts) { return pts >= 90 ? { n: '커플', i: '💕' } : pts >= 50 ? { n: '단짝', i: '💛' } : pts >= 20 ? { n: '친구', i: '🤝' } : { n: '아는 사이', i: '👋' }; }
+function personaOf(pid) { const p = S.state.pets[pid]; return PERSONA_KEYS[hashStr(pid + '|' + (p?.v || 0)) % PERSONA_KEYS.length]; }
+function compat(a, b) {
+  const pair = [a, b].sort().join('+');
+  return a === b ? 1.2 : { 'scaredy+sweetie': 1.5, 'glutton+sleepy': 1.4, 'rascal+sweetie': 1.3, 'rascal+snob': .6, 'glutton+snob': .7, 'rascal+scaredy': .8 }[pair] || 1;
+}
+function babyWith(pid) { return (S.state?.babies || []).find(x => (x.pa === pid || x.pb === pid)); }
+function renderBabyAsk() {
+  const el = $('#babyCard'); if (!el) return;
+  const ask = (S.state?.babies || []).find(x => x.st === 'ask' && x.asker !== S.id);
+  if (!ask) { el.hidden = true; return; }
+  const other = ask.pa === S.id ? ask.pb : ask.pa, op = S.state.pets[other] || {}, me = myPet() || {};
+  if (el.dataset.bid === ask.bid && !el.hidden) return;
+  el.dataset.bid = ask.bid; el.hidden = false;
+  el.innerHTML = `<h2>💕 애기 소식</h2><div class="couple"><span class="av">${petFace(S.id)}</span><b>♥</b><span class="av">${petFace(other)}</span></div>
+    <p class="note" style="text-align:center">${esc(op.owner || '친구')}네 ${esc(op.name)}가 우리 ${esc(me.name)}랑 애기를 맞이하고 싶대요!</p>
+    <label class="f">애기 이름<input type="text" id="babyName" maxlength="12" value="꼬마 ${esc((me.name || '').slice(0, 1) + (op.name || '').slice(0, 1))}"></label>
+    <div class="row2"><button type="button" class="btn" id="babyNo">다음에</button><button type="button" class="btn main" id="babyYes">애기 맞이하기</button></div>`;
+  $('#babyNo').onclick = async () => { await api('baby', { id: S.id, act: 'decline', bid: ask.bid }); el.hidden = true; refresh(); };
+  $('#babyYes').onclick = async () => {
+    const b = $('#babyYes'); b.disabled = true; b.textContent = '애기 그리는 중… 30초쯤';
+    try {
+      const r = await api('babydraw', { id: S.id, bid: ask.bid });
+      const img = await toJpeg(`data:${r.mime};base64,${r.image}`, 448, .85);
+      await api('baby', { id: S.id, act: 'born', bid: ask.bid, img, name: $('#babyName').value });
+      el.hidden = true; P.built = ''; await refresh(); babyBorn(ask.bid);
+    } catch (e) { toast(e.message); b.disabled = false; b.textContent = '애기 맞이하기'; }
+  };
+}
+function babyBorn(bid) {
+  const bb = (S.state.babies || []).find(x => x.bid === bid); if (!bb) return;
+  const m = $('#modal'), c = $('#modalCard');
+  c.classList.add('legendCard');
+  c.innerHTML = `<span class="badge legend">★★ 애기 탄생</span><div class="reveal" style="width:180px"><img src="/api/img/baby-${bid}?c=${encodeURIComponent(S.code)}" alt="" style="width:100%;border-radius:50%;border:3px solid #4A3428"></div><h3 style="font-size:24px">${esc(bb.name)} 태어났어요!</h3><p class="note">엄마·아빠 방 모두에서 졸졸 따라다녀요</p><button type="button" class="btn main big" id="bbOk">안녕 ${esc(bb.name)}!</button>`;
+  m.hidden = false; $('#bbOk').onclick = () => { m.hidden = true; c.classList.remove('legendCard'); };
+  for (let i = 0; i < 30; i++) setTimeout(() => { const h = document.createElement('i'); h.className = 'confetti'; h.style.cssText = `left:${rnd(5, 95)}%;background:${['#F2A0B3', '#F6C94E', '#BFE3D0', '#C9D8F6'][i % 4]};--dx:${rnd(-40, 40)}px;--r:${rnd(-400, 400)}deg;position:fixed;top:0;z-index:40`; document.body.appendChild(h); setTimeout(() => h.remove(), 1600); }, i * 30);
+}
+/* 방 안의 애기: 엄마·아빠 뒤를 졸졸 */
+const BB = [];
+function buildBabies() {
+  BB.length = 0;
+  const list = (S.state?.babies || []).filter(x => x.st === 'born').slice(0, 2), w = $('#world'); if (!w) return;
+  list.forEach((bb, i) => {
+    const el = document.createElement('div'); el.className = 'pet baby'; el.innerHTML = `<div class="spr"><div class="body"><img alt="${esc(bb.name)}"></div></div>`;
+    w.appendChild(el);
+    const src = `/api/img/baby-${bb.bid}?c=${encodeURIComponent(S.code)}`; cutout(src).then(u => { const im = el.querySelector('img'); if (im) im.src = u; });
+    el.onclick = e => { e.stopPropagation(); el.classList.remove('hopx'); void el.offsetWidth; el.classList.add('hopx'); hearts(e); const b = document.createElement('span'); b.className = 'miss'; b.textContent = ['엄마!', '아빠!', '헤헤', '배고파', '안아줘'][Math.floor(Math.random() * 5)]; b.style.left = el.style.left; w.appendChild(b); setTimeout(() => b.remove(), 1100); };
+    BB.push({ el, x: P.x - 8 - i * 6, z: 0, dir: 1, lag: 6 + i * 6, t: 0, name: bb.name });
+  });
+}
+/* 친구가 지금 우리 방에 놀러와 있으면 바로 보여주기 */
+const GUESTS = {};
+function syncGuests() {
+  const w = $('#world'); if (!w || !S.state) return;
+  const live = (S.state.visitors || []).filter(v => S.state.now - v.at < 40000 && S.state.pets[v.id]?.img);
+  for (const v of live) {
+    if (GUESTS[v.id]?.el?.isConnected) continue;
+    const gp = S.state.pets[v.id], el = document.createElement('div'); el.className = 'pet guest popout';
+    el.innerHTML = `<div class="spr"><div class="body"><img alt="${esc(gp.name)}"></div><div class="gears">${gearOverlay(gp.gears || gp.gear, gp.gpos)}</div></div><span class="gtag">${esc(v.nick)}네 ${esc(gp.name)}</span>`;
+    w.appendChild(el);
+    cutout(`/api/img/${encodeURIComponent(v.id)}?v=${gp.v}&c=${encodeURIComponent(S.code)}`).then(u => { const im = el.querySelector('img'); if (im) im.src = u; });
+    GUESTS[v.id] = { el, x: Math.max(5, Math.min(95, P.x + (Math.random() < .5 ? -18 : 18))), tx: P.x, dir: 1, t: 0, name: gp.name };
+    toast(`${v.nick}네 ${gp.name}가 놀러왔어요! 🎉`); emote('bang', 1200); setTimeout(() => say(`${gp.name}다!`, 1400), 500);
+    if (navigator.vibrate) try { navigator.vibrate([80, 60, 80]); } catch (e) {}
+    P.follow = true;
+  }
+  for (const [id, g] of Object.entries(GUESTS)) if (!live.find(v => v.id === id)) { g.el.classList.add('bye'); setTimeout(() => g.el.remove(), 600); delete GUESTS[id]; }
+}
+function guestsTick(dt, now) {
+  for (const g of Object.values(GUESTS)) {
+    if (!g.el.isConnected) continue;
+    g.t -= dt; if (g.t <= 0) { g.t = rnd(2.5, 5); g.tx = Math.max(5, Math.min(95, (P.hidden || P.hiding ? rnd(10, 90) : P.x + (Math.random() < .5 ? -10 : 10)))); if (Math.abs(g.tx - P.x) < 14 && !P.hidden && Math.random() < .5) { const b = document.createElement('span'); b.className = 'miss'; b.textContent = ['♥', '같이 놀자!', '헤헤', '여기 좋다', '킁킁'][Math.floor(Math.random() * 5)]; b.style.left = g.x + '%'; $('#world').appendChild(b); setTimeout(() => b.remove(), 1100); } }
+    const d = g.tx - g.x, mv = Math.abs(d) > 1; if (mv) { g.x += Math.sign(d) * Math.min(Math.abs(d), 12 * dt); g.dir = d > 0 ? 1 : -1; }
+    g.el.style.left = g.x + '%'; g.el.style.bottom = (FLOOR + (mv ? Math.abs(Math.sin(now / 130)) * 1.5 : 0)) + '%';
+    g.el.querySelector('.spr').style.transform = `scaleX(${g.dir})`;
+  }
+}
+function babiesTick(dt, now) {
+  for (const b of BB) {
+    if (!b.el.isConnected) continue;
+    const home = P.hidden || P.hiding, tx = home ? SPOT.house + 6 + b.lag * .4 : P.x - P.dir * b.lag;
+    const d = tx - b.x, moving = Math.abs(d) > 1.2;
+    if (moving) { b.x += Math.sign(d) * Math.min(Math.abs(d), (P.speed > 25 ? 30 : 13) * dt); b.dir = d > 0 ? 1 : -1; }
+    b.z += ((home ? 0 : P.z || 0) - b.z) * Math.min(1, dt * 2);
+    const hop = moving ? Math.abs(Math.sin(now / 110)) * 2.2 : 0, zs = (1 - b.z * .25) * .55;
+    b.el.style.left = b.x + '%'; b.el.style.bottom = (FLOOR + b.z * DEPTH + hop) + '%';
+    b.el.style.transform = `translateX(-50%) scale(${zs})`; b.el.style.zIndex = b.z > .5 ? 1 : 4;
+    b.el.querySelector('.spr').style.transform = `scaleX(${b.dir})`;
+    b.el.style.opacity = P.act === 'sleep' && P.hidden ? .0 : 1;
+  }
+}
 /* ---------- 친구 방 놀러가기 ---------- */
 function renderFriends() {
   const st = S.state, ids = Object.keys(st.pets).filter(id => id !== S.id && !st.pets[id].npc && st.pets[id].img);
   $('#friendsCard').hidden = !ids.length;
   const key = ids.map(id => id + st.pets[id].v + (st.pets[id].gear || '')).join();
   if ($('#friends').dataset.key === key) return; $('#friends').dataset.key = key;
-  $('#friends').innerHTML = ids.map(id => { const p = st.pets[id]; return `<button type="button" class="friend" data-visit="${id}"><span class="av">${petFace(id)}</span><b>${esc(p.name)}</b><span>${esc(p.owner || '')}네 · ♥${p.likes || 0}</span></button>`; }).join('');
+  $('#friends').innerHTML = ids.map(id => { const p = st.pets[id]; return `<button type="button" class="friend" data-visit="${id}"><span class="av">${petFace(id)}</span><b>${esc(p.name)}</b><span>${esc(p.owner || '')}네 · ${bondLv(bondOf(id)).i} ${bondLv(bondOf(id)).n}</span></button>`; }).join('');
 }
 function visit(pid) {
   const st = S.state, p = st.pets[pid]; if (!p || p.npc || !p.img || pid === S.id) return;
@@ -1749,7 +1857,9 @@ function visit(pid) {
       ${items.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}${prop('wheel', kp.play, kp.playW)}
       <div class="pet" id="vpet" style="left:52%;bottom:12%"><div class="spr"><div class="body"><img src="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"></div>${gearOverlay(p.gears || p.gear, p.gpos)}</div></div>
     </div></div>
-    <p class="note">♥ ${p.likes || 0} · ${KIND[p.kind] || ''} · 방 아이템 ${items.size}개</p>
+    <p class="note">♥ ${p.likes || 0} · ${KIND[p.kind] || ''} · ${PERSONA[personaOf(pid)].icon} ${PERSONA[personaOf(pid)].name}</p>
+    ${myPet()?.img ? `<div class="bondBar"><span>${esc(myPet().name)} ${bondLv(bondOf(pid)).i} ${esc(p.name)} · <b id="bondTxt">${bondLv(bondOf(pid)).n}</b></span><div class="bar"><i id="bondFill" style="width:${bondOf(pid)}%"></i></div></div>` : ''}
+    ${bondOf(pid) >= 90 && myPet()?.kind === p.kind && !babyWith(pid) ? `<button type="button" class="btn main big" id="babyAskBtn">💕 애기 맞이하기 제안</button>` : babyWith(pid)?.st === 'ask' ? '<p class="note">💕 애기 제안 답장을 기다리는 중</p>' : bondOf(pid) >= 90 && myPet()?.kind !== p.kind ? '<p class="note">커플이에요! 애기는 같은 종끼리만 맞이할 수 있어요</p>' : ''}
     ${myPet()?.img ? `<button type="button" class="btn big" id="bringBtn">우리 ${esc(myPet().name)} 데려가기</button>` : ''}
     <button type="button" class="btn main big likeBtn" id="likeBtn" ${liked ? 'disabled' : ''}>${liked ? '오늘 ♥ 보냈어요' : `${esc(p.name)}한테 ♥ 보내기`}</button>
     <button type="button" class="link" id="vClose">우리 집으로 돌아가기</button>`;
@@ -1760,6 +1870,8 @@ function visit(pid) {
   const wander = () => { if (!vp.isConnected || m.hidden) return; const nx = rnd(14, 86); vdir = nx > vx ? 1 : -1; vx = nx; vp.querySelector('.spr').style.transform = `scaleX(${vdir})`; vp.className = 'pet walk'; vp.style.left = nx + '%'; setTimeout(() => { if (vp.isConnected) vp.className = 'pet land'; }, 2200); setTimeout(wander, rnd(3200, 5200)); };
   setTimeout(wander, 1200);
   $('#vpet').onclick = e => { $('#vpet').className = 'pet hopx'; const r = $('#vroom').getBoundingClientRect(), h = document.createElement('span'); h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px'; $('#vroom').appendChild(h); setTimeout(() => h.remove(), 1200); };
+  const ab = $('#babyAskBtn');
+  if (ab) ab.onclick = async () => { try { await api('baby', { id: S.id, act: 'ask', with: pid }); ab.disabled = true; ab.textContent = '제안을 보냈어요! 친구가 수락하면 애기가 와요'; refresh(); } catch (e) { toast(e.message); } };
   $('#likeBtn').onclick = async () => { try { await api('like', { id: S.id, to: pid }); $('#likeBtn').disabled = true; $('#likeBtn').textContent = '♥ 보냈어요!'; refresh(); } catch (e) { toast(e.message); } };
   $('#vClose').onclick = () => m.hidden = true;
   const bb = $('#bringBtn');
@@ -1769,10 +1881,23 @@ function visit(pid) {
     el.innerHTML = `<div class="spr"><div class="body"><img src="${P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${me.v}&c=${encodeURIComponent(S.code)}`}" alt=""></div>${gearOverlay(me.gears || me.gear, me.gpos)}</div>`;
     $('#vroom').appendChild(el);
     api('visit', { id: S.id, to: pid }).catch(() => {});
+    const keep = setInterval(() => { if (m.hidden || !el.isConnected) return clearInterval(keep); api('visit', { id: S.id, to: pid }).catch(() => {}); }, 25000);
     const vr = $('#vroom'), say2 = (txt, x) => { const b = document.createElement('span'); b.className = 'heart'; b.style.cssText = `left:${x}%;top:30%;font-size:15px;color:#4A3428;font-family:Jua`; b.textContent = txt; vr.appendChild(b); setTimeout(() => b.remove(), 1200); };
     let x = 10; const lines = ['안녕!', '놀러왔어', '같이 놀자', '헤헤', '여기 좋다'];
     const roam = () => { if (!el.isConnected || m.hidden) return; const vx = parseFloat($('#vpet').style.left) || 50; const nx = Math.random() < .6 ? vx + (Math.random() < .5 ? -14 : 14) : rnd(12, 88); el.querySelector('.spr').style.transform = `scaleX(${nx > x ? 1 : -1})`; x = Math.max(8, Math.min(92, nx)); el.className = 'pet walk'; el.style.left = x + '%'; setTimeout(() => { if (el.isConnected) { el.className = 'pet land'; if (Math.abs(x - vx) < 18) { say2('♥', (x + vx) / 2); say2(lines[Math.floor(Math.random() * lines.length)], x); } } }, 2200); setTimeout(roam, rnd(2800, 4400)); };
     setTimeout(() => { say2('안녕!', 12); roam(); }, 600);
+    const cp = compat(PERSONA_KEYS.find(k => PERSONA[k] === persona()), personaOf(pid));
+    if (cp >= 1.3) setTimeout(() => say2('우리 잘 맞는다!', 50), 2500); else if (cp <= .7) setTimeout(() => say2('흥… 티격태격', 50), 2500);
+    setTimeout(async () => {
+      if (m.hidden) return;
+      try {
+        const r = await api('play', { id: S.id, with: pid, compat: cp });
+        const before = bondLv(bondOf(pid)).n, after = bondLv(r.pts).n;
+        if ($('#bondFill')) { $('#bondFill').style.width = r.pts + '%'; $('#bondTxt').textContent = after; }
+        toast(r.capped ? '오늘은 충분히 놀았어요. 내일 또 놀러와요' : `우정 +${r.gained}${after !== before ? ` · ${after}가 됐어요! ${bondLv(r.pts).i}` : ''}`);
+        refresh();
+      } catch (e) {}
+    }, 7000);
   };
 }
 document.addEventListener('click', e => { const v = e.target.closest('[data-visit]'); if (v) visit(v.dataset.visit); });

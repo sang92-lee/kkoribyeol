@@ -64,6 +64,7 @@ export default {
     const hub = env.HUB.get(env.HUB.idFromName("main"));
     if (url.pathname === "/api/draw" && req.method === "POST") return draw(req, env, hub);
     if (url.pathname === "/api/poses" && req.method === "POST") return poses(req, env, hub);
+    if (url.pathname === "/api/babydraw" && req.method === "POST") return babyDraw(req, env, hub);
     return hub.fetch(req);
   },
 };
@@ -143,6 +144,30 @@ async function poses(req, env, hub) {
   await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id, refund: true }) }));
   return json({ error: "ai", message: "움직이는 모습을 못 받아왔어요 (횟수는 안 깎였어요)", detail: errs.join(" | ") }, 502);
 }
+/* 두 펫을 섞은 아기 그림 */
+async function babyDraw(req, env, hub) {
+  if (!env.GEMINI_API_KEY) return json({ error: "setup", message: "GEMINI_API_KEY가 아직 설정되지 않았어요" }, 503);
+  let body; try { body = await req.json(); } catch { return json({ error: "bad" }, 400); }
+  const { id, bid } = body || {};
+  const info = await hub.fetch(new Request(new URL("/api/babyinfo", req.url), { method: "POST", body: JSON.stringify({ id, bid }) })).then(r => r.json());
+  if (!info.ok) return json({ error: "bad", message: info.message || "애기를 맞이할 수 없어요" }, 400);
+  const q = await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id }) })).then(r => r.json());
+  if (!q.ok) return json({ error: "quota", message: q.message }, 429);
+  const imgs = [];
+  for (const pid of [info.pa, info.pb]) {
+    const r = await hub.fetch(new Request(new URL("/api/img/" + pid, req.url)));
+    if (!r.ok) return json({ error: "bad", message: "엄마·아빠 그림이 없어요" }, 400);
+    imgs.push({ mime: r.headers.get("content-type") || "image/jpeg", data: toB64(await r.arrayBuffer()) });
+  }
+  const animal = KIND_KO[info.kind] || "pet";
+  const prompt = `These two images are the parents, two ${animal} characters in the same cute chibi art style. Draw their BABY: a tiny newborn ${animal} in exactly the same art style (soft dark-brown hand-drawn outline, round chubby mochi body, big glossy dot eyes, pink blush, flat pastel colors). ` +
+    `The baby mixes both parents: fur colors and markings half from each, face shape from one, ears from the other. Much rounder and smaller proportions, very big head, tiny paws, sitting, front view, sleepy happy smile. One character only, centered, plain cream background (#FDF6EC), no text, no parents in the picture.`;
+  const tries = [() => callInteractions(env, prompt, imgs, true), () => callInteractions(env, prompt, imgs, false), () => callGenerate(env, prompt, imgs, "gemini-3.1-flash-image"), () => callGenerate(env, prompt, imgs, "gemini-2.5-flash-image")];
+  const errs = [];
+  for (const t of tries) { try { const out = await t(); if (out) return json({ image: out.data, mime: out.mime }); } catch (e) { errs.push(String(e.message || e).slice(0, 200)); } }
+  await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id, refund: true }) }));
+  return json({ error: "ai", message: "애기 그림을 못 받아왔어요. 다시 해 주세요 (횟수는 안 깎였어요)", detail: errs.join(" | ") }, 502);
+}
 async function callInteractions(env, prompt, imgs, withFormat) {
   const body = {
     model: "gemini-nano-banana-2.1",
@@ -192,6 +217,8 @@ export class Hub extends DurableObject {
     try { this.sql.exec("ALTER TABLE equip ADD COLUMN pos TEXT"); } catch (e) {}
     this.sql.exec("CREATE TABLE IF NOT EXISTS wallet(id TEXT PRIMARY KEY, seeds INTEGER, last INTEGER)");
     try { this.sql.exec("ALTER TABLE wallet ADD COLUMN room INTEGER DEFAULT 0"); } catch (e) {}
+    this.sql.exec("CREATE TABLE IF NOT EXISTS bonds(a TEXT, b TEXT, pts REAL, day TEXT, n INTEGER, PRIMARY KEY(a, b))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS babies(bid TEXT PRIMARY KEY, pa TEXT, pb TEXT, kind TEXT, asker TEXT, st TEXT, name TEXT, img TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS layout(id TEXT PRIMARY KEY, data TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS found(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS visits(too TEXT, fr TEXT, at INTEGER)");
@@ -207,6 +234,12 @@ export class Hub extends DurableObject {
     let b = {};
     if (req.method === "POST") { try { b = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); } }
 
+    if (p.startsWith("/api/img/baby-")) {
+      const r = this.rows("SELECT img FROM babies WHERE bid = ?", p.slice(14))[0];
+      const m = r && r.img && /^data:(image\/[a-z]+);base64,(.+)$/.exec(r.img);
+      if (!m) return new Response("", { status: 404 });
+      return new Response(Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)), { headers: { "content-type": m[1], "cache-control": "public, max-age=86400" } });
+    }
     if (p.startsWith("/api/img/")) {
       const pk = url.searchParams.get("p");
       const r = pk ? this.rows("SELECT img FROM poses WHERE id = ? AND k = ?", p.slice(9), pk)[0] : this.rows("SELECT img FROM pets WHERE id = ?", p.slice(9))[0];
@@ -307,6 +340,46 @@ export class Hub extends DurableObject {
       this.sql.exec("INSERT INTO found(day, id, n) VALUES(?, ?, 1) ON CONFLICT(day, id) DO UPDATE SET n = n + 1", day, b.id);
       this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, 5, 0) ON CONFLICT(id) DO UPDATE SET seeds = seeds + 5", b.id);
       return json({ ok: true, seeds: 5 });
+    }
+    if (p === "/api/play") {
+      if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.with)[0] || b.with === b.id) return json({ error: "bad" }, 400);
+      const [x, y] = [b.id, b.with].sort(), day = kst(now);
+      const row = this.rows("SELECT pts, day, n FROM bonds WHERE a = ? AND b = ?", x, y)[0] || { pts: 0, day, n: 0 };
+      const n = row.day === day ? row.n : 0;
+      if (n >= 4) return json({ ok: true, pts: row.pts, gained: 0, capped: true });
+      const gain = Math.round(6 * Math.max(.5, Math.min(1.6, Number(b.compat) || 1)));
+      const pts = Math.min(100, row.pts + gain);
+      this.sql.exec("INSERT INTO bonds(a, b, pts, day, n) VALUES(?, ?, ?, ?, ?) ON CONFLICT(a, b) DO UPDATE SET pts = excluded.pts, day = excluded.day, n = excluded.n", x, y, pts, day, n + 1);
+      return json({ ok: true, pts, gained: pts - row.pts });
+    }
+    if (p === "/api/baby") {
+      if (!this.player(b.id)) return json({ error: "who" }, 400);
+      if (b.act === "ask") {
+        const [x, y] = [b.id, b.with].sort(), bond = this.rows("SELECT pts FROM bonds WHERE a = ? AND b = ?", x, y)[0];
+        if (!bond || bond.pts < 90) return json({ error: "bad", message: "아직 커플이 아니에요" }, 400);
+        const ka = this.rows("SELECT kind FROM pets WHERE id = ?", b.id)[0], kb = this.rows("SELECT kind FROM pets WHERE id = ?", b.with)[0];
+        if (!ka || !kb || ka.kind !== kb.kind) return json({ error: "bad", message: "같은 종끼리만 애기를 맞이할 수 있어요" }, 400);
+        if (this.rows("SELECT 1 FROM babies WHERE ((pa = ? AND pb = ?) OR (pa = ? AND pb = ?)) AND st IN ('ask', 'born')", x, y, y, x)[0]) return json({ error: "bad", message: "이미 제안했거나 애기가 있어요" }, 400);
+        const bid = `${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        this.sql.exec("INSERT INTO babies(bid, pa, pb, kind, asker, st, at) VALUES(?, ?, ?, ?, ?, 'ask', ?)", bid, x, y, ka.kind, b.id, now);
+        return json({ ok: true, bid });
+      }
+      const bb = this.rows("SELECT * FROM babies WHERE bid = ?", String(b.bid || ""))[0];
+      if (!bb || (bb.pa !== b.id && bb.pb !== b.id)) return json({ error: "bad", message: "없는 제안이에요" }, 400);
+      if (b.act === "decline") { this.sql.exec("UPDATE babies SET st = 'no' WHERE bid = ?", bb.bid); return json({ ok: true }); }
+      if (b.act === "born") {
+        if (bb.st !== "ask" || bb.asker === b.id) return json({ error: "bad", message: "수락할 수 없어요" }, 400);
+        if (typeof b.img !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
+        const name = String(b.name || "").trim().slice(0, 12) || "꼬마";
+        this.sql.exec("UPDATE babies SET st = 'born', img = ?, name = ?, at = ? WHERE bid = ?", b.img, name, now, bb.bid);
+        return json({ ok: true });
+      }
+      return json({ error: "bad" }, 400);
+    }
+    if (p === "/api/babyinfo") {
+      const bb = this.rows("SELECT * FROM babies WHERE bid = ?", String(b.bid || ""))[0];
+      if (!bb || bb.st !== "ask" || (bb.pa !== b.id && bb.pb !== b.id) || bb.asker === b.id) return json({ ok: false, message: "수락할 수 없는 제안이에요" });
+      return json({ ok: true, pa: bb.pa, pb: bb.pb, kind: bb.kind });
     }
     if (p === "/api/visit") {
       if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad" }, 400);
@@ -444,6 +517,8 @@ export class Hub extends DurableObject {
     const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
+    const bonds = id ? Object.fromEntries(this.rows("SELECT a, b, pts FROM bonds WHERE a = ? OR b = ?", id, id).map(x => [x.a === id ? x.b : x.a, x.pts])) : {};
+    const babies = id ? this.rows("SELECT bid, pa, pb, kind, asker, st, name, at FROM babies WHERE (pa = ? OR pb = ?) AND st IN ('ask', 'born')", id, id) : [];
     const layouts = Object.fromEntries(this.rows("SELECT id, data FROM layout").map(x => { try { return [x.id, JSON.parse(x.data)]; } catch (e) { return [x.id, null]; } }));
     const roomLvs = Object.fromEntries(this.rows("SELECT id, room FROM wallet").map(x => [x.id, x.room || 0]));
     const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
@@ -497,7 +572,7 @@ export class Hub extends DurableObject {
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors, bonds, babies,
     };
   }
 }
