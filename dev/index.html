@@ -130,7 +130,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes bob2 { to { transform: translateY(-6px); } }
 .hdr .who { background: none; border: 2px solid var(--line, #E8DCCF); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
 .setRow { display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 14px; margin: 8px 0; } .setRow input { font: inherit; font-size: 16px; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; }
-.roomBar { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
+.room .camArrow { z-index: 32 !important; } .room .glass { z-index: 31 !important; } .room .miss, .room .sticks, .room .bedMound, .room .bubble, .room .emote, .room .snot, .room .zz, .room .ball, .room .toyx { z-index: 30 !important; } .room .pet.guest, .room .pet.baby { z-index: 19; }
+.roomBar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
 .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
 .room .sky { position: absolute; inset: 0 0 30% 0; background: linear-gradient(#D9E8FA, #F7E8EF); transition: background 2s; }
@@ -524,8 +525,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
     <div class="card babyAsk" id="babyCard" hidden></div>
     <div class="card" id="home" hidden>
       <div class="petName"><h2 id="homeName"></h2><span class="note" id="homeKind"></span></div>
-      <div class="room" id="room"></div>
       <div class="roomBar"><button type="button" class="sndBtn" id="sndBtn">소리 켜기</button><span class="clockTag" id="roomClock"></span><span class="wtTag" id="wtTag"></span></div>
+      <div class="room" id="room"></div>
       <p class="petStatus" id="petStatus"><b></b><span></span></p>
       <p class="trust" id="trust"></p>
       <div class="care">
@@ -709,6 +710,7 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = fals
 const KIND = { hamster: '햄찌', dog: '강아지', cat: '고양이' };
 const GOODS = { sticker: '스티커', keyring: '키링', plush: '말랑 인형', figure: '잠자는 피규어' };
 const ITEMS = { loft: '나무판 2층', tube: '튜브 터널', bridge: '나무 다리', hay: '건초 더미', cushion: '딸기 쿠션', mushroom: '버섯 집', tunnel: '통나무 터널', seesaw: '시소', telescope: '별 망원경', carousel: '미니 회전목마', slide: '미끄럼틀', hammock: '해먹', lamp: '달 조명', sandbath: '모래 목욕탕', balloon: '풍선 다발', garden: '해바라기 정원', cafe: '꼬마 카페', swing: '그네', bookshelf: '꼬마 책장', pool: '튜브 풀장', piano: '장난감 피아노', cloud: '구름 침대', tent: '무지개 별 텐트' };
+const ITEM_W = { hay: 14, bridge: 18, loft: 20, tube: 18, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
 const ITEM_ORDER = ['hay', 'bridge', 'loft', 'tube', 'hammock', 'slide', 'lamp', 'sandbath', 'balloon', 'cushion', 'garden', 'cafe', 'swing', 'bookshelf', 'mushroom', 'tunnel', 'seesaw', 'pool', 'piano', 'telescope', 'cloud', 'tent', 'carousel'];
 const SNACK = {
   apple: { name: '사과 조각', c: '#E86A6A' }, carrot: { name: '당근', c: '#F29A4A' }, cheese: { name: '치즈', c: '#F6D365' }, worm: { name: '밀웜', c: '#C9A06A' },
@@ -1080,12 +1082,15 @@ function SFXp(kind) { try { actx2 = actx2 || new (window.AudioContext || window.
 /* ---------- 방 엔진 ---------- */
 const P = { x: 50, y: FLOOR, dir: 1, act: 'idle', until: 0, target: null, speed: 0, onArrive: null, hidden: false, tween: null, wheel: 0, ran: 0, awakeUntil: 0, actText: '', built: '' };
 const rnd = (a, b) => a + Math.random() * (b - a);
+const bk = k => String(k).split('#')[0];
+const ZI = z => 20 - Math.round((z || 0) * 16);
+function itemCnt() { const c = {}; for (const x of S.state?.mine || []) if (x.kind === 'item') c[x.a] = Math.min(3, (c[x.a] || 0) + 1); return c; }
 function allItems() { return new Set((S.state?.mine || []).filter(x => x.kind === 'item').map(x => x.a)); }
 function slots() { return (S.state?.roomSlots || [3, 5, 7, 9])[S.state?.roomLv || 0] || 3; }
 /* 방에 놓인 아이템: 내가 배치한 것, 없으면 가진 것 중 칸 수만큼 */
 function ownedItems() {
   const all = allItems(), lay = DECO.on ? DECO.lay : myPet()?.layout;
-  if (lay) return new Set(Object.keys(lay).filter(k => all.has(k)).slice(0, slots()));
+  if (lay) { const c = itemCnt(); return new Set(Object.keys(lay).filter(k => all.has(bk(k)) && (!k.includes('#') || +k.split('#')[1] <= (c[bk(k)] || 0))).slice(0, slots())); }
   return new Set(ITEM_ORDER.filter(k => all.has(k)).slice(0, slots()));
 }
 const DECO = { on: false, lay: null, ver: 0 };
@@ -1146,7 +1151,7 @@ function buildRoom() {
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: Math.round(10 * WF) }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
-  const prop = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (PZ[n] || 0); return `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w / WF * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;filter:brightness(${1 - z * .06});` : ''}${extra}">${svg}</div>`; };
+  const prop = (n, svg, w, extra = '') => { const z = HANG.includes(bk(n)) ? 0 : (PZ[n] || 0); return `<div class="prop ${bk(n)}${n.includes('#') ? ' copy' : ''}" data-k="${n}" style="left:${SPOT[n] ?? 50}%;width:${w / WF * (1 - z * .25)}%;z-index:${ZI(z)};${z ? `bottom:${12 + z * DEPTH}%;filter:brightness(${1 - z * .06});` : ''}${extra}">${svg}</div>`; };
   $('#room').classList.toggle('cage', !!KP().cage); $('#room').dataset.th = themeOf(S.id);
   $('#room').innerHTML = `<div class="world" id="world" style="width:${WF * 100}%;--wf:${WF}"><div class="sky"></div>${stars}<div class="floor"></div>
     ${roomDecor(S.state?.roomLv || 0)}
@@ -1160,6 +1165,7 @@ function buildRoom() {
     ${['hay', 'bridge', 'loft', 'tube', 'sandbath', 'balloon', 'swing', 'bookshelf', 'piano', 'cushion', 'mushroom', 'tunnel', 'seesaw', 'telescope', 'carousel'].filter(k => owned.has(k)).map(k => prop(k, ITEM_SVG[k], { hay: 14, bridge: 18, loft: 20, tube: 18, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22 }[k])).join('')}
     ${owned.has('garden') ? prop('garden', ITEM_SVG.garden, 22) : ''}${owned.has('cafe') ? prop('cafe', ITEM_SVG.cafe, 18) : ''}
     ${owned.has('pool') ? prop('pool', ITEM_SVG.pool, 24, 'bottom:9%;') : ''}${owned.has('tent') ? prop('tent', ITEM_SVG.tent, 22) : ''}
+    ${[...owned].filter(k => k.includes('#')).map(k => prop(k, ITEM_SVG[bk(k)], ITEM_W[bk(k)] || 18, bk(k) === 'cloud' ? 'bottom:44%;' : bk(k) === 'pool' ? 'bottom:9%;' : '')).join('')}
     ${prop('toilet', TOILET_SVG(kindNow(), care().poop), 12)}
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
@@ -1555,16 +1561,18 @@ function decoStart() {
   DECO.on = true; DECO.lay = lay; P.built = ''; buildRoom(); decoUI();
 }
 function decoUI() {
-  const all = [...allItems()], placed = Object.keys(DECO.lay).filter(k => ITEMS[k]), max = slots();
+  const all = [...allItems()], placed = Object.keys(DECO.lay).filter(k => ITEMS[bk(k)]), max = slots(), cnt = itemCnt(), pn = b => placed.filter(k => bk(k) === b).length;
   $('#decoBar').hidden = false; $('#homeTools').hidden = true;
   $('#decoBar').innerHTML = `<p class="decoHead"><b>방 꾸미기</b> 아이템 ${placed.length}/${max}칸 · 좌우·앞뒤로 끌어서 옮겨요</p>
-    <div class="decoTray">${ITEM_ORDER.filter(k => all.includes(k)).map(k => `<button type="button" class="decoIt ${DECO.lay[k] != null ? 'on' : ''}" data-deco="${k}">${ITEM_SVG[k]}<small>${DECO.lay[k] != null ? '빼기' : placed.length >= max ? '칸 부족' : '놓기'}</small></button>`).join('') || '<p class="note">갓챠에서 방 아이템을 뽑아 보세요</p>'}</div>
+    <div class="decoTray">${ITEM_ORDER.filter(k => all.includes(k)).map(k => `<button type="button" class="decoIt ${pn(k) ? 'on' : ''}" data-deco="${k}">${ITEM_SVG[k]}<small>${pn(k) < (cnt[k] || 1) && placed.length < max ? `놓기 ${pn(k)}/${cnt[k] || 1}` : pn(k) ? '모두 빼기' : '칸 부족'}</small></button>`).join('') || '<p class="note">갓챠에서 방 아이템을 뽑아 보세요</p>'}</div>
     ${placed.length >= max && (S.state.roomCost || [])[(S.state.roomLv || 0) + 1] != null ? '<p class="note">더 놓고 싶으면 방을 넓혀요</p>' : ''}
     <div class="row2"><button type="button" class="btn" id="decoCancel">취소</button><button type="button" class="btn main" id="decoSave">저장</button></div>`;
   $('#decoBar').querySelectorAll('[data-deco]').forEach(b => b.onclick = () => {
     const k = b.dataset.deco;
-    if (DECO.lay[k] != null) delete DECO.lay[k];
-    else if (placed.length < max) DECO.lay[k] = Math.max(4, Math.min(96, (P.cam + 50) / WF)); else return toast('칸이 꽉 찼어요');
+    const n = pn(k);
+    if (n < (cnt[k] || 1) && placed.length < max) { const key = DECO.lay[k] == null ? k : `${k}#${[2, 3].find(i => DECO.lay[`${k}#${i}`] == null)}`; DECO.lay[key] = Math.max(4, Math.min(96, (P.cam + 50) / WF + n * 6)); }
+    else if (n) { for (const q of Object.keys(DECO.lay)) if (bk(q) === k) delete DECO.lay[q]; }
+    else return toast('칸이 꽉 찼어요');
     DECO.ver++; P.built = ''; buildRoom(); decoUI();
   });
   $('#decoCancel').onclick = decoEnd;
@@ -1573,14 +1581,14 @@ function decoUI() {
 }
 function decoBind() {
   $('#world')?.querySelectorAll('.prop').forEach(pr => {
-    const k = [...pr.classList].find(c => c !== 'prop'); pr.classList.add('edit');
+    const k = pr.dataset.k || [...pr.classList].find(c => c !== 'prop'); pr.classList.add('edit');
     pr.onpointerdown = e => { e.stopPropagation(); const w = $('#world').getBoundingClientRect(); try { pr.setPointerCapture(e.pointerId); } catch (x) {}
       const rr = $('#room').getBoundingClientRect(), base = parseFloat(pr.style.width) / (1 - (PZ[k] || 0) * .25);
       pr.onpointermove = ev => {
         const x = Math.max(3, Math.min(97, (ev.clientX - w.left) / w.width * 100)); pr.style.left = x + '%'; SPOT[k] = x;
         if (HANG.includes(k)) { DECO.lay[k] = x; return; }
         const yb = (rr.bottom - ev.clientY) / rr.height * 100, z = Math.max(0, Math.min(1, (yb - FLOOR) / DEPTH));
-        PZ[k] = z; pr.style.bottom = (12 + z * DEPTH) + '%'; pr.style.width = (base * (1 - z * .25)) + '%'; pr.style.zIndex = z > .55 ? 0 : 2; pr.style.filter = `brightness(${1 - z * .06})`;
+        PZ[k] = z; pr.style.bottom = (12 + z * DEPTH) + '%'; pr.style.width = (base * (1 - z * .25)) + '%'; pr.style.zIndex = ZI(z); pr.style.filter = `brightness(${1 - z * .06})`;
         DECO.lay[k] = z > .02 ? { x, y: +z.toFixed(2) } : x;
       };
       pr.onpointerup = pr.onpointercancel = () => { pr.onpointermove = null; }; };
@@ -1630,9 +1638,9 @@ function loop(now) {
   if (P.act === 'walk' && Math.abs(P.target - P.x) < .3 && Math.abs(((P.zt ?? P.z) || 0) - P.z) > .02) P.pauseUntil = 0;
   const zs = 1 - P.z * .25;
   pet.style.left = P.x + '%'; pet.style.bottom = (P.y + P.z * DEPTH) + '%';
-  pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = P.z > .55 ? 1 : 4;
+  pet.style.transform = `translateX(-50%) scale(${zs})`; pet.style.transformOrigin = '50% 100%'; pet.style.zIndex = ZI(P.z) + 1;
   pet.style.filter = P.z > .5 ? `brightness(${1 - P.z * .08})` : '';
-  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = P.z > .5 ? 0 : 2; sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
+  const sh = $('#shadow'); if (sh) { const air = Math.max(0, P.y - FLOOR); sh.style.left = P.x + '%'; sh.style.zIndex = ZI(P.z); sh.style.opacity = P.hidden || P.hiding ? 0 : Math.max(0, 1 - air / 30); sh.style.transform = `translateX(-50%) scale(${Math.max(.4, 1 - air / 40) * (1 - (P.z || 0) * .25)})`; sh.style.bottom = (air > 20 ? P.y - 1.5 : FLOOR - 1.5) + (P.z || 0) * DEPTH + '%'; }
   placeEmote(); snot(now); jelly(dt, now); babiesTick(dt, now); guestsTick(dt, now);
   const wd = $('#world'); if (wd) {
     const maxC = (WF - 1) * 100; if (P.cam == null) P.cam = rnd(0, maxC);
@@ -2056,10 +2064,10 @@ function miniRoom(pid) {
   const lv = p.room || 0, wf = ROOM_WF[lv] || 1.3, kp = KIND_PROPS[p.kind] || KIND_PROPS.hamster;
   const sp = { ...BASE_SPOT }, pz = {};
   for (const [k, v] of Object.entries(p.layout || {})) { if (v && typeof v === 'object') { sp[k] = v.x; pz[k] = v.y || 0; } else sp[k] = v; }
-  const all = new Set(p.items || []), placed = p.layout ? Object.keys(p.layout).filter(k => all.has(k)) : ITEM_ORDER.filter(k => all.has(k)).slice(0, (st.roomSlots || [3])[lv] || 3);
+  const all = new Set(p.items || []), placed = p.layout ? Object.keys(p.layout).filter(k => all.has(bk(k))) : ITEM_ORDER.filter(k => all.has(k)).slice(0, (st.roomSlots || [3])[lv] || 3);
   const W = { hay: 14, bridge: 18, loft: 20, tube: 18, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
-  const pr = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (pz[n] || 0); return `<div class="prop ${n}" style="left:${sp[n]}%;width:${w / wf * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;` : ''}${extra}">${svg}</div>`; };
-  const items = placed.map(k => pr(k, ITEM_SVG[k], W[k] || 18, k === 'cloud' ? 'bottom:44%;' : k === 'pool' ? 'bottom:9%;' : '')).join('');
+  const pr = (n, svg, w, extra = '') => { const z = HANG.includes(bk(n)) ? 0 : (pz[n] || 0); return `<div class="prop ${bk(n)}" style="left:${sp[n] ?? 50}%;width:${w / wf * (1 - z * .25)}%;z-index:${ZI(z)};${z ? `bottom:${12 + z * DEPTH}%;` : ''}${extra}">${svg}</div>`; };
+  const items = placed.map(k => pr(k, ITEM_SVG[bk(k)], W[bk(k)] || 18, bk(k) === 'cloud' ? 'bottom:44%;' : bk(k) === 'pool' ? 'bottom:9%;' : '')).join('');
   /* 우리 애가 있는 곳을 가운데로, 실제 방 크기 그대로 */
   const px = (sp.bowl + sp.wheel) / 2 - 10, cam = Math.max(0, Math.min((wf - 1) * 100, px * wf - 50));
   const baby = (st.babies || []).filter(b => b.st === 'born' && (b.pa === pid || b.pb === pid))[0];

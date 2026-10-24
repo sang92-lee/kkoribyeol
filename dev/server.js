@@ -12,7 +12,7 @@ const DRAW_PER_DAY = 40;      // AI 그림: 전체 하루 40번 (요금 안전�
 
 const SPIN_COST = 50;
 const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
-const ROOM_SLOTS = [3, 5, 7, 9];        // 방 크기별 놓을 수 있는 아이템 수
+const ROOM_SLOTS = [3, 5, 7, 8];        // 방 크기별 놓을 수 있는 아이템 수
 const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
 const POUCH_MS = 40 * 60e3, POUCH_MAX = 5, GIFT_COST = 15;
@@ -350,7 +350,8 @@ export class Hub extends DurableObject {
     if (p === "/api/layout") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
       const lv = (this.rows("SELECT room FROM wallet WHERE id = ?", b.id)[0] || { room: 0 }).room || 0;
-      const owned = new Set(this.rows("SELECT DISTINCT a FROM pulls WHERE who = ? AND kind = 'item'", b.id).map(x => x.a));
+      const cnt = Object.fromEntries(this.rows("SELECT a, COUNT(*) AS n FROM pulls WHERE who = ? AND kind = 'item' GROUP BY a", b.id).map(x => [x.a, Math.min(3, x.n)]));
+      const owned = { has: k => { const [a, c] = k.split("#"); return !!cnt[a] && (c == null || (Number(c) >= 2 && Number(c) <= cnt[a])); } };
       const base = ["house", "bowl", "bottle", "toilet", "wheel"], out = {};
       let n = 0;
       for (const [k, v] of Object.entries(b.layout || {})) {
