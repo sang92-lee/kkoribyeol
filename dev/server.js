@@ -23,6 +23,7 @@ const NPC_PETS = [
   { id: "npc-nyang", name: "냥냥", kind: "cat", fur: "#9A949E" },
 ];
 const ITEMS = [
+  { id: "hay", w: 22 }, { id: "bridge", w: 16 }, { id: "loft", w: 14 }, { id: "tube", w: 9 },
   { id: "slide", w: 22 }, { id: "hammock", w: 22 }, { id: "lamp", w: 22 }, { id: "garden", w: 16 }, { id: "cafe", w: 14 },
   { id: "sandbath", w: 18 }, { id: "balloon", w: 18 }, { id: "swing", w: 12 }, { id: "bookshelf", w: 12 },
   { id: "cushion", w: 18 }, { id: "mushroom", w: 14 }, { id: "tunnel", w: 14 }, { id: "seesaw", w: 11 },

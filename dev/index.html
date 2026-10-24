@@ -682,8 +682,8 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = fals
 /* ---------- 그림 조각 ---------- */
 const KIND = { hamster: '햄찌', dog: '강아지', cat: '고양이' };
 const GOODS = { sticker: '스티커', keyring: '키링', plush: '말랑 인형', figure: '잠자는 피규어' };
-const ITEMS = { cushion: '딸기 쿠션', mushroom: '버섯 집', tunnel: '통나무 터널', seesaw: '시소', telescope: '별 망원경', carousel: '미니 회전목마', slide: '미끄럼틀', hammock: '해먹', lamp: '달 조명', sandbath: '모래 목욕탕', balloon: '풍선 다발', garden: '해바라기 정원', cafe: '꼬마 카페', swing: '그네', bookshelf: '꼬마 책장', pool: '튜브 풀장', piano: '장난감 피아노', cloud: '구름 침대', tent: '무지개 별 텐트' };
-const ITEM_ORDER = ['hammock', 'slide', 'lamp', 'sandbath', 'balloon', 'cushion', 'garden', 'cafe', 'swing', 'bookshelf', 'mushroom', 'tunnel', 'seesaw', 'pool', 'piano', 'telescope', 'cloud', 'tent', 'carousel'];
+const ITEMS = { loft: '나무판 2층', tube: '튜브 터널', bridge: '나무 다리', hay: '건초 더미', cushion: '딸기 쿠션', mushroom: '버섯 집', tunnel: '통나무 터널', seesaw: '시소', telescope: '별 망원경', carousel: '미니 회전목마', slide: '미끄럼틀', hammock: '해먹', lamp: '달 조명', sandbath: '모래 목욕탕', balloon: '풍선 다발', garden: '해바라기 정원', cafe: '꼬마 카페', swing: '그네', bookshelf: '꼬마 책장', pool: '튜브 풀장', piano: '장난감 피아노', cloud: '구름 침대', tent: '무지개 별 텐트' };
+const ITEM_ORDER = ['hay', 'bridge', 'loft', 'tube', 'hammock', 'slide', 'lamp', 'sandbath', 'balloon', 'cushion', 'garden', 'cafe', 'swing', 'bookshelf', 'mushroom', 'tunnel', 'seesaw', 'pool', 'piano', 'telescope', 'cloud', 'tent', 'carousel'];
 const SNACK = {
   apple: { name: '사과 조각', c: '#E86A6A' }, carrot: { name: '당근', c: '#F29A4A' }, cheese: { name: '치즈', c: '#F6D365' }, worm: { name: '밀웜', c: '#C9A06A' },
   strawberry: { name: '딸기', c: '#F05A78' }, pudding: { name: '푸딩', c: '#F3C969' }, goldseed: { name: '황금 해바라기씨', c: '#F6C94E' },
@@ -725,7 +725,7 @@ function hashStr(t) { let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt
 function persona() { const p = myPet(); return PERSONA[PERSONA_KEYS[hashStr(S.id + '|' + (p?.v || 0)) % PERSONA_KEYS.length]]; }
 function taste() { const ps = persona(), h = hashStr(S.id + '#' + (myPet()?.v || 0)); return { love: ps.love[h % ps.love.length], hate: ps.hate[(h >> 5) % ps.hate.length] }; }
 /* 등급: 0 일반, 1 고급, 2 레어, 3 전설 */
-const RARITY = { mushroom: 1, tunnel: 1, seesaw: 1, telescope: 2, carousel: 3, swing: 1, bookshelf: 1, piano: 2, bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
+const RARITY = { hay: 0, bridge: 1, loft: 1, tube: 2, mushroom: 1, tunnel: 1, seesaw: 1, telescope: 2, carousel: 3, swing: 1, bookshelf: 1, piano: 2, bunny: 1, heartglass: 1, witch: 2, halo: 3, egg: 1, blueberry: 1, cake: 2, macaron: 2, starjelly: 3, garden: 1, cafe: 1, glasses: 1, flower: 1, keyring: 1, plush: 1, cheese: 1, worm: 1,
   pool: 2, cloud: 2, wings: 2, figure: 2, strawberry: 2, pudding: 2, tent: 3, crown: 3, goldseed: 3 };
 const RLABEL = ['일반', '고급', '★ 레어', '★★ 전설'];
 function rarityOf(a, b) { return Math.max(RARITY[a] || 0, RARITY[b] || 0); }
@@ -746,6 +746,10 @@ function petFace(petId, label) {
   return critter(p?.kind || 'hamster', p?.fur);
 }
 const ITEM_SVG = {
+  loft: `<svg viewBox="0 0 120 90"><path d="M14 22 V86 M106 22 V86" stroke="#B98558" stroke-width="7"/><path d="M14 22 V86 M106 22 V86" stroke="#4A3428" stroke-width="2" opacity=".5"/><rect x="4" y="12" width="112" height="14" rx="4" fill="#D9A877" stroke="#4A3428" stroke-width="3.5"/><path d="M30 14 v10 M58 14 v10 M86 14 v10" stroke="#B98558" stroke-width="2"/><g transform="rotate(14 118 86)"><path d="M108 24 V88 M124 24 V88" stroke="#9E6B42" stroke-width="4"/><path d="M108 36 h16 M108 50 h16 M108 64 h16 M108 78 h16" stroke="#9E6B42" stroke-width="3.5"/></g></svg>`,
+  tube: `<svg viewBox="0 0 120 80"><path d="M14 74 V40 Q14 14 40 14 H106" fill="none" stroke="#4A3428" stroke-width="22" stroke-linecap="round"/><path d="M14 74 V40 Q14 14 40 14 H106" fill="none" stroke="#BDEBD9" stroke-width="15" stroke-linecap="round"/><path d="M42 10 H102" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".75"/><rect x="5" y="44" width="18" height="10" rx="3" fill="#F7B6C6" stroke="#4A3428" stroke-width="2.5"/><rect x="66" y="5" width="10" height="18" rx="3" fill="#F7B6C6" stroke="#4A3428" stroke-width="2.5"/><ellipse cx="108" cy="14" rx="5" ry="10" fill="#4A3428"/></svg>`,
+  bridge: `<svg viewBox="0 0 120 50"><path d="M4 46 Q60 -4 116 46" fill="none" stroke="#4A3428" stroke-width="4"/><rect x="5.2" y="34.1" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="17.7" y="23.0" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="30.1" y="14.0" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="42.6" y="8.1" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="55.0" y="6.0" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="67.4" y="8.1" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="79.9" y="14.0" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="92.3" y="23.0" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/><rect x="104.8" y="34.1" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/></svg>`,
+  hay: `<svg viewBox="0 0 100 50"><path d="M6 46 Q10 10 50 8 Q90 10 94 46Z" fill="#F2D58A" stroke="#C9A24A" stroke-width="3"/><path d="M16 44 Q20 26 26 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M25 44 Q29 26 35 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M34 44 Q38 26 44 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M43 44 Q47 26 53 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M52 44 Q56 26 62 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M61 44 Q65 26 71 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M70 44 Q74 26 80 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M79 44 Q83 26 89 16" stroke="#D9B05A" stroke-width="2" fill="none"/><path d="M40 8 l-6 -6 M56 8 l4 -7 M70 12 l8 -5" stroke="#C9A24A" stroke-width="2.5" stroke-linecap="round"/></svg>`,
   cushion: `<svg viewBox="0 0 100 60"><path d="M8 40 Q2 14 50 10 Q98 14 92 40 Q88 58 50 58 Q12 58 8 40Z" fill="#F57C93" stroke="${INK}" stroke-width="4"/><path d="M30 12 Q50 -2 70 12 Q60 20 50 14 Q40 20 30 12Z" fill="#7FB069" stroke="${INK}" stroke-width="3"/><g fill="#FFE08A">${[[26, 28], [44, 22], [62, 26], [76, 36], [34, 44], [54, 42], [18, 40]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2" ry="3"/>`).join('')}</g></svg>`,
   mushroom: `<svg viewBox="0 0 100 100"><path d="M24 98 V56 H76 V98Z" fill="#FFF3E0" stroke="${INK}" stroke-width="4"/><path d="M38 98 V76 Q50 64 62 76 V98Z" fill="#8A5A3B" stroke="${INK}" stroke-width="3"/><circle cx="66" cy="70" r="5" fill="#C9E8F6" stroke="${INK}" stroke-width="2.5"/><path d="M4 58 Q4 8 50 6 Q96 8 96 58Z" fill="#E86A6A" stroke="${INK}" stroke-width="4"/><g fill="#FFFFFF" stroke="${INK}" stroke-width="2"><circle cx="30" cy="30" r="8"/><circle cx="62" cy="22" r="6"/><circle cx="76" cy="42" r="7"/><circle cx="48" cy="46" r="5"/></g></svg>`,
   tunnel: `<svg viewBox="0 0 120 60"><path d="M14 8 H106 V56 H14Z" fill="#B98558" stroke="${INK}" stroke-width="4"/><path d="M26 18 h76 M24 34 h80 M28 48 h70" stroke="#9E6B42" stroke-width="2.5"/><ellipse cx="14" cy="32" rx="12" ry="24" fill="#D9A877" stroke="${INK}" stroke-width="4"/><ellipse cx="14" cy="32" rx="8" ry="18" fill="#4A2E1C"/><ellipse cx="106" cy="32" rx="12" ry="24" fill="#D9A877" stroke="${INK}" stroke-width="4"/><path d="M60 8 q4 -8 10 -6" stroke="#7FB069" stroke-width="3" fill="none"/></svg>`,
@@ -889,7 +893,7 @@ const BALL_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy
 /* 방 안 위치 (가로 %) */
 let WF = 1.3; /* 방 너비 = 화면의 몇 배인지, 방 넓히기로 커짐 */
 const ROOM_WF = [1.3, 1.7, 2.2, 2.8], ROOM_NAME = ['원룸', '투룸', '복층 하우스', '꼬리별 대저택'];
-const BASE_SPOT = { cushion: 14, mushroom: 34, tunnel: 47, seesaw: 58, telescope: 66, carousel: 89,  platform: 22, pot: 70,  sandbath: 26, balloon: 35, swing: 53, bookshelf: 61, piano: 80, house: 6, hammock: 15, slide: 20, garden: 31, bowl: 41, bottle: 46, lamp: 50, cafe: 57, toilet: 65, cloud: 70, pool: 75, tent: 85, wheel: 95 };
+const BASE_SPOT = { hay: 76, bridge: 44, loft: 63, tube: 28, cushion: 14, mushroom: 34, tunnel: 47, seesaw: 58, telescope: 66, carousel: 89,  platform: 22, pot: 70,  sandbath: 26, balloon: 35, swing: 53, bookshelf: 61, piano: 80, house: 6, hammock: 15, slide: 20, garden: 31, bowl: 41, bottle: 46, lamp: 50, cafe: 57, toilet: 65, cloud: 70, pool: 75, tent: 85, wheel: 95 };
 let SPOT = { ...BASE_SPOT }, PZ = {};
 const HANG = ['hammock', 'lamp', 'cloud'];
 function zOfX(x) { for (const k in SPOT) if (Math.abs(SPOT[k] - x) < .01) return PZ[k] || 0; return 0; }
@@ -1105,20 +1109,7 @@ function placeLegs(b) {
   L.style.setProperty('--fur', b.fur);
 }
 /* 집 레벨별로 방이 달라짐 */
-function roomDecor(lv, pid = S.id) {
-  const p = S.state?.pets?.[pid]; let h = '';
-  if (lv >= 1 && lv < 3) h += `<div class="wall wp${lv}"></div>` + [.18, .62].slice(0, lv >= 2 ? 2 : 1).map(x => `<div class="win" style="left:${x * 100}%"><svg viewBox="0 0 100 90"><rect x="10" y="8" width="80" height="62" rx="6" fill="#CFE6F5" stroke="#4A3428" stroke-width="4"/><path d="M50 8 V70 M10 39 H90" stroke="#4A3428" stroke-width="3"/><circle cx="72" cy="24" r="7" fill="#FFF3C4" class="sunmoon"/><path d="M4 4 Q20 40 8 76 L2 76 V4Z M96 4 Q80 40 92 76 L98 76 V4Z" fill="#F7B6C6" stroke="#4A3428" stroke-width="3"/><path d="M0 4 H100" stroke="#B98558" stroke-width="5"/></svg></div>`).join('');
-  if (lv >= 2) h += `<div class="loft" style="left:40%;width:42%"></div><div class="ladder" style="left:39%"></div>`;
-  if (lv >= 3) {
-    const tube = `<svg viewBox="0 0 300 120" preserveAspectRatio="none"><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#4A3428" stroke-width="17" stroke-linecap="round"/><path d="M10 18 H120 Q150 18 150 48 V70 Q150 100 180 100 H292" fill="none" stroke="#BDEBD9" stroke-width="12" stroke-linecap="round" opacity=".92"/><path d="M14 13 H118" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/><path d="M184 95 H288" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/>${[[60, 18], [150, 58], [235, 100]].map(([x, y]) => `<rect x="${x - 6}" y="${y - 11}" width="12" height="22" rx="3" fill="#F7B6C6" stroke="#4A3428" stroke-width="3" transform="${x === 150 ? `rotate(90 ${x} ${y})` : ''}"/>`).join('')}</svg>`;
-    const bridge = `<svg viewBox="0 0 120 50"><path d="M4 46 Q60 -4 116 46" fill="none" stroke="#4A3428" stroke-width="4"/>${Array.from({ length: 9 }, (_, i) => { const t = (i + .5) / 9, x = 4 + t * 112, y = 46 - Math.sin(t * Math.PI) * 34; return `<rect x="${x - 5}" y="${y - 6}" width="10" height="12" rx="2" fill="#D9A877" stroke="#4A3428" stroke-width="2"/>`; }).join('')}</svg>`;
-    h += `<i class="noWall"></i><div class="loft hi" style="left:5%;width:24%"></div><div class="ladder hi" style="left:27%"></div>
-      <div class="tubeW">${tube}</div><div class="bridgeW">${bridge}</div>
-      <div class="hay" style="left:8%"></div><div class="hay" style="left:57%"></div><div class="hay" style="left:88%"></div>
-      <div class="signW"><b>${esc(p?.name || '')}</b><small>햄찌 저택</small></div>`;
-  }
-  return h;
-}
+function roomDecor() { return ''; }
 function buildRoom() {
   const p = myPet(); if (!p) return;
   WF = ROOM_WF[S.state?.roomLv || 0] || 1.3;
@@ -1140,7 +1131,7 @@ function buildRoom() {
     ${owned.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}
     ${prop('bowl', PROP_SVG.bowl(care().food), KP().cage ? 10 : 12)}${prop('bottle', KP().water(care().water), KP().waterW)}
     ${owned.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}
-    ${['sandbath', 'balloon', 'swing', 'bookshelf', 'piano', 'cushion', 'mushroom', 'tunnel', 'seesaw', 'telescope', 'carousel'].filter(k => owned.has(k)).map(k => prop(k, ITEM_SVG[k], { sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22 }[k])).join('')}
+    ${['hay', 'bridge', 'loft', 'tube', 'sandbath', 'balloon', 'swing', 'bookshelf', 'piano', 'cushion', 'mushroom', 'tunnel', 'seesaw', 'telescope', 'carousel'].filter(k => owned.has(k)).map(k => prop(k, ITEM_SVG[k], { hay: 14, bridge: 18, loft: 20, tube: 18, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22 }[k])).join('')}
     ${owned.has('garden') ? prop('garden', ITEM_SVG.garden, 22) : ''}${owned.has('cafe') ? prop('cafe', ITEM_SVG.cafe, 18) : ''}
     ${owned.has('pool') ? prop('pool', ITEM_SVG.pool, 24, 'bottom:9%;') : ''}${owned.has('tent') ? prop('tent', ITEM_SVG.tent, 22) : ''}
     ${prop('toilet', TOILET_SVG(kindNow(), care().poop), 12)}
@@ -2040,7 +2031,7 @@ function miniRoom(pid) {
   const sp = { ...BASE_SPOT }, pz = {};
   for (const [k, v] of Object.entries(p.layout || {})) { if (v && typeof v === 'object') { sp[k] = v.x; pz[k] = v.y || 0; } else sp[k] = v; }
   const all = new Set(p.items || []), placed = p.layout ? Object.keys(p.layout).filter(k => all.has(k)) : ITEM_ORDER.filter(k => all.has(k)).slice(0, (st.roomSlots || [3])[lv] || 3);
-  const W = { cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
+  const W = { hay: 14, bridge: 18, loft: 20, tube: 18, cushion: 15, mushroom: 17, tunnel: 22, seesaw: 22, telescope: 12, carousel: 22, hammock: 30, slide: 20, lamp: 12, garden: 22, cafe: 18, pool: 24, cloud: 17, tent: 22, sandbath: 18, balloon: 11, swing: 20, bookshelf: 14, piano: 20 };
   const pr = (n, svg, w, extra = '') => { const z = HANG.includes(n) ? 0 : (pz[n] || 0); return `<div class="prop ${n}" style="left:${sp[n]}%;width:${w / wf * (1 - z * .25)}%;${z ? `bottom:${12 + z * DEPTH}%;z-index:0;` : ''}${extra}">${svg}</div>`; };
   const items = placed.map(k => pr(k, ITEM_SVG[k], W[k] || 18, k === 'cloud' ? 'bottom:44%;' : k === 'pool' ? 'bottom:9%;' : '')).join('');
   /* 우리 애가 있는 곳을 가운데로, 실제 방 크기 그대로 */
@@ -2106,7 +2097,7 @@ function visit(pid) {
     <div class="visitRoom"><div class="room ${$('#room')?.className.includes('night') ? 'night' : ''}" id="vroom"><div class="sky"></div><div class="floor"></div>
       ${items.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}${items.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
       ${prop('house', kp.house, 22)}${items.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}${prop('bowl', PROP_SVG.bowl(3), 12)}${prop('bottle', kp.water(.8), kp.waterW)}
-      ${items.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}${prop('wheel', kp.play, kp.playW)}
+      ${items.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}${[['hay', 14], ['bridge', 18], ['loft', 20], ['tube', 18]].filter(([k]) => items.has(k)).map(([k, w]) => prop(k, ITEM_SVG[k], w)).join('')}${prop('wheel', kp.play, kp.playW)}
       <div class="pet" id="vpet" style="left:52%;bottom:12%"><div class="spr"><div class="body"><img src="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"></div>${gearOverlay(p.gears || p.gear, p.gpos)}</div></div>
     </div></div>
     <p class="note">♥ ${p.likes || 0} · ${KIND[p.kind] || ''} · ${PERSONA[personaOf(pid)].icon} ${PERSONA[personaOf(pid)].name}</p>
