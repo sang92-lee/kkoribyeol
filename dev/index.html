@@ -98,6 +98,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .body svg { width: 100%; display: block; }
 .room .pet.walk .body { animation: hop .32s ease-in-out infinite; }
 .room .pet.run .body { animation: hop .18s ease-in-out infinite; }
+.room .pet.framed .body { animation: trot .24s ease-in-out infinite; }
+@keyframes trot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3%); } }
+.room .dust { position: absolute; width: 3%; aspect-ratio: 1; border-radius: 50%; background: #FFFFFF; border: 1.5px solid rgba(74,52,40,.35); pointer-events: none; animation: dust .6s ease-out forwards; z-index: 2; }
+@keyframes dust { to { transform: translate(var(--dx), -60%) scale(1.8); opacity: 0; } }
 .room .pet.eat .body { animation: munch .35s ease-in-out infinite; }
 .room .pet.groom .body { animation: wiggle .5s ease-in-out infinite; }
 .room .pet.sleep .body { animation: breathe 4s ease-in-out infinite; filter: brightness(.95); }
@@ -116,6 +120,16 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes sway { 0%,100% { transform: rotate(-7deg) translateX(-4%); } 50% { transform: rotate(7deg) translateX(4%); } }
 .room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
+.room .sndBtn { position: absolute; top: 8px; left: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 13px; }
+.room .sndBtn[aria-pressed="true"] { background: var(--butter); }
+.room .pet .feet { position: absolute; left: 22%; right: 22%; bottom: -2%; height: 12%; display: none; justify-content: space-between; z-index: -1; }
+.room .pet .feet i { width: 30%; height: 100%; border-radius: 50%; background: #F8D3DA; border: 2px solid var(--ink); }
+.room .pet.walk:not(.framed) .feet, .room .pet.run:not(.framed) .feet { display: flex; }
+.room .pet.walk:not(.framed) .feet i:first-child { animation: stepA .42s ease-in-out infinite; }
+.room .pet.walk:not(.framed) .feet i:last-child { animation: stepA .42s ease-in-out infinite reverse; animation-delay: -.21s; }
+.room .pet.run:not(.framed) .feet i:first-child { animation: stepA .2s linear infinite; }
+.room .pet.run:not(.framed) .feet i:last-child { animation: stepA .2s linear infinite; animation-delay: -.1s; }
+@keyframes stepA { 0%,100% { transform: translate(-25%, 0); } 50% { transform: translate(25%, -45%); } }
 .room .clockTag { position: absolute; top: 8px; right: 10px; background: rgba(255,255,255,.8); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; font-family: var(--display); font-size: 14px; z-index: 5; font-variant-numeric: tabular-nums; }
 .care { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .care.play { grid-template-columns: repeat(3, 1fr); }
@@ -228,6 +242,31 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .gearGrid .item.on { background: var(--mint); box-shadow: 0 0 0 3px var(--pink-deep); }
 .gearGrid .item.on::after { white-space: nowrap; content: "착용 중"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: var(--pink-deep); color: #FFFFFF; font-family: var(--display); font-size: 11px; border-radius: 999px; padding: 0 8px; }
 
+/* 장비 위치 맞추기 */
+.adj { position: relative; width: min(260px, 70vw); aspect-ratio: 1; border: var(--stroke); border-radius: 18px; background: var(--bg); touch-action: none; overflow: visible; }
+.adj > img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 16px; }
+.adj .gear { position: absolute; cursor: grab; outline: 2px dashed var(--pink-deep); outline-offset: 2px; border-radius: 6px; }
+.adj .gear svg { width: 100%; display: block; pointer-events: none; }
+.slider { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 14px; color: var(--soft); }
+.slider input { flex: 1; accent-color: var(--pink-deep); }
+.row2 { display: flex; gap: 8px; width: 100%; } .row2 .btn { flex: 1; }
+/* 친구 방 */
+.visitRoom { width: 100%; }
+.visitRoom .room { pointer-events: auto; }
+.likeBtn { font-family: var(--display); }
+/* 교환 */
+.trades { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.trades li { border: var(--stroke); border-radius: 16px; padding: 8px 10px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; background: var(--card); }
+.trades .tav { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--ink); background: var(--bg); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.trades .tav img, .trades .tav svg { width: 100%; height: 100%; object-fit: cover; }
+.trades .mid { min-width: 0; font-size: 13px; line-height: 1.35; text-align: center; }
+.trades .mid b { font-family: var(--display); font-weight: 400; font-size: 15px; display: block; }
+.trades .act { grid-column: 1 / -1; }
+.trades .act .btn { width: 100%; padding: 8px; font-size: 16px; }
+.trades li.mine { background: #FFF6EA; }
+.pick { display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; }
+.pick select { font: 16px var(--body); padding: 10px; border: var(--stroke); border-radius: 12px; background: var(--card); color: var(--ink); }
+.good, .item { cursor: pointer; }
 /* 결과 */
 .modal { position: fixed; inset: 0; z-index: 30; background: rgba(74,52,40,.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
 .modal .card { width: min(340px, 100%); align-items: center; text-align: center; }
@@ -296,6 +335,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <p class="note" id="poseNote" hidden></p>
       <p class="brag" id="brag" hidden></p>
       <p class="note">우리 애는 진짜 시간에 맞춰 살아요. 손가락으로 쓱쓱 문지르면 쓰다듬기, 자고 있을 땐 집을 톡 하면 빼꼼 나와요</p>
+      <button type="button" class="btn" id="btnGearPos" hidden>장비 위치 맞추기</button>
       <button type="button" class="btn main" id="btnShare">친구한테 자랑하기</button>
       <button type="button" class="link" id="btnRemake">사진으로 다시 그리기</button>
     </div>
@@ -332,6 +372,12 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <h2>펫 장비</h2>
       <p class="note">탭하면 우리 애가 착용해요. 다시 탭하면 벗어요</p>
       <div class="items gearGrid" id="gears"></div>
+      <div class="chips" id="gearTrade"></div>
+    </div>
+    <div class="card">
+      <h2>교환 게시판</h2>
+      <p class="note">진열장의 굿즈·아이템을 누르면 교환에 내놓을 수 있어요</p>
+      <ul class="trades" id="trades"></ul>
     </div>
     <div class="card">
       <h2>모은 펫 굿즈</h2>
@@ -465,10 +511,12 @@ function renderPet() {
   if (showMaker) return;
   $('#homeName').textContent = p.name; $('#homeKind').textContent = KIND[p.kind] || '';
   buildRoom(); dayLook(); statusLine(); drawCare();
+  $('#btnGearPos').hidden = !p.gear;
   $('#careSnack').textContent = KP().snack; $('#callName').textContent = `"${myPet()?.name || ''}~"`;
   $('#playName').textContent = { hamster: '씨앗 숨기기', cat: '낚싯대', dog: '공 던지기' }[kindNow()];
   const n = S.state.pulledMe;
-  $('#brag').hidden = !n; $('#brag').textContent = `${p.name} 굿즈가 친구 캡슐에서 ${n}번 나왔어요`;
+  const lk = p.likes || 0, msg = [n ? `친구 캡슐에서 ${n}번 나왔어요` : '', lk ? `친구들한테 ♥ ${lk}개 받았어요` : ''].filter(Boolean).join(' · ');
+  $('#brag').hidden = !msg; $('#brag').textContent = `${p.name} ${msg}`;
 }
 /* ---------- 펫 장비 ---------- */
 const GEAR = { ribbon: '리본', strawhat: '밀짚모자', scarf: '목도리', glasses: '동글 안경', flower: '꽃핀', crown: '왕관' };
@@ -483,10 +531,11 @@ const GEAR_SVG = {
   glasses: `<svg viewBox="0 0 120 50" aria-hidden="true"><circle cx="32" cy="26" r="20" fill="rgba(255,255,255,.25)" stroke="${INK}" stroke-width="5"/><circle cx="88" cy="26" r="20" fill="rgba(255,255,255,.25)" stroke="${INK}" stroke-width="5"/><path d="M52 24 Q60 18 68 24" stroke="${INK}" stroke-width="5" fill="none"/></svg>`,
   scarf: `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 14 Q60 34 112 14 L112 30 Q60 50 8 30Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M78 30 L92 58 L76 58 L68 34Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M30 22 v12 M50 26 v12 M70 26 v12 M90 22 v12" stroke="#FFFFFF" stroke-width="4" opacity=".7"/></svg>`,
 };
-function gearOverlay(g) {
-  if (!g || !GEAR_POS[g]) return '';
-  const [l, t, w] = GEAR_POS[g];
-  return `<div class="gear" style="left:${l}%;top:${t}%;width:${w}%">${GEAR_SVG[g]}</div>`;
+function gearPos(g, pos) { if (pos) return pos; const [l, t, w] = GEAR_POS[g] || [30, 0, 40]; return { l, t, w, r: 0 }; }
+function gearOverlay(g, pos) {
+  if (!g || !GEAR_SVG[g]) return '';
+  const q = gearPos(g, pos);
+  return `<div class="gear" style="left:${q.l}%;top:${q.t}%;width:${q.w}%;transform:rotate(${q.r}deg)">${GEAR_SVG[g]}</div>`;
 }
 
 /* ---------- 방 소품 ---------- */
@@ -643,7 +692,7 @@ function cutout(url, crop) {
 }
 function buildRoom() {
   const p = myPet(); if (!p) return;
-  const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '') + '|' + Object.values(p.poses || {}).join();
+  const owned = ownedItems(), key = [...owned].sort().join(',') + '|' + p.v + '|' + (p.gear || '') + JSON.stringify(p.gpos || '') + '|' + Object.values(p.poses || {}).join();
   if (P.built === key) return;
   P.built = key;
   const stars = Array.from({ length: 9 }, (_, i) => `<i class="star" style="left:${(i * 37 + 7) % 96}%;top:${(i * 23 + 5) % 52}%"></i>`).join('');
@@ -658,9 +707,11 @@ function buildRoom() {
     ${prop('toilet', TOILET_SVG(kindNow(), care().poop), 12)}
     ${prop('wheel', KP().play, KP().playW)}
     ${kindNow() === 'dog' ? `<div class="ball" id="ball">${BALL_SVG}</div>` : ''}
-    <div class="pet" id="roomPet"><div class="spr"><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear)}</div></div>
+    <button type="button" class="sndBtn" id="sndBtn" aria-pressed="${SND.on}">${SND.on ? '소리 끄기' : '소리 켜기'}</button>
+    <div class="pet" id="roomPet"><div class="feet"><i></i><i></i></div><div class="spr"><div class="body">${p.img ? `<img src="/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}">` : critter(p.kind)}</div>${gearOverlay(p.gear, p.gpos)}</div></div>
     <div class="bubble" id="bubble"></div><div class="clockTag" id="roomClock"></div>`;
   $('#roomPet').onclick = poke; bindStroke();
+  $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   $('#room').onclick = e => { if (kindNow() === 'dog' && !P.hidden && P.act !== 'sleep' && e.target.closest('.pet, .prop.house') == null) throwBall(true); };
   const im = $('#roomPet img');
@@ -710,7 +761,7 @@ function choose() {
   if ((P.potty || 0) >= 1) w.toilet = m === 'sleep' ? 1.2 : 2;
   if (m === 'sleep' && Math.random() < .25) { w.drink = .25; }
   if (P.afterEat && m !== 'sleep') { w.groom += 1.2; P.afterEat = false; }
-  if (m === 'calm') w.rest = .2;
+  if (m === 'calm' || m === 'settle') w.rest = k === 'cat' ? .45 : .2;
   if ((P.tired || 0) > 1 && m !== 'sleep') { w.nap = (w.nap || 0) + 1.5; P.tired = 0; }
   if (m !== 'sleep') { const c = care(); if (c.food > .25 && Math.random() < .5) w.eat += .1; if (c.food < .25) w.eat += .25; if (c.water < .08) w.drink += .2; }
   const list = Object.entries(w).filter(([, v]) => v > 0), sum = list.reduce((a, b) => a + b[1], 0);
@@ -756,7 +807,7 @@ function next() {
   if (a === 'nap') return own.has('cloud')
     ? goTo(SPOT.cloud, 10, () => tweenY(47, 800, () => setAct('sleep', rnd(30, 60) * 1000, `${n}가 구름 침대에서 낮잠`, 'sleep')))
     : goTo(rnd(25, 75), 9, () => setAct('sleep', rnd(30, 70) * 1000, `${n}가 꾸벅꾸벅 낮잠`, 'sleep'), `${n}가 낮잠 잘 곳을 찾아요`);
-  if (a === 'rest') return setAct('rest', rnd(6, 14) * 1000, `${n}가 납작 엎드려 쉬어요`, '');
+  if (a === 'rest') return setAct('rest', rnd(6, 14) * 1000, kindNow() === 'cat' ? `${n}가 식빵 굽는 중` : kindNow() === 'dog' ? `${n}가 배 깔고 쉬어요` : `${n}가 납작 엎드려 쉬어요`, '');
   if (a === 'toilet') return goTo(SPOT.toilet, 11, toiletNow, `${n}가 화장실 가요`);
   return goTo(rnd(8, 92), rnd(8, 12), () => setAct('idle', rnd(1.5, 4) * 1000, `${n}가 방을 구경해요`, ''), `${n}가 돌아다녀요`);
 }
@@ -793,17 +844,31 @@ function loop(now) {
   if (P.act !== 'walk' && P.act !== 'slidedown' && P.act !== 'enter' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.y > FLOOR + 6 && P.act !== 'sleep') { P.act = 'idle'; tweenY(FLOOR, 650, next); } else { P.y = FLOOR; next(); } }
   if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
   else { const b = $('#ball'); if (b && b.style.transition === 'none') b.style.transition = ''; }
+  soundTick(now);
   pet.style.left = P.x + '%'; pet.style.bottom = P.y + '%';
   const hs = room.querySelector('.prop.house'); if (hs) { hs.classList.toggle('knock', P.hidden); hs.classList.toggle('occupied', P.hidden); }
-  pet.className = 'pet ' + (P.cls || '');
+  pet.className = 'pet ' + (P.cls || '') + (P.spr && (P.cls === 'run' ? P.spr.run1 : P.spr.walk1) && (P.cls === 'run' || P.cls === 'walk') ? ' framed' : '');
   if (P.spr) {
     const moving = P.act === 'walk' || P.act === 'slidedown', t = performance.now();
     const want = t < (P.faceUntil || 0) && P.face ? P.face : t < (P.happyUntil || 0) ? 'happy' : moving ? 'side' : (P.act === 'sleep' && !P.hidden) ? 'sleep' : ['eat', 'drink', 'chew'].includes(P.act) ? 'eat' : ['groom', 'scratch'].includes(P.act) ? 'groom' : P.act === 'rest' ? 'flat' : P.act === 'sad' ? 'grumpy' : ['sniff', 'look'].includes(P.act) ? 'curious' : 'front';
-    const use = P.spr[want] ? want : 'front';
+    let use = P.spr[want] ? want : 'front';
+    const running = P.act === 'wheel' || (moving && P.speed > 25), walking = moving && !running;
+    if ((want === 'side' || P.act === 'wheel') && (running || walking)) {
+      const pre = running ? 'run' : 'walk', f = Math.floor(t / (running ? 120 : 210)) % 2 + 1;
+      if (P.spr[pre + f]) use = pre + f; else if (P.spr.side) use = 'side';
+      if (running && t > (P.dustT || 0)) { P.dustT = t + 140; dust(); }
+    }
     if (use !== P.cur && P.spr[use]) { P.cur = use; const im = pet.querySelector('.body img'); if (im) im.src = P.spr[use]; }
   }
   pet.querySelector('.spr').style.transform = `scaleX(${P.act === 'wheel' ? 1 : P.dir})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '');
   requestAnimationFrame(loop);
+}
+function dust() {
+  const r = $('#room'); if (!r || P.hidden) return;
+  const d = document.createElement('i'); d.className = 'dust';
+  const back = P.act === 'wheel' ? -1 : -P.dir;
+  d.style.left = (P.x + back * 8 + rnd(-1.5, 1.5)) + '%'; d.style.bottom = (P.y + rnd(0, 3)) + '%'; d.style.setProperty('--dx', (back * 140) + '%');
+  r.appendChild(d); setTimeout(() => d.remove(), 650);
 }
 function zz() {
   const r = $('#room'); if (!r) return;
@@ -959,7 +1024,7 @@ $('#btnKeep').onclick = async () => {
     await api('pet', { id: S.id, name: $('#petName').value.trim(), kind, img });
     making = false; $('#drawOut').hidden = true; $('#pickRow').hidden = true; $('#btnDraw').hidden = false;
     await refresh(); toast('우리 아이가 꼬리별에 왔어요');
-    makePoses(img);
+    makePoses(img, 'faces');
   } catch (e) { showMakeErr(e.message); }
   $('#btnKeep').disabled = false;
 };
@@ -971,29 +1036,183 @@ const POSE_KEYS = [['side', 'back', 'sleep'], ['eat', 'happy', 'curious'], ['gru
 const POSE_CELLS = {};
 POSE_KEYS.forEach((row, r) => row.forEach((k, c) => { const m = .02; POSE_CELLS[k] = [c / 3 + m, r / 3 + m, (c + 1) / 3 - m, (r + 1) / 3 - m]; }));
 let posing = false;
+const MOTION_CELLS = { walk1: [.02, .02, .48, .48], walk2: [.52, .02, .98, .48], run1: [.02, .52, .48, .98], run2: [.52, .52, .98, .98] };
 function showPoseNote() {
   const p = myPet(), el = $('#poseNote'); if (!p || !el) return;
-  const has = Object.keys(p.poses || {}).length >= 9;
-  if (posing) { el.hidden = false; el.innerHTML = '표정·동작 9가지 그리는 중이에요 · 30초쯤'; return; }
-  el.hidden = has;
-  if (!has) { el.innerHTML = `${Object.keys(p.poses || {}).length ? '표정이 더 생겼어요!' : '지금은 정면 그림 하나라 표정이 안 바뀌어요'} <button type="button" class="link" id="btnPoses">표정·동작 9가지 그리기</button>`; $('#btnPoses').onclick = () => makePoses(); }
+  const ps = p.poses || {}, faces = Object.keys(POSE_CELLS).every(k => ps[k]), motion = Object.keys(MOTION_CELLS).every(k => ps[k]);
+  if (posing) { el.hidden = false; el.innerHTML = posing === 'motion' ? '걷기·달리기 동작 그리는 중이에요 · 30초쯤' : '표정·동작 9가지 그리는 중이에요 · 30초쯤'; return; }
+  el.hidden = faces && motion;
+  if (!faces) { el.innerHTML = `지금은 표정이 적어요 <button type="button" class="link" id="btnPoses">표정·동작 9가지 그리기</button>`; $('#btnPoses').onclick = () => makePoses(null, 'faces'); }
+  else if (!motion) { el.innerHTML = `아직 걷고 뛰는 모습이 없어요 <button type="button" class="link" id="btnPoses">걷기·달리기 동작 그리기</button>`; $('#btnPoses').onclick = () => makePoses(null, 'motion'); }
 }
-async function makePoses(srcUrl) {
+async function makePoses(srcUrl, set = 'faces') {
   const p = myPet(); if (!p || posing) return;
-  posing = true; showPoseNote();
+  posing = set; showPoseNote();
+  let ok = false;
   try {
     const src = srcUrl || `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}`;
     const jpg = await toJpeg(src, 640, .88);
-    const r = await api('poses', { id: S.id, kind: p.kind, image: jpg.split(',')[1] });
+    const r = await api('poses', { id: S.id, kind: p.kind, image: jpg.split(',')[1], set });
     S.drawsLeft = r.left;
     const sheet = `data:${r.mime};base64,${r.image}`;
-    for (const [k, crop] of Object.entries(POSE_CELLS)) {
+    for (const [k, crop] of Object.entries(set === 'motion' ? MOTION_CELLS : POSE_CELLS)) {
       const u = await cutout(sheet, crop); if (!u) continue;
       await api('pose', { id: S.id, k, img: u });
     }
-    toast(`${p.name} 움직이는 모습이 생겼어요!`);
+    ok = true;
+    toast(set === 'motion' ? `${p.name}가 이제 걷고 달려요!` : `${p.name} 표정이 생겼어요!`);
   } catch (e) { toast(e.message); }
   posing = false; P.built = ''; await refresh(); showPoseNote();
+  if (ok && set === 'faces' && srcUrl) makePoses(srcUrl, 'motion');
+}
+
+
+/* ---------- 장비 위치 맞추기 ---------- */
+function openGearAdjust() {
+  const p = myPet(); if (!p || !p.gear) return;
+  const q = { ...gearPos(p.gear, p.gpos) }, m = $('#modal'), c = $('#modalCard');
+  const src = P.spr?.front || `/api/img/${encodeURIComponent(S.id)}?v=${p.v}&c=${encodeURIComponent(S.code)}`;
+  c.innerHTML = `<h3 style="font-size:20px">${GEAR[p.gear]} 위치 맞추기</h3><p class="note">끌어서 옮기고, 아래에서 크기·기울기를 바꿔요</p>
+    <div class="adj" id="adj"><img src="${src}" alt=""><div class="gear" id="adjG">${GEAR_SVG[p.gear]}</div></div>
+    <label class="slider">크기<input type="range" id="adjW" min="10" max="100" value="${q.w}"></label>
+    <label class="slider">기울기<input type="range" id="adjR" min="-45" max="45" value="${q.r}"></label>
+    <div class="row2"><button type="button" class="btn" id="adjReset">처음대로</button><button type="button" class="btn main" id="adjSave">저장</button></div>
+    <button type="button" class="link" id="adjClose">닫기</button>`;
+  m.hidden = false;
+  const g = $('#adjG'), box = $('#adj');
+  const draw = () => { g.style.left = q.l + '%'; g.style.top = q.t + '%'; g.style.width = q.w + '%'; g.style.transform = `rotate(${q.r}deg)`; };
+  draw();
+  let drag = null;
+  g.onpointerdown = e => { const r = box.getBoundingClientRect(); drag = { x: e.clientX, y: e.clientY, l: q.l, t: q.t, w: r.width }; try { g.setPointerCapture(e.pointerId); } catch (x) {} };
+  g.onpointermove = e => { if (!drag) return; q.l = Math.max(-30, Math.min(100, drag.l + (e.clientX - drag.x) / drag.w * 100)); q.t = Math.max(-40, Math.min(100, drag.t + (e.clientY - drag.y) / drag.w * 100)); draw(); };
+  g.onpointerup = g.onpointercancel = () => drag = null;
+  $('#adjW').oninput = e => { q.w = +e.target.value; draw(); };
+  $('#adjR').oninput = e => { q.r = +e.target.value; draw(); };
+  $('#adjReset').onclick = async () => { await api('gearpos', { id: S.id, pos: { reset: true } }); m.hidden = true; await refresh(); toast('처음 위치로 돌렸어요'); };
+  $('#adjSave').onclick = async () => { await api('gearpos', { id: S.id, pos: q }); m.hidden = true; await refresh(); toast('위치를 저장했어요. 친구들 화면에도 이렇게 보여요'); };
+  $('#adjClose').onclick = () => m.hidden = true;
+}
+$('#btnGearPos').onclick = openGearAdjust;
+
+/* ---------- 친구 방 놀러가기 ---------- */
+function visit(pid) {
+  const st = S.state, p = st.pets[pid]; if (!p || p.npc || !p.img || pid === S.id) return;
+  const items = new Set(p.items || []), kp = KIND_PROPS[p.kind] || KIND_PROPS.hamster, m = $('#modal'), c = $('#modalCard');
+  const prop = (n, svg, w, extra = '') => `<div class="prop ${n}" style="left:${SPOT[n]}%;width:${w}%;${extra}">${svg}</div>`;
+  const liked = (st.likedToday || []).includes(pid);
+  c.innerHTML = `<h3 style="font-size:21px">${esc(p.owner || '친구')}네 ${esc(p.name)}</h3>
+    <div class="visitRoom"><div class="room ${$('#room')?.className.includes('night') ? 'night' : ''}" id="vroom"><div class="sky"></div><div class="floor"></div>
+      ${items.has('lamp') ? prop('lamp', ITEM_SVG.lamp, 12) : ''}${items.has('hammock') ? prop('hammock', ITEM_SVG.hammock, 30) : ''}
+      ${prop('house', kp.house, 22)}${items.has('slide') ? prop('slide', ITEM_SVG.slide, 20) : ''}${prop('bowl', PROP_SVG.bowl(3), 12)}${prop('bottle', kp.water(.8), kp.waterW)}
+      ${items.has('cloud') ? prop('cloud', ITEM_SVG.cloud, 17, 'bottom:44%;') : ''}${prop('wheel', kp.play, kp.playW)}
+      <div class="pet" id="vpet" style="left:52%;bottom:12%"><div class="spr"><div class="body"><img src="/api/img/${encodeURIComponent(pid)}?v=${p.v}&c=${encodeURIComponent(S.code)}" alt="${esc(p.name)}"></div>${gearOverlay(p.gear, p.gpos)}</div></div>
+    </div></div>
+    <p class="note">♥ ${p.likes || 0} · ${KIND[p.kind] || ''} · 방 아이템 ${items.size}개</p>
+    <button type="button" class="btn main big likeBtn" id="likeBtn" ${liked ? 'disabled' : ''}>${liked ? '오늘 ♥ 보냈어요' : `${esc(p.name)}한테 ♥ 보내기`}</button>
+    <button type="button" class="link" id="vClose">우리 집으로 돌아가기</button>`;
+  m.hidden = false;
+  const im = $('#vpet img'); cutout(im.src).then(u => { if (im.isConnected) im.src = u; });
+  $('#vpet').onclick = e => { const r = $('#vroom').getBoundingClientRect(), h = document.createElement('span'); h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px'; $('#vroom').appendChild(h); setTimeout(() => h.remove(), 1200); };
+  $('#likeBtn').onclick = async () => { try { await api('like', { id: S.id, to: pid }); $('#likeBtn').disabled = true; $('#likeBtn').textContent = '♥ 보냈어요!'; refresh(); } catch (e) { toast(e.message); } };
+  $('#vClose').onclick = () => m.hidden = true;
+}
+document.addEventListener('click', e => { const v = e.target.closest('[data-visit]'); if (v) visit(v.dataset.visit); });
+
+/* ---------- 굿즈 교환 ---------- */
+function thingName(kind, a, b) { return kind === 'item' ? ITEMS[a] : kind === 'gear' ? GEAR[a] : `${(S.state.pets[a] || {}).name || '???'} ${GOODS[b] || ''}`; }
+function thingThumb(kind, a, b) {
+  if (kind === 'item') return ITEM_SVG[a]; if (kind === 'gear') return GEAR_SVG[a];
+  return petFace(a);
+}
+function busyGive() { return new Set((S.state.trades || []).filter(t => t.fr === S.id).map(t => t.gu)); }
+function offerTrade(kind, a, b) {
+  const st = S.state, busy = busyGive();
+  const mine = (st.mine || []).find(x => x.kind === kind && x.a === a && (x.b || '') === (b || '') && !busy.has(x.uniq));
+  if (!mine) return toast('이미 전부 교환에 내놓았어요');
+  const m = $('#modal'), c = $('#modalCard');
+  const petOpts = Object.entries(st.pets).filter(([, p]) => p.img || p.npc).map(([id, p]) => `<option value="${id}">${esc(p.name)}${p.npc ? ' (주민)' : p.owner ? ` (${esc(p.owner)}네)` : ''}</option>`).join('');
+  c.innerHTML = `<h3 style="font-size:20px">교환에 내놓기</h3>
+    <div class="trades"><li style="list-style:none"><span class="tav">${thingThumb(kind, a, b)}</span><span class="mid"><b>${esc(thingName(kind, a, b))}</b>내놓을 거</span><span></span></li></div>
+    <div class="pick">
+      <label class="f">원하는 종류<select id="wk"><option value="pet">친구 펫 굿즈</option><option value="item">방 아이템</option><option value="gear">펫 장비</option></select></label>
+      <label class="f" id="wPetL">어떤 펫<select id="wPet">${petOpts}</select></label>
+      <label class="f" id="wTypeL">굿즈 종류<select id="wType">${Object.entries(GOODS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label class="f" id="wItemL" hidden>아이템<select id="wItem">${ITEM_ORDER.map(k => `<option value="${k}">${ITEMS[k]}</option>`).join('')}</select></label>
+      <label class="f" id="wGearL" hidden>장비<select id="wGear">${GEAR_ORDER.map(k => `<option value="${k}">${GEAR[k]}</option>`).join('')}</select></label>
+    </div>
+    <button type="button" class="btn main big" id="tPost">게시판에 올리기</button><button type="button" class="link" id="tClose">닫기</button>`;
+  m.hidden = false;
+  const sync = () => { const v = $('#wk').value; $('#wPetL').hidden = $('#wTypeL').hidden = v !== 'pet'; $('#wItemL').hidden = v !== 'item'; $('#wGearL').hidden = v !== 'gear'; };
+  $('#wk').onchange = sync; sync();
+  $('#tPost').onclick = async () => {
+    const wk = $('#wk').value, want = wk === 'pet' ? { kind: 'pet', a: $('#wPet').value, b: $('#wType').value } : wk === 'item' ? { kind: 'item', a: $('#wItem').value, b: '' } : { kind: 'gear', a: $('#wGear').value, b: '' };
+    try { await api('trade', { id: S.id, act: 'new', give: mine.uniq, want }); m.hidden = true; toast('교환 게시판에 올렸어요'); refresh(); } catch (e) { toast(e.message); }
+  };
+  $('#tClose').onclick = () => m.hidden = true;
+}
+function renderTrades() {
+  const st = S.state, list = st.trades || [], el = $('#trades'); if (!el) return;
+  const have = (k, a, b) => (st.mine || []).some(x => x.kind === k && x.a === a && (x.b || '') === (b || ''));
+  el.innerHTML = list.length ? list.map(t => {
+    const me = t.fr === S.id, can = !me && have(t.wk, t.wa, t.wb);
+    return `<li class="${me ? 'mine' : ''}"><span class="tav">${thingThumb(t.gk, t.ga, t.gb)}</span><span class="mid"><b>${esc(t.by)}${me ? ' (나)' : ''}</b>${esc(thingName(t.gk, t.ga, t.gb))} ↔ ${esc(thingName(t.wk, t.wa, t.wb))}</span><span class="tav">${thingThumb(t.wk, t.wa, t.wb)}</span>
+      <span class="act">${me ? `<button type="button" class="btn" data-tcancel="${t.tid}">내리기</button>` : `<button type="button" class="btn ${can ? 'main' : ''}" data-taccept="${t.tid}" ${can ? '' : 'disabled'}>${can ? '교환하기' : '원하는 게 없어요'}</button>`}</span></li>`;
+  }).join('') : `<li class="lineEmpty" style="display:block;border:0;background:none;padding:0">아직 올라온 교환이 없어요. 진열장에서 굿즈를 눌러 내놓아 보세요</li>`;
+  el.querySelectorAll('[data-tcancel]').forEach(b => b.onclick = async () => { try { await api('trade', { id: S.id, act: 'cancel', tid: b.dataset.tcancel }); refresh(); } catch (e) { toast(e.message); } });
+  el.querySelectorAll('[data-taccept]').forEach(b => b.onclick = async () => { try { const r = await api('trade', { id: S.id, act: 'accept', tid: b.dataset.taccept }); toast(`교환 완료! ${thingName(r.got.kind, r.got.a, r.got.b)} 받았어요`); refresh(); } catch (e) { toast(e.message); refresh(); } });
+  const done = st.tradedRecent || [], seen = store.get('seenTrades') || '';
+  const fresh = done.filter(d => !seen.includes(d.tid));
+  if (fresh.length) { toast(`${fresh[0].by}님이 내 교환을 받아갔어요!`); store.set('seenTrades', seen + fresh.map(d => d.tid).join(',') + ','); }
+}
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-offer]'); if (!g) return;
+  const [k, a, b] = g.dataset.offer.split('|'); offerTrade(k, a, b);
+});
+
+/* ---------- 소리 ---------- */
+const SND = { on: false, ctx: null, noise: null };
+document.addEventListener('pointerdown', () => { if (store.get('snd') && !SND.on) { SND.on = true; const c = sctx(); if (c) c.resume(); const b = $('#sndBtn'); if (b) { b.textContent = '소리 끄기'; b.setAttribute('aria-pressed', 'true'); } } }, { once: true });
+function sctx() {
+  if (!SND.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; SND.ctx = new C(); const b = SND.ctx.createBuffer(1, SND.ctx.sampleRate, SND.ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; SND.noise = b; }
+  return SND.ctx;
+}
+function nburst(freq, q, gain, dur, type = 'bandpass') {
+  if (!SND.on) return; const c = sctx(); if (!c) return;
+  const src = c.createBufferSource(); src.buffer = SND.noise; const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq * (.85 + Math.random() * .3); f.Q.value = q;
+  const g = c.createGain(), t = c.currentTime; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  src.connect(f).connect(g).connect(c.destination); src.start(t, Math.random() * .5); src.stop(t + dur + .02);
+}
+function stone(f1, f2, gain, dur, type = 'sine') {
+  if (!SND.on) return; const c = sctx(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain(), t = c.currentTime; o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .02);
+}
+const SFX = {
+  step: () => nburst(4200, .9, .05, .07), run: () => nburst(3600, .8, .08, .05),
+  wheel: () => { nburst(2400, 3, .07, .04); }, squeak: () => stone(1900, 2300, .025, .12, 'triangle'),
+  crunch: () => nburst(2600, 1.5, .1, .05, 'highpass'), drip: () => stone(1400, 700, .05, .08),
+  sand: () => nburst(5200, .6, .06, .14), pat: () => nburst(1200, 1, .05, .06),
+};
+function soundTick(now) {
+  if (!SND.on) return;
+  const moving = P.act === 'walk' || P.act === 'slidedown';
+  if (P.act === 'wheel') {
+    const tick = Math.floor(P.wheel / 45); if (tick !== P.lastTick) { SFX.wheel(); P.lastTick = tick; }
+    if (now > (P.sqT || 0)) { SFX.squeak(); P.sqT = now + rnd(600, 1400); }
+    const f = Math.floor(now / 120) % 2; if (f !== P.lastF) { SFX.run(); P.lastF = f; }
+    return;
+  }
+  if (moving) { const fast = P.speed > 25, f = Math.floor(now / (fast ? 120 : 210)) % 2; if (f !== P.lastF) { (fast ? SFX.run : SFX.step)(); P.lastF = f; } return; }
+  if (now < (P.sndT || 0)) return;
+  if (P.act === 'eat' || P.act === 'chew') { SFX.crunch(); P.sndT = now + rnd(150, 380); }
+  else if (P.act === 'drink') { SFX.drip(); P.sndT = now + rnd(350, 600); }
+  else if (P.act === 'toilet' || P.act === 'scratch') { SFX.sand(); P.sndT = now + rnd(90, 200); }
+  else P.sndT = now + 300;
+}
+function toggleSound() {
+  SND.on = !SND.on; const c = sctx(); if (c && c.state === 'suspended') c.resume();
+  const b = $('#sndBtn'); if (b) { b.textContent = SND.on ? '소리 끄기' : '소리 켜기'; b.setAttribute('aria-pressed', String(SND.on)); }
+  store.set('snd', SND.on ? '1' : '');
 }
 
 /* ---------- 갓챠 ---------- */
@@ -1018,13 +1237,13 @@ function renderGacha() {
   line.innerHTML = st.line.length ? st.line.map(e => {
     const p = st.pets[e.pet] || {}, me = e.id === S.id;
     const nm = me ? '나' : e.npc ? p.name : (e.nick || p.name || '손님');
-    return `<div class="qp ${me ? 'me' : ''} ${e.st === 'turn' || (e.npc && e.t - now() < 15000) ? 'turn' : ''}"><span class="no">${e.no}번</span><div class="av">${p.name ? petFace(e.pet) : critter('hamster', '#EADCCB')}</div>${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<span class="nm">${esc(nm)}</span></div>`;
+    return `<div ${!e.npc && !me ? `data-visit="${e.pet}" role="button"` : ''} class="qp ${me ? 'me' : ''} ${e.st === 'turn' || (e.npc && e.t - now() < 15000) ? 'turn' : ''}"><span class="no">${e.no}번</span><div class="av">${p.name ? petFace(e.pet) : critter('hamster', '#EADCCB')}</div>${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<span class="nm">${esc(nm)}</span></div>`;
   }).join('') : `<p class="lineEmpty">아직 아무도 없어요. 1번으로 서 보세요</p>`;
   tickGacha(); renderFeed();
   const rank = $('#rank');
   rank.innerHTML = st.rank.length ? st.rank.map((r, i) => {
     const p = st.pets[r.pet] || { name: '???' };
-    return `<li class="${r.pet === S.id ? 'mine' : ''}"><span class="medal">${i + 1}</span><span class="av">${petFace(r.pet)}</span><span class="nm">${esc(p.name)}${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<small>${p.npc ? '꼬리별 주민' : esc(p.owner ? p.owner + '네' : '')}</small></span><span class="ct">${r.n}번</span></li>`;
+    return `<li ${!p.npc && r.pet !== S.id ? `data-visit="${r.pet}" role="button" style="cursor:pointer"` : ''} class="${r.pet === S.id ? 'mine' : ''}"><span class="medal">${i + 1}</span><span class="av">${petFace(r.pet)}</span><span class="nm">${esc(p.name)}${p.gear ? `<i class="gb">${GEAR_SVG[p.gear]}</i>` : ''}<small>${p.npc ? '꼬리별 주민' : esc(p.owner ? p.owner + '네' : '')}</small></span><span class="ct">${r.n}번</span></li>`;
   }).join('') : `<li class="empty">아직 아무도 안 뽑았어요. 첫 캡슐의 주인공이 돼 보세요</li>`;
 }
 function ago(t) { const s = Math.max(0, (now() - t) / 1000); return s < 60 ? '방금' : s < 3600 ? `${Math.floor(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`; }
@@ -1110,17 +1329,19 @@ function showResult(res) {
 
 /* ---------- 진열장 ---------- */
 function renderShelf() {
+  renderTrades();
   const mine = S.state.mine || [], own = {};
   mine.filter(x => x.kind === 'item').forEach(x => own[x.a] = (own[x.a] || 0) + 1);
-  $('#items').innerHTML = ITEM_ORDER.map(i => `<div class="item ${i === 'cloud' ? 'rare' : ''} ${own[i] ? '' : 'locked'}">${ITEM_SVG[i]}<b>${own[i] ? ITEMS[i] : '???'}</b>${own[i] > 1 ? `<span>×${own[i]}</span>` : ''}</div>`).join('');
+  $('#items').innerHTML = ITEM_ORDER.map(i => `<div ${own[i] ? `data-offer="item|${i}|"` : ''} class="item ${i === 'cloud' ? 'rare' : ''} ${own[i] ? '' : 'locked'}">${ITEM_SVG[i]}<b>${own[i] ? ITEMS[i] : '???'}</b>${own[i] > 1 ? `<span>×${own[i]}</span>` : ''}</div>`).join('');
   const gOwn = {}; mine.filter(x => x.kind === 'gear').forEach(x => gOwn[x.a] = (gOwn[x.a] || 0) + 1);
   const cur = myPet()?.gear || '';
   $('#gears').innerHTML = GEAR_ORDER.map(gid => `<div class="item ${gid === 'crown' ? 'rare' : ''} ${gOwn[gid] ? '' : 'locked'} ${cur === gid ? 'on' : ''}" data-gear="${gOwn[gid] ? gid : ''}" role="button" tabindex="0">${GEAR_SVG[gid]}<b>${gOwn[gid] ? GEAR[gid] : '???'}</b></div>`).join('');
   $('#gears').querySelectorAll('[data-gear]').forEach(el => el.onclick = () => { if (el.dataset.gear) equip(el.dataset.gear === cur ? '' : el.dataset.gear); });
+  $('#gearTrade').innerHTML = GEAR_ORDER.filter(gid => gOwn[gid]).map(gid => `<button type="button" class="chip" data-offer="gear|${gid}|">${GEAR[gid]} 내놓기</button>`).join('');
   const g = {};
   mine.filter(x => x.kind === 'pet').forEach(x => { const k = x.a + '|' + x.b; g[k] = (g[k] || 0) + 1; });
   const keys = Object.keys(g);
-  $('#goods').innerHTML = keys.length ? keys.map(k => { const [a, b] = k.split('|'); return goodsHTML(a, b, g[k]); }).join('') : `<p class="note" style="grid-column:1/-1">아직 없어요. 갓챠에서 친구들 펫 굿즈를 모아 보세요</p>`;
+  $('#goods').innerHTML = keys.length ? keys.map(k => { const [a, b] = k.split('|'); return `<div data-offer="pet|${a}|${b}">${goodsHTML(a, b, g[k])}</div>`; }).join('') : `<p class="note" style="grid-column:1/-1">아직 없어요. 갓챠에서 친구들 펫 굿즈를 모아 보세요</p>`;
 }
 
 async function equip(gid) {

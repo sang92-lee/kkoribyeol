@@ -7,8 +7,8 @@ const SERV = 15e3;            // 한 명당 15초
 const MINWAIT = 20e3;         // 줄 서면 최소 20초는 기다림
 const WINDOW = 120e3;         // 내 차례 오면 2분 안에 뽑기
 const JOIN_CLOSE = 60e3;      // 판 끝나기 1분 전엔 줄 마감
-const DRAW_PER_PLAYER = 6;    // AI 그림: 한 사람 하루 6번 (캐릭터+포즈)
-const DRAW_PER_DAY = 30;      // AI 그림: 전체 하루 30번 (요금 안전장치)
+const DRAW_PER_PLAYER = 8;    // AI 그림: 한 사람 하루 8번 (캐릭터+표정+동작)
+const DRAW_PER_DAY = 40;      // AI 그림: 전체 하루 40번 (요금 안전장치)
 
 const NPC_PETS = [
   { id: "npc-kongtteok", name: "콩떡", kind: "hamster", fur: "#F3D9B1" },
@@ -91,12 +91,17 @@ const SNACK = { hamster: "a sunflower seed", dog: "a small bone treat", cat: "a 
 async function poses(req, env, hub) {
   if (!env.GEMINI_API_KEY) return json({ error: "setup", message: "GEMINI_API_KEY가 아직 설정되지 않았어요" }, 503);
   let body; try { body = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); }
-  const { id, kind, image } = body || {};
+  const { id, kind, image, set } = body || {};
   if (!validId(id) || typeof image !== "string" || image.length < 1000 || image.length > 1_500_000) return json({ error: "bad", message: "그림을 다시 골라 주세요" }, 400);
   const q = await hub.fetch(new Request(new URL("/api/quota", req.url), { method: "POST", body: JSON.stringify({ id }) })).then(r => r.json());
   if (!q.ok) return json({ error: "quota", message: q.message, left: 0 }, 429);
   const animal = KIND_KO[kind] || "pet";
-  const prompt =
+  const prompt = set === "motion"
+    ? `Make a 2x2 animation sprite sheet of EXACTLY this same ${animal} character: same colors, same markings, same face, same art style (soft dark-brown hand-drawn outline, round chubby body, flat pastel colors). ` +
+      `Square image split into 4 equal square cells. ALL FOUR cells show the character in SIDE VIEW FACING RIGHT, the same size and the same position in the cell, whole body visible with empty margin, plain cream background (#FDF6EC), no text, no grid lines, no ground, no shadows. ` +
+      `Top-left: walking, front-left paw forward and back-right paw back. Top-right: walking, the other step, front-right paw forward and back-left paw back. ` +
+      `Bottom-left: running fast, body stretched long, front paws reaching far forward and back paws kicking far back, ears flat. Bottom-right: running fast, all four paws tucked under the round body, mid-air bounce.`
+    :
     `Make a 3x3 sprite sheet of EXACTLY this same ${animal} character: same colors, same markings, same face, same art style (soft dark-brown hand-drawn outline, round chubby mochi body, flat pastel colors). ` +
     `Square image split into 9 equal square cells in 3 rows and 3 columns. Each cell: the whole character small and centered with generous empty margin, plain cream background (#FDF6EC), no text, no frames, no grid lines, no ground shadows, nothing else. ` +
     `Row 1: (1) walking, side view facing RIGHT, one paw lifted; (2) seen from BEHIND, round fluffy butt and tiny tail, about to crawl into a hole; (3) sleeping curled into a ball, eyes closed. ` +
@@ -163,6 +168,9 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pulls(uniq TEXT PRIMARY KEY, who TEXT, r INTEGER, t INTEGER, kind TEXT, a TEXT, b TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS poses(id TEXT, k TEXT, img TEXT, at INTEGER, PRIMARY KEY(id, k))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS equip(id TEXT PRIMARY KEY, gear TEXT)");
+    try { this.sql.exec("ALTER TABLE equip ADD COLUMN pos TEXT"); } catch (e) {}
+    this.sql.exec("CREATE TABLE IF NOT EXISTS trades(tid TEXT PRIMARY KEY, fr TEXT, give TEXT, wk TEXT, wa TEXT, wb TEXT, at INTEGER, st TEXT, too TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS likes(day TEXT, fr TEXT, too TEXT, PRIMARY KEY(day, fr, too))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -211,16 +219,65 @@ export class Hub extends DurableObject {
     }
     if (p === "/api/pose") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
-      if (!["side", "back", "sleep", "eat", "happy", "curious", "grumpy", "groom", "flat"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
+      if (!["side", "back", "sleep", "eat", "happy", "curious", "grumpy", "groom", "flat", "walk1", "walk2", "run1", "run2"].includes(b.k)) return json({ error: "bad", message: "없는 포즈예요" }, 400);
       if (typeof b.img !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(b.img) || b.img.length > 400_000) return json({ error: "bad", message: "그림이 너무 커요" }, 400);
       this.sql.exec("INSERT INTO poses(id, k, img, at) VALUES(?, ?, ?, ?) ON CONFLICT(id, k) DO UPDATE SET img = excluded.img, at = excluded.at", b.id, b.k, b.img, now);
+      return json({ ok: true });
+    }
+    if (p === "/api/gearpos") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const q = b.pos || {}, num = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
+      const pos = q.reset ? null : JSON.stringify({ l: num(q.l, -30, 100), t: num(q.t, -40, 100), w: num(q.w, 8, 110), r: num(q.r, -60, 60) });
+      this.sql.exec("UPDATE equip SET pos = ? WHERE id = ?", pos, b.id);
+      return json({ ok: true });
+    }
+    if (p === "/api/trade") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const busy = new Set(this.rows("SELECT give FROM trades WHERE st = 'open'").map(x => x.give));
+      if (b.act === "new") {
+        const g = this.rows("SELECT uniq, kind FROM pulls WHERE uniq = ? AND who = ?", String(b.give || ""), b.id)[0];
+        if (!g) return json({ error: "bad", message: "내 진열장에 없는 거예요" }, 400);
+        if (busy.has(g.uniq)) return json({ error: "bad", message: "이미 교환에 내놓은 거예요" }, 400);
+        const w = b.want || {}, wk = ["pet", "item", "gear"].includes(w.kind) ? w.kind : null;
+        if (!wk) return json({ error: "bad", message: "원하는 걸 골라 주세요" }, 400);
+        if (this.rows("SELECT COUNT(*) AS n FROM trades WHERE fr = ? AND st = 'open'", b.id)[0].n >= 5) return json({ error: "bad", message: "교환은 한 번에 5개까지 내놓을 수 있어요" }, 400);
+        const tid = `${now.toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+        this.sql.exec("INSERT INTO trades(tid, fr, give, wk, wa, wb, at, st) VALUES(?, ?, ?, ?, ?, ?, ?, 'open')", tid, b.id, g.uniq, wk, String(w.a || ""), String(w.b || ""), now);
+        return json({ ok: true, tid });
+      }
+      const t = this.rows("SELECT * FROM trades WHERE tid = ? AND st = 'open'", String(b.tid || ""))[0];
+      if (!t) return json({ error: "gone", message: "이미 끝난 교환이에요" }, 409);
+      if (b.act === "cancel") {
+        if (t.fr !== b.id) return json({ error: "bad", message: "내 교환만 취소할 수 있어요" }, 400);
+        this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid);
+        return json({ ok: true });
+      }
+      if (b.act === "accept") {
+        if (t.fr === b.id) return json({ error: "bad", message: "내가 올린 교환이에요" }, 400);
+        const give = this.rows("SELECT uniq FROM pulls WHERE uniq = ? AND who = ?", t.give, t.fr)[0];
+        if (!give) { this.sql.exec("UPDATE trades SET st = 'cancel' WHERE tid = ?", t.tid); return json({ error: "gone", message: "올린 사람이 이미 그걸 안 갖고 있어요" }, 409); }
+        const mine = this.rows("SELECT uniq FROM pulls WHERE who = ? AND kind = ? AND a = ? AND b = ?", b.id, t.wk, t.wa, t.wb).find(x => !busy.has(x.uniq));
+        if (!mine) return json({ error: "noitem", message: "원하는 걸 갖고 있지 않아요" }, 409);
+        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", b.id, t.give);
+        this.sql.exec("UPDATE pulls SET who = ? WHERE uniq = ?", t.fr, mine.uniq);
+        this.sql.exec("UPDATE trades SET st = 'done', too = ? WHERE tid = ?", b.id, t.tid);
+        const got = this.rows("SELECT kind, a, b FROM pulls WHERE uniq = ?", t.give)[0];
+        return json({ ok: true, got });
+      }
+      return json({ error: "bad", message: "요청이 이상해요" }, 400);
+    }
+    if (p === "/api/like") {
+      if (!this.player(b.id) || !this.rows("SELECT 1 FROM pets WHERE id = ?", b.to)[0] || b.to === b.id) return json({ error: "bad", message: "좋아요를 못 보냈어요" }, 400);
+      const day = kst(now), had = this.rows("SELECT 1 FROM likes WHERE day = ? AND fr = ? AND too = ?", day, b.id, b.to)[0];
+      if (had) return json({ ok: true, already: true });
+      this.sql.exec("INSERT INTO likes(day, fr, too) VALUES(?, ?, ?)", day, b.id, b.to);
       return json({ ok: true });
     }
     if (p === "/api/equip") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
       const gear = String(b.gear || "");
       if (gear && !this.rows("SELECT 1 FROM pulls WHERE who = ? AND kind = 'gear' AND a = ?", b.id, gear)[0]) return json({ error: "bad", message: "아직 없는 장비예요" }, 400);
-      this.sql.exec("INSERT INTO equip(id, gear) VALUES(?, ?) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear", b.id, gear);
+      this.sql.exec("INSERT INTO equip(id, gear, pos) VALUES(?, ?, NULL) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear, pos = CASE WHEN equip.gear = excluded.gear THEN equip.pos ELSE NULL END", b.id, gear);
       return json({ ok: true });
     }
     if (p === "/api/join") {
@@ -289,10 +346,15 @@ export class Hub extends DurableObject {
     const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
-    const gear = Object.fromEntries(this.rows("SELECT id, gear FROM equip").map(x => [x.id, x.gear]));
+    const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
+    const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { return [x.id, JSON.parse(x.pos)]; } catch (e) { return [x.id, null]; } }));
+    const likes = Object.fromEntries(this.rows("SELECT too, COUNT(*) AS n FROM likes GROUP BY too").map(x => [x.too, x.n]));
+    const rooms = {};
+    for (const x of this.rows("SELECT DISTINCT who, a FROM pulls WHERE kind = 'item'")) (rooms[x.who] = rooms[x.who] || []).push(x.a);
+    const likedToday = id ? this.rows("SELECT too FROM likes WHERE day = ? AND fr = ?", kst(now), id).map(x => x.too) : [];
     const poseMap = {};
     for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", gear: gear[x.id] || "", poses: poseMap[x.id] || {} };
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", gear: gear[x.id] || "", gpos: gpos[x.id] || null, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [] };
 
     const line = [];
     R.entries.forEach((e, i) => {
@@ -319,14 +381,17 @@ export class Hub extends DurableObject {
     }
     const week = now - 7 * 864e5;
     const rank = this.rows("SELECT a AS pet, COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND t > ? GROUP BY a ORDER BY n DESC LIMIT 5", week);
-    const mine = id ? this.rows("SELECT kind, a, b, t FROM pulls WHERE who = ? ORDER BY t DESC LIMIT 300", id) : [];
+    const mine = id ? this.rows("SELECT uniq, kind, a, b, t FROM pulls WHERE who = ? ORDER BY t DESC LIMIT 300", id) : [];
+    const trades = this.rows("SELECT t.tid, t.fr, t.wk, t.wa, t.wb, t.at, p.kind AS gk, p.a AS ga, p.b AS gb, p.uniq AS gu FROM trades t JOIN pulls p ON p.uniq = t.give WHERE t.st = 'open' ORDER BY t.at DESC LIMIT 40")
+      .map(x => ({ ...x, by: players[x.fr] || "누군가" }));
+    const tradedRecent = id ? this.rows("SELECT tid, too FROM trades WHERE fr = ? AND st = 'done' AND too IS NOT NULL ORDER BY at DESC LIMIT 5", id).map(x => ({ tid: x.tid, by: players[x.too] || "누군가" })) : [];
     const recent = this.rows("SELECT who, kind, a, b, t FROM pulls WHERE t <= ? ORDER BY t DESC LIMIT 6", now)
       .map(x => ({ ...x, by: pets[x.who]?.npc ? pets[x.who].name : (players[x.who] || "누군가") }));
     const pulledMe = id ? this.rows("SELECT COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND a = ? AND who != ?", id, id)[0].n : 0;
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent,
     };
   }
 }
