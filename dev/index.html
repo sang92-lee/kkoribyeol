@@ -2531,6 +2531,7 @@ function lrSound(f, d = .08, type = 'sine', v = .12) {
 }
 function buzz(p) { try { navigator.vibrate?.(p); } catch (e) {} }
 function lrItem() { const r = Math.random(); if (RH.n > 15 && r < .04) return { k: 'gold', s: -1 }; if (RH.n > 10 && r < .07) return { k: 'clock', s: -1 }; const s = Math.random() < .5 ? 0 : 1, side = RH.sides[s]; return { k: 'n', s, id: side[Math.floor(Math.random() * side.length)] }; }
+setTimeout(() => LR_IDS.concat('goldseed').forEach(snImg), 1500);
 function rhStartScreen() {
   const o = $('#rhOver'); o.hidden = false;
   o.innerHTML = `<h3>냠냠 좌우</h3><p>맨 아래 간식이 왼쪽 편이면 ◀, 오른쪽 편이면 ▶<br>오래 버틸수록 한쪽에 간식 종류가 늘어나요<br>빨리빨리 나눠서 ${esc(myPet()?.name || '우리 애')}한테 먹여요</p>
@@ -2538,6 +2539,7 @@ function rhStartScreen() {
   $('#rhGo').onclick = rhStart;
 }
 function rhStart() {
+  LR_IDS.concat('goldseed').forEach(snImg);
   const C = window.AudioContext || window.webkitAudioContext; if (C) { RH.ac = RH.ac || new C(); RH.ac.resume(); }
   Object.assign(RH, { on: true, sides: lrSides(1), shiftT: 0, q: [], n: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, bad: 0, time: 1, shift: 0, fly: [], parts: [], pops: [], press: [0, 0], chomp: 0, dizzy: 0, last: performance.now(), lvl: 0 });
   for (let i = 0; i < 9; i++) RH.q.push(lrItem());
@@ -2594,7 +2596,7 @@ function rhLoop() {
     list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); }); }
   /* 줄 선 간식: 부드럽게 한 칸씩 내려옴 */
   const N = 8, step = (bot - top) / (N - 1);
-  for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i + (1 - ease), y = bot - pos * step, k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 * ease : 0);
+  for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i, y = bot - pos * step, k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 : 0);
     let x = cx; if (i === 0 && pn - (RH.wrong || 0) < 250) x += Math.sin(pn / 15) * 6;
     if (i === 0) { g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.arc(x, y, sz * .66, 0, 7); g.fill(); g.strokeStyle = '#E07A93'; g.lineWidth = 3; g.stroke(); }
     lrDraw(g, it, x, y, sz); }
