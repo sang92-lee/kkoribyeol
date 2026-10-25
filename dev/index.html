@@ -1217,7 +1217,7 @@ function buildRoom() {
     <div class="bubble" id="bubble"></div></div>
     <button type="button" class="camArrow l" id="camL" aria-label="왼쪽 보기">‹</button><button type="button" class="camArrow r" id="camR" aria-label="오른쪽 보기">›</button>
     `; $('#sndBtn').setAttribute('aria-pressed', SND.on); $('#sndBtn').textContent = SND.on ? '소리 끄기' : '소리 켜기';
-  cutImgs($('#world')); if (DECO.on) setTimeout(decoBind); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
+  cutImgs($('#world')); if (P.cam != null) $('#world').style.transform = `translateX(${-P.cam / WF}%)`; if (DECO.on) setTimeout(decoBind); $('#roomPet').onclick = poke; bindStroke(); buildBabies(); for (const k in GUESTS) delete GUESTS[k];
   $('#sndBtn').onclick = e => { e.stopPropagation(); toggleSound(); };
   $('#room .prop.house').onclick = knockHouse;
   bindPan();
@@ -1697,7 +1697,7 @@ function loop(now) {
     if (P.camTo != null) { P.cam += (P.camTo - P.cam) * Math.min(1, dt * 3); if (Math.abs(P.camTo - P.cam) < .2) P.camTo = null; }
     if (!P.panning) { P.cam += (P.camV || 0) * dt; P.camV = (P.camV || 0) * Math.pow(.02, dt); }
     /* 찾은 뒤엔 자동으로 따라감. 내가 밀면 4초 쉬었다가 다시 따라감 */
-    if (P.follow && !P.hiding && !P.panning && P.camTo == null && now > (P.userCamT || 0)) { const want = Math.max(0, Math.min(maxC, (P.x * WF) - 50)); P.cam += (want - P.cam) * Math.min(1, dt * 2.2); }
+    if (P.follow && !DECO.on && !P.hiding && !P.panning && P.camTo == null && now > (P.userCamT || 0)) { const want = Math.max(0, Math.min(maxC, (P.x * WF) - 50)); P.cam += (want - P.cam) * Math.min(1, dt * 2.2); }
     P.cam = Math.max(0, Math.min(maxC, P.cam)); wd.style.transform = `translateX(${-P.cam / WF}%)`;
     const ar = $('#camL'), br = $('#camR'); if (ar) { ar.hidden = P.cam < 1; br.hidden = P.cam > maxC - 1; }
   }
