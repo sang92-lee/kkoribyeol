@@ -215,6 +215,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .paws .pw { position: absolute; width: var(--ps); aspect-ratio: 1.2; border-radius: 50% 50% 45% 45%; background: #F8D3DA; border: 2px solid #4A3428; transform: translate(-50%, -50%); }
 .room .pet .paws .pw::after { content: ""; position: absolute; left: 22%; right: 22%; top: 12%; height: 30%; background: radial-gradient(circle, #E9A5B5 28%, transparent 30%) 0 0 / 33.3% 100% repeat-x; }
 .room .pet .paws .snk { position: absolute; width: calc(var(--ps) * .7); aspect-ratio: .6; border-radius: 50%; background: var(--snk, #B98A5A); border: 2px solid #4A3428; transform: translate(-50%, -50%) rotate(12deg); display: none; }
+.room .spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; z-index: 7; pointer-events: none; transform: translate(-50%, -50%); animation: spark .65s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes spark { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity: 0; } }
 .room .shadow { position: absolute; bottom: 10.5%; width: calc(15% / var(--wf)); height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
 .room .emote { position: absolute; width: calc(9% / var(--wf)); transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
 .room .emote svg { width: 100%; display: block; }
@@ -1301,7 +1303,7 @@ function placeEmote() { const e = P.emo; if (!e || !e.isConnected) return; e.sty
 function fx(cls, ms) {
   P.fx = cls; P.fxUntil = performance.now() + ms;
   const J = P.J || (P.J = { lean: 0, lv: 0, sq: 1, sv: 0, wob: 0, wv: 0 });
-  if (cls === 'land') J.sv -= 2.6; else if (cls === 'go') J.sv -= 1.4; else if (cls === 'stretch') J.sv += 3.2; else if (cls === 'twitch') J.wv += 4; else if (cls === 'hopx') J.sv -= 1.8;
+  if (cls === 'land') { J.sv -= 2.6; buzz(15); } else if (cls === 'go') J.sv -= 1.4; else if (cls === 'stretch') J.sv += 3.2; else if (cls === 'twitch') J.wv += 4; else if (cls === 'hopx') J.sv -= 1.8;
 }
 /* 말랑 젤리: 그림을 가로로 잘게 썰어서 기울고 눌리고 출렁이게 */
 const IMGC = {};
@@ -1325,20 +1327,24 @@ function jelly(dt, now) {
   J.sv += (gait.bounce * (1 + br - J.sq) - 9 * J.sv) * dt; J.sq += J.sv * dt; J.sq = Math.max(.7, Math.min(1.3, J.sq));
   /* 출렁: 좌우 푸딩 */
   J.wv += (190 * (0 - J.wob) - 5.5 * J.wv) * dt; J.wob += J.wv * dt;
+  /* 손가락 자국: 누른 높이 주변만 쏙 들어갔다가 말랑하게 돌아옴, 문지르면 그쪽으로 끌려감 */
+  J.dv = (J.dv || 0) + (160 * (0 - (J.dent || 0)) - 11 * (J.dv || 0)) * dt; J.dent = (J.dent || 0) + J.dv * dt;
+  J.pv = (J.pv || 0) + (90 * (0 - (J.pull || 0)) - 9 * (J.pv || 0)) * dt; J.pull = (J.pull || 0) + J.pv * dt;
   /* 그리기 */
   const im = imgOf(P.spr?.[P.cur]) || imgOf(P.spr?.front) || imgOf($('#roomPet .body img')?.src); if (!im) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1), r = cv.getBoundingClientRect(), W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
   if (!W || !H) return;
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   const g = cv.getContext('2d'); g.clearRect(0, 0, W, H);
-  const pad = W * .15 / 1.3, bw = W - pad * 2, bh = H - pad * 2, N = 30, iw = im.naturalWidth, ih = im.naturalHeight;
+  const pad = W * .15 / 1.3, bw = W - pad * 2, bh = H - pad * 2, N = 48, iw = im.naturalWidth, ih = im.naturalHeight;
   const fat = (CARE?.fat ?? .35) - .35, sq = J.sq * (1 - Math.max(0, fat) * .12), wscale = (1 + (1 - J.sq) * .85) * (1 + fat * .38);
   for (let i = 0; i < N; i++) {
     const yN = i / N, sh = ih / N, dh = bh / N * sq;
     const dy = pad + bh - (N - i) * dh;
     const up = Math.pow(1 - yN, 1.5);
-    const dx = (J.lean * .22 + J.wob * .06) * bw * up;
-    const bulge = 1 + (wscale - 1) * (.6 + .4 * Math.sin(Math.PI * yN));
+    const near = Math.exp(-Math.pow((yN - (J.ty ?? .5)) / .16, 2));
+    const dx = (J.lean * .22 + J.wob * .06) * bw * up + (J.pull || 0) * bw * .12 * near;
+    const bulge = 1 + (wscale - 1) * (.6 + .4 * Math.sin(Math.PI * yN)) - (J.dent || 0) * .16 * near + (J.dent || 0) * .05 * (1 - near);
     const dw = bw * bulge;
     g.drawImage(im, 0, i * sh, iw, sh + .6, pad + (bw - dw) / 2 + dx, dy, dw, dh + 1);
   }
@@ -1807,12 +1813,17 @@ setInterval(() => {
   else if (modeNow() === 'active' && Math.random() < .25) emote('think', 2000, 'play');
 }, 22000);
 const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
+function touchAt(e, kick) {
+  const J = P.J; if (!J || !e || e.clientY == null) return;
+  const r = $('#roomPet').getBoundingClientRect(); J.ty = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)); J.dv = (J.dv || 0) + kick;
+}
 function poke(e) {
   traitUp('cuddly', 1); traitUp('mood', .5);
   const p = myPet(); if (!p) return;
   if (P.stroked) { P.stroked = false; return; }
   if (P.act !== 'sleep') emote(Math.random() < .5 ? 'heart' : 'note', 1300);
-  if (P.J) { P.J.sv -= 2.6; P.J.wv += (Math.random() < .5 ? -1 : 1) * 4; }
+  if (P.J) { P.J.sv -= 2.6; P.J.wv += (Math.random() < .5 ? -1 : 1) * 4; touchAt(e, 9); }
+  buzz(P.act === 'sleep' ? [30, 40, 30] : 22);
   if (P.act === 'sleep') { emote('mad', 1500); P.awakeUntil = performance.now() + 60e3; if (P.y > FLOOR + 6) tweenY(FLOOR, 600); else P.y = FLOOR; setAct('idle', 1500, `${petNm()}가 잠에서 깼어요`, ''); say('으응… 왜 깨워'); P.face = 'grumpy'; P.faceUntil = performance.now() + 2000; trustUp(-1); return; }
   else { const L = LINES[p.kind] || LINES.hamster; say(L[Math.floor(Math.random() * L.length)], 1500); P.happyUntil = performance.now() + 1600; }
   hearts(e);
@@ -1829,11 +1840,12 @@ function stroke(e) {
   P.stroked = true; const t = performance.now(), n = petNm(), k = kindNow(), c = care();
   if (P.act === 'sleep') { poke(e); return; }
   P.strokes = (P.strokes || []).filter(x => t - x < 10000); P.strokes.push(t);
-  if (P.strokes.length > 7) { emote('mad', 1500); P.face = 'grumpy'; P.faceUntil = t + 2200; say('그만 만져~'); P.strokes = []; return goTo(P.x > 50 ? rnd(15, 35) : rnd(65, 85), 20, () => setAct('idle', 2000, `${n}가 살짝 삐졌어요`, ''), `${n}가 도망가요`); }
-  if (k === 'hamster' && c.trust < 25 && Math.random() < .2) { P.face = 'grumpy'; P.faceUntil = t + 1800; say('앙!'); trustUp(-1); return goTo(SPOT.house, 26, () => enterHouse(() => setAct('hide', 20000, `${n}가 놀라서 집에 숨었어요`)), `${n}가 놀라서 도망가요`); }
+  if (P.strokes.length > 7) { emote('mad', 1500); P.face = 'grumpy'; P.faceUntil = t + 2200; say('그만 만져~'); buzz([40, 30, 40]); P.strokes = []; return goTo(P.x > 50 ? rnd(15, 35) : rnd(65, 85), 20, () => setAct('idle', 2000, `${n}가 살짝 삐졌어요`, ''), `${n}가 도망가요`); }
+  if (k === 'hamster' && c.trust < 25 && Math.random() < .2) { P.face = 'grumpy'; P.faceUntil = t + 1800; say('앙!'); buzz([60, 30, 25]); trustUp(-1); return goTo(SPOT.house, 26, () => enterHouse(() => setAct('hide', 20000, `${n}가 놀라서 집에 숨었어요`)), `${n}가 놀라서 도망가요`); }
   if (P.act === 'walk') { P.act = 'idle'; P.until = t + 2000; P.cls = ''; }
   P.happyUntil = t + 1400; hearts(e); if (Math.random() < .35) emote('heart', 1100);
-  if (P.J) { P.J.sv -= 2.2; const r = $('#roomPet').getBoundingClientRect(); P.J.wv += ((e.clientX - r.left) / r.width - .5) * 9 * P.dir; }
+  if (P.J) { P.J.sv -= 2.2; const r = $('#roomPet').getBoundingClientRect(); P.J.wv += ((e.clientX - r.left) / r.width - .5) * 9 * P.dir; touchAt(e, 4); P.J.pv = (P.J.pv || 0) + Math.sign(e.movementX || 1) * 6 * P.dir; }
+  buzz(P.strokes.length >= 3 ? [12, 45, 12, 45, 12] : 12);
   say({ hamster: ['좋아…', '쪼끔 더', '눈 사르르'], cat: ['골골골', '거기 좋아', '그르릉'], dog: ['헤헤헤', '배도!', '꼬리 붕붕'] }[k][Math.floor(Math.random() * 3)], 1200);
   if (!P.strokeGain || t > P.strokeGain) { trustUp(1); P.strokeGain = t + 6000; }
 }
@@ -1919,6 +1931,8 @@ function hearts(e) {
   const r = $('#room').getBoundingClientRect(), h = document.createElement('span');
   h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px';
   $('#room').appendChild(h); setTimeout(() => h.remove(), 1200);
+  /* 콕 누른 자리에서 반짝이가 퐁 퍼짐 */
+  for (let i = 0; i < 6; i++) { const d = document.createElement('i'), a = i / 6 * Math.PI * 2 + Math.random() * .5, R = 26 + Math.random() * 18; d.className = 'spark'; d.style.left = (e.clientX - r.left) + 'px'; d.style.top = (e.clientY - r.top) + 'px'; d.style.setProperty('--dx', Math.cos(a) * R + 'px'); d.style.setProperty('--dy', Math.sin(a) * R + 'px'); d.style.background = ['#F2A0B3', '#FFE08A', '#A9D4F2'][i % 3]; $('#room').appendChild(d); setTimeout(() => d.remove(), 700); }
 }
 document.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => {
   kind = b.dataset.kind; document.querySelectorAll('[data-kind]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
