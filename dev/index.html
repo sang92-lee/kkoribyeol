@@ -219,6 +219,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .paws .snk { position: absolute; width: calc(var(--ps) * .7); aspect-ratio: .6; border-radius: 50%; background: var(--snk, #B98A5A); border: 2px solid #4A3428; transform: translate(-50%, -50%) rotate(12deg); display: none; }
 .room .spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; z-index: 7; pointer-events: none; transform: translate(-50%, -50%); animation: spark .65s cubic-bezier(.2,.8,.3,1) forwards; }
 @keyframes spark { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity: 0; } }
+.modal .fxs { position: fixed; z-index: 60; }
 .fxs { position: absolute; aspect-ratio: 1; transform: translate(-50%, 50%); background-size: calc(var(--n) * 100%) 100%; background-repeat: no-repeat; pointer-events: none; z-index: 7; animation: fxPlay 1s steps(var(--n)) forwards; }
 @keyframes fxPlay { from { background-position: 0 0; } to { background-position: calc(var(--n) * 100% / (var(--n) - 1)) 0; } }
 .room .shadow { position: absolute; bottom: 10.5%; width: calc(19% / var(--wf)); height: 3.6%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
@@ -1778,6 +1779,8 @@ function loop(now) {
   if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
   if (P.act === 'wheel') { P.wheel += dt * 520; P.ran += dt * 1.1; const sp = room.querySelector('.prop.wheel .spokes'); if (sp) sp.setAttribute('transform', `rotate(${P.wheel} 60 58)`); }
   if (P.act === 'sleep' && Math.random() < dt * .45) zz();
+  if (P.act === 'piano' && Math.random() < dt * 1.2) fxSheet('notes', P.x + P.dir * 4, headTop() - 6, 14);
+  if ($('#room')?.classList.contains('night') && now > (P.flyT || 0)) { P.flyT = now + 1500; fxSheet('firefly', rnd(5, 95), rnd(38, 70), 46); }
   if (P.act === 'eat' && !P.hidden && Math.random() < dt * .5) fxSheet('crumbs', P.x + P.dir * 3, P.y + (P.z || 0) * DEPTH + 2, 9);
   if (P.act === 'swim' && Math.random() < dt * 4) splash();
   if (P.act === 'piano' && now > (P.noteT || 0)) { P.noteT = now + rnd(220, 480); emote('note', 500); { const f = [523, 587, 659, 698, 784, 880][Math.floor(Math.random() * 6)]; gTone(f, f * 1.01, .05, .25, 'triangle'); } }
@@ -1892,7 +1895,7 @@ setInterval(() => {
 }, 22000);
 const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
 /* ---------- Unity로 구운 효과 그림 (dev/fx/*.png, unity/Assets/Editor/FxBake.cs) ---------- */
-const FXN = {"heart": [18, 24], "sparkle": [14, 24], "dust": [12, 24], "zzz": [30, 15], "crumbs": [16, 24], "splash": [14, 24]};
+const FXN = {"heart":[18,24],"sparkle":[14,24],"dust":[12,24],"zzz":[30,15],"crumbs":[16,24],"splash":[14,24],"confetti":[24,24],"ring":[12,24],"firefly":[48,16],"notes":[20,20]};
 const FXI = {}; for (const k in FXN) { FXI[k] = new Image(); FXI[k].src = `fx/${k}.png`; }
 /* 방(DOM): 한 칸씩 넘기는 스프라이트. x·bottom은 % (world 기준), size는 화면 너비 비율 */
 function fxSheet(name, x, bottom, size, parent) {
@@ -1907,6 +1910,8 @@ function fxsDraw(g, st, W = g.canvas.clientWidth, H = g.canvas.clientHeight) {
   if (!st.fxs || !st.fxs.length) return; const pn = performance.now();
   st.fxs = st.fxs.filter(f => { const [n, fps] = FXN[f.name], i = Math.floor((pn - f.at) / 1000 * fps), im = FXI[f.name]; if (i >= n) return false; if (im.complete && im.naturalWidth) { const s = f.size * W, c = im.naturalHeight; g.drawImage(im, i * c, 0, c, c, f.x * W - s / 2, f.y * H - s / 2, s, s); } return true; });
 }
+/* 뽑기 결과·애기 탄생 같은 카드가 뜨면 꽃가루 */
+new MutationObserver(() => { const m = $('#modal'); if (!m || m.hidden || !m.querySelector('.reveal')) return; if (performance.now() < (fxSheet.mt || 0)) return; fxSheet.mt = performance.now() + 1200; fxSheet('confetti', 50, 30, 95, m); if (m.querySelector('.legendCard, .badge.legend')) setTimeout(() => fxSheet('confetti', 50, 35, 95, m), 350); }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'], childList: true });
 function touchAt(e, kick) {
   const J = P.J; if (!J || !e || e.clientY == null) return;
   const r = $('#roomPet').getBoundingClientRect(); J.ty = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)); J.dv = (J.dv || 0) + kick;
@@ -2639,6 +2644,7 @@ function drawGame(now) {
   }
   if (G.stun > 0) { g.fillStyle = '#5E9E4A'; g.font = `${W * .05}px Jua, sans-serif`; g.textAlign = 'center'; g.fillText('@@', cx, base - petW * .95); }
   /* 파티클·글자 */
+  if (G.combo !== G.fxc) { if (G.combo && (G.combo === 5 || G.combo % 10 === 0)) fxs(G, 'ring', G.x, .82, .45); if (G.combo === 15) fxs(G, 'confetti', .5, .75, 1); G.fxc = G.combo; }
   fxsDraw(g, G, W, H);
   for (const pt of G.parts) { g.globalAlpha = 1 - pt.t / .7; g.fillStyle = pt.color; g.beginPath(); g.arc(pt.x * W, pt.y * H, pt.r * W, 0, 7); g.fill(); }
   g.globalAlpha = 1; g.textAlign = 'center';
@@ -2702,7 +2708,7 @@ function rhJudge(ln) {
   RH.q.shift(); RH.q.push(lrItem()); RH.n++; RH.ok++; RH.combo++; RH.maxCombo = Math.max(RH.maxCombo, RH.combo); RH.chomp = 1;
   const fever = RH.combo >= 30, pts = (it.k === 'gold' ? 5 : 1 + Math.floor(RH.combo / 10)) * (fever ? 2 : 1);
   RH.score += pts; RH.time = Math.min(1, RH.time + (it.k === 'clock' ? .3 : .045));
-  RH.fly.push({ it, side: ln, at: pn }); RH.shiftT = pn; fxs(RH, 'crumbs', ln ? .7 : .3, .5, .28); if (RH.combo % 10 === 0) fxs(RH, 'heart', .5, .35, .4);
+  RH.fly.push({ it, side: ln, at: pn }); RH.shiftT = pn; fxs(RH, 'crumbs', ln ? .7 : .3, .5, .28); if (RH.combo % 10 === 0) { fxs(RH, 'ring', .5, .45, .55); fxs(RH, 'heart', .5, .35, .4); } if (RH.combo === 30) fxs(RH, 'confetti', .5, .7, 1);
   buzz(it.k === 'gold' ? [20, 20, 20] : fever ? 22 : 15);
   lrSound(520 + Math.min(24, RH.combo % 25) * 28, .06, fever ? 'square' : 'triangle', fever ? .07 : .11);
   if (RH.combo === 30) RH.pops.push({ t: '피버!!', c: '#E0A800', at: pn, big: 1 });
@@ -2872,7 +2878,7 @@ function rbJudge(ln) {
   const perfect = bd < .065, mult = (1 + Math.min(3, Math.floor(RB.combo / 10)) * .5) * (RB.fever ? 2 : 1);
   RB.combo++; RB.maxCombo = Math.max(RB.maxCombo, RB.combo); perfect ? RB.perfect++ : RB.good++;
   let pts = perfect ? 10 : 5; if (best.k === 'gold') pts = 30; if (best.k === 'clock') { RB.left += 3; RB.pops.push({ t: '+3초', c: '#5BA3D9', at: performance.now() }); }
-  RB.score += Math.round(pts * mult); RB.chomp = 1; RB.shake = perfect ? .6 : .3; navigator.vibrate?.(perfect ? 18 : 10);
+  if (perfect) fxs(RB, 'ring', .5, .72, .42); RB.score += Math.round(pts * mult); RB.chomp = 1; RB.shake = perfect ? .6 : .3; navigator.vibrate?.(perfect ? 18 : 10);
   const hp = RB.hitPts?.[ln]; if (hp) rbBurst(hp[0], hp[1], best.k === 'gold' ? ['✨', '⭐', '💛'] : ['🌻', '✦', '·'], perfect ? 10 : 6, perfect ? 18 : 14);
   if (RB.fever && RB.combo % 10 === 0 && hp) { rbBurst(RB.hitPts[0][0] + (RB.hitPts[1][0] - RB.hitPts[0][0]) / 2, hp[1], ['🌻', '🌰', '✨', '💖'], 24, 24); RB.pops.push({ t: '퉤!', c: '#E07A93', at: performance.now(), big: 1 }); }
   rbVoice(RB.ac.currentTime, best.f, .1, 'sine', .05, RB.out); rbBeat(ln, best.k);

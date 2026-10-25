@@ -26,6 +26,10 @@ public static class FxBake
         Bake(outDir, "zzz", 30, 15, Zzz, log);
         Bake(outDir, "crumbs", 16, 24, Crumbs, log);
         Bake(outDir, "splash", 14, 24, Splash, log);
+        Bake(outDir, "confetti", 24, 24, Confetti, log);
+        Bake(outDir, "ring", 12, 24, Ring, log);
+        Bake(outDir, "firefly", 48, 16, Firefly, log);
+        Bake(outDir, "notes", 20, 20, Notes, log);
 
         File.WriteAllText(Path.Combine(outDir, "fx.txt"), string.Join("\n", log));
         Debug.Log("[FxBake] " + string.Join(" | ", log));
@@ -122,6 +126,92 @@ public static class FxBake
         ps.transform.position = new Vector3(0, -1.1f, 0);
         var r = (ParticleSystemRenderer)ps.GetComponent<Renderer>(); r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = .05f; r.lengthScale = 1.2f;
         FadeOut(ps, .7f);
+    }
+
+    // 꽃가루: 갓챠·피버 때 위로 팡 터져서 팔랑팔랑 떨어짐
+    static void Confetti(ParticleSystem ps)
+    {
+        Tex(ps, ShapeTex((x, y) => Box(x, y, .45f, .8f) - .08f, Color.white, true));
+        var m = ps.main; m.startLifetime = new ParticleSystem.MinMaxCurve(.9f, 1.1f); m.startSpeed = new ParticleSystem.MinMaxCurve(4.5f, 6.5f);
+        m.startSize = new ParticleSystem.MinMaxCurve(.16f, .26f); m.gravityModifier = .7f; m.startRotation = new ParticleSystem.MinMaxCurve(0, 6.28f);
+        var g = new Gradient(); g.SetKeys(new[] { new GradientColorKey(Pink, 0), new GradientColorKey(Butter, .33f), new GradientColorKey(Sky, .66f), new GradientColorKey(Mint, 1) }, new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) });
+        m.startColor = new ParticleSystem.MinMaxGradient(g) { mode = ParticleSystemGradientMode.RandomColor };
+        Burst(ps, 26);
+        var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 32; sh.radius = .2f; sh.rotation = new Vector3(-90, 0, 0);
+        ps.transform.position = new Vector3(0, -1.3f, 0);
+        var lv = ps.limitVelocityOverLifetime; lv.enabled = true; lv.limit = 0; lv.dampen = .05f;
+        var rot = ps.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-9, 9);
+        // 팔랑임: 가로로 납작해졌다 펴짐
+        var sz = ps.sizeOverLifetime; sz.enabled = true; sz.separateAxes = true;
+        sz.x = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(new Keyframe(0, 1), new Keyframe(.2f, .2f), new Keyframe(.4f, 1), new Keyframe(.6f, .2f), new Keyframe(.8f, 1), new Keyframe(1, .3f)));
+        sz.y = new ParticleSystem.MinMaxCurve(1, AnimationCurve.Constant(0, 1, 1)); sz.z = new ParticleSystem.MinMaxCurve(1, AnimationCurve.Constant(0, 1, 1));
+        FadeOut(ps, .75f);
+    }
+
+    // 파동: 콤보·정확히 맞힘 때 퍼지는 동그라미 링 두 겹
+    static void Ring(ParticleSystem ps)
+    {
+        Tex(ps, ShapeTex((x, y) => Mathf.Abs(Mathf.Sqrt(x * x + y * y) - .74f) - .16f, Pink, false));
+        var m = ps.main; m.startLifetime = .5f; m.startSpeed = 0; m.startSize = 2.6f;
+        var em = ps.emission; em.enabled = true; em.rateOverTime = 0; em.SetBursts(new[] { new ParticleSystem.Burst(0, 1), new ParticleSystem.Burst(.12f, 1) });
+        var sh = ps.shape; sh.enabled = false;
+        var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(new Keyframe(0, .15f, 0, 3), new Keyframe(1, 1, 0, 0)));
+        FadeOut(ps, .35f);
+    }
+
+    // 반딧불이: 밤하늘에 둥둥 떠다니며 깜빡임 (반복용)
+    static void Firefly(ParticleSystem ps)
+    {
+        Tex(ps, Glow());
+        var m = ps.main; m.startLifetime = 3f; m.startSpeed = .12f; m.startSize = new ParticleSystem.MinMaxCurve(.22f, .34f); m.loop = true; m.duration = 3f; m.prewarm = true;
+        var em = ps.emission; em.rateOverTime = 3.4f;
+        var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(2.8f, 2.6f, .1f);
+        var noise = ps.noise; noise.enabled = true; noise.strength = .35f; noise.frequency = .8f; noise.scrollSpeed = .3f;
+        var col = ps.colorOverLifetime; col.enabled = true;
+        var g = new Gradient();
+        g.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+            new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, .2f), new GradientAlphaKey(.3f, .45f), new GradientAlphaKey(1, .65f), new GradientAlphaKey(.2f, .85f), new GradientAlphaKey(0, 1) });
+        col.color = g;
+        var sz = ps.sizeOverLifetime; sz.enabled = true; sz.size = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(new Keyframe(0, .6f), new Keyframe(.3f, 1.2f), new Keyframe(.6f, .8f), new Keyframe(1, 1.1f)));
+    }
+
+    // 음표: 피아노·냠트박스 때 통통 튀며 올라가는 음표 두 개
+    static void Notes(ParticleSystem ps)
+    {
+        Tex(ps, ShapeTex(Note01, Lilac, true));
+        var m = ps.main; m.startLifetime = new ParticleSystem.MinMaxCurve(.75f, .95f); m.startSpeed = new ParticleSystem.MinMaxCurve(1.4f, 1.9f);
+        m.startSize = new ParticleSystem.MinMaxCurve(.5f, .7f); m.gravityModifier = -.05f;
+        var g = new Gradient(); g.SetKeys(new[] { new GradientColorKey(Lilac, 0), new GradientColorKey(Pink, 1) }, new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) });
+        m.startColor = new ParticleSystem.MinMaxGradient(g) { mode = ParticleSystemGradientMode.RandomColor };
+        Burst(ps, 3);
+        var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 25; sh.radius = .3f; sh.rotation = new Vector3(-90, 0, 0);
+        ps.transform.position = new Vector3(0, -1f, 0);
+        var rot = ps.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(.4f, new AnimationCurve(new Keyframe(0, -1), new Keyframe(.25f, 1), new Keyframe(.5f, -1), new Keyframe(.75f, 1), new Keyframe(1, -1)));
+        SizePop(ps, 1.2f);
+        FadeOut(ps, .65f);
+    }
+
+    // 반딧불이 빛: 가운데 노란 점 + 퍼지는 빛무리
+    static Texture2D Glow()
+    {
+        const int N = 64; var t = new Texture2D(N, N, TextureFormat.RGBA32, false);
+        for (int j = 0; j < N; j++) for (int i = 0; i < N; i++)
+            {
+                float d = Vector2.Distance(new Vector2(i + .5f, j + .5f), new Vector2(N / 2f, N / 2f)) / (N / 2f);
+                float core = Mathf.Clamp01((.22f - d) * 12), halo = Mathf.Pow(Mathf.Clamp01(1 - d), 2.2f) * .55f;
+                t.SetPixel(i, j, new Color(1, Mathf.Lerp(.93f, 1, core), Mathf.Lerp(.6f, .9f, core), Mathf.Max(core, halo)));
+            }
+        t.Apply(); return t;
+    }
+
+    static float Note01(float x, float y)
+    {
+        // 8분음표: 동그란 머리 + 기둥 + 깃발
+        float head = Mathf.Sqrt((x + .25f) * (x + .25f) / (.36f * .36f) + (y + .5f) * (y + .5f) / (.28f * .28f)) - 1;
+        head *= .28f;
+        float stem = Box(x - .08f, y + .05f, .07f, .55f);
+        float flag = Box((x - .3f) * .9f + (y - .35f) * .4f, y - .38f, .22f, .1f);
+        return Mathf.Min(head, Mathf.Min(stem, flag));
     }
 
     // ---------- 굽기 ----------
