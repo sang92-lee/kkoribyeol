@@ -1358,12 +1358,12 @@ function jelly(dt, now) {
   { const turn = (moving || P.act === 'wheel') && !(P.spr && P.spr[P.cur] && P.cur !== 'front') ? (run ? 34 : 26) : 0; P.yaw = (P.yaw || 0) + (turn - (P.yaw || 0)) * Math.min(1, dt * 8); }
   /* 방향 전환: 순간 뒤집기 대신 몸을 돌리듯 얇아졌다 펴짐 */
   const want = P.act === 'wheel' ? 1 : P.dir;
-  /* 방향 전환 (0.24초): 살짝 폴짝 뛰어서 공중에 있을 때 몸을 돌림.
-     앞 절반은 원래 방향으로 쏙 좁아지고, 가장 높은 순간에 뒤집혀서, 뒤 절반에 새 방향으로 펴지며 착지 */
+  /* 방향 전환 (0.24초): 폴짝 뛰어 가장 높은 순간에 휙 돌고, 몸이 반대로 출렁하며 착지.
+     몸 너비는 그대로 (좁아졌다 펴지면 종이 넘기는 것처럼 보여서) */
   if (P.turnTo == null) { P.turnTo = want; P.dirS = want; }
   if (want !== P.turnTo) { P.turnFrom = P.dirS >= 0 ? 1 : -1; P.turnTo = want; P.turnT = now; P.turnHopT = now; J.sv += 1.2; J.wv += want * 2.5; P.landed = false; }
   { const k = P.turnT ? (now - P.turnT) / 240 : 1;
-    if (k < 1) { const e = k < .5 ? k * 2 : (1 - k) * 2, mag = 1 - .72 * e * e * (3 - 2 * e); P.dirS = (k < .5 ? P.turnFrom : P.turnTo) * mag; }
+    if (k < 1) { if (k >= .5 && P.dirS !== P.turnTo) J.wv -= P.turnTo * 5; P.dirS = k < .5 ? P.turnFrom : P.turnTo; }
     else { P.dirS = P.turnTo; if (P.turnT && !P.landed) { P.landed = true; J.sv -= 1.5; if (Math.random() < .7) dust(); } } }
   if (['eat', 'drink', 'chew'].includes(P.act)) { const f = Math.floor(now / 260); if (f !== J.chew) { J.chew = f; J.sv -= .7; } }
   if (['groom', 'scratch', 'rub', 'sniff'].includes(P.act)) { const f = Math.floor(now / 330); if (f !== J.gr) { J.gr = f; J.wv += (f % 2 ? 1 : -1) * 3.2; } }
