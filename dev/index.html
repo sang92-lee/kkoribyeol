@@ -3339,7 +3339,7 @@ function boot() {
   $('#who').textContent = `${S.nick}님 ⚙️`;
   refresh();
   clearInterval(boot.p); clearInterval(boot.c);
-  boot.p = setInterval(() => { if (!document.hidden) refresh(); }, 3000);
+  boot.p = setInterval(() => { if (!document.hidden) refresh(); }, 6000); /* 서버 무료 한도 아끼려고 6초마다 */
   boot.c = setInterval(tickGacha, 1000);
 }
 if (S.code && S.nick) {

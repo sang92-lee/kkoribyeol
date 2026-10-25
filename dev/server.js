@@ -240,13 +240,16 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS accounts(uid TEXT PRIMARY KEY, pid TEXT, pw TEXT, at INTEGER)");
     try { this.sql.exec("ALTER TABLE players ADD COLUMN seen INTEGER DEFAULT 0"); } catch (e) {}
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
+    /* 색인: 무료 한도(하루 읽기 500만 줄)를 넘지 않게, 표 전체를 훑지 않고 필요한 줄만 읽게 함 */
+    for (const q of ["pulls(who, t)", "pulls(kind, t)", "pulls(kind, a, who)", "pulls(kind, who, a)", "pulls(r)", "pulls(t)", "likes(too)", "likes(day, fr)", "scores(wk, best)", "trades(st, at)", "trades(fr, st)", "visits(too, at)", "gifts(too, open)", "bonds(b)", "babies(pb)", "accounts(pid)", "pouchlog(wk, n)"])
+      this.sql.exec(`CREATE INDEX IF NOT EXISTS ix_${q.replace(/[^a-z]+/g, "_")} ON ${q}`);
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
 
   async fetch(req) {
     const url = new URL(req.url), p = url.pathname, now = Date.now();
     let b = {};
-    if (req.method === "POST") { try { b = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); } }
+    if (req.method === "POST") { this.memo = {}; try { b = await req.json(); } catch { return json({ error: "bad", message: "요청이 이상해요" }, 400); } }
 
     if (p === "/api/photo" && req.method === "POST") {
       if (!validId(b.id) || typeof b.photo !== "string" || !/^data:image\/jpeg;base64,/.test(b.photo) || b.photo.length > 1_500_000) return json({ error: "bad", message: "사진을 다시 골라 주세요" }, 400);
@@ -564,10 +567,12 @@ export class Hub extends DurableObject {
       this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, ?, ?, ?, ?, ?)", uniq, b.id, R.r, now, out.kind, out.a, out.b);
       return json({ ok: true, result: out });
     }
-    if (p === "/api/state") { const sid = url.searchParams.get("id") || ""; if (validId(sid)) this.sql.exec("UPDATE players SET seen = ? WHERE id = ?", now, sid); return json(this.state(sid, now)); }
+    if (p === "/api/state") { const sid = url.searchParams.get("id") || ""; const ls = this.lastSeen || (this.lastSeen = {}); if (validId(sid) && !(now - (ls[sid] || 0) < 60000)) { ls[sid] = now; this.sql.exec("UPDATE players SET seen = ? WHERE id = ?", now, sid); } return json(this.state(sid, now)); }
     return json({ error: "none", message: "없는 주소예요" }, 404);
   }
 
+  /* 모두에게 같은 큰 목록(펫·랭킹 등)은 10초 동안 기억해 두고 재사용. 무언가 바뀌는 요청(POST)이 오면 바로 버림 */
+  cached(k, fn, ms = 10000) { const m = this.memo || (this.memo = {}), e = m[k], t = Date.now(); if (e && t - e.t < ms) return e.v; const v = fn(); m[k] = { t, v }; return v; }
   player(id) { return validId(id) && this.rows("SELECT id FROM players WHERE id = ?", id)[0]; }
   pool() { return [...this.rows("SELECT id FROM pets WHERE img IS NOT NULL").map(r => r.id), ...NPC_PETS.map(n => n.id)]; }
   roll(R, who) {
@@ -607,24 +612,27 @@ export class Hub extends DurableObject {
     const R = this.round(now);
     const pulled = new Set(this.rows("SELECT uniq FROM pulls WHERE r = ?", R.r).map(x => x.uniq));
     const key = e => e.npc ? e.id : `${R.r}:${e.id}`;
-    const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
-    const seenAt = Object.fromEntries(this.rows("SELECT id, seen FROM players").map(x => [x.id, x.seen || 0]));
-    const pets = {};
-    for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
+    const { players, seenAt, pets } = this.cached("g", () => {
+      const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
+      const seenAt = Object.fromEntries(this.rows("SELECT id, seen FROM players").map(x => [x.id, x.seen || 0]));
+      const pets = {};
+      for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
+      const layouts = Object.fromEntries(this.rows("SELECT id, data FROM layout").map(x => { try { return [x.id, JSON.parse(x.data)]; } catch (e) { return [x.id, null]; } }));
+      const roomLvs = Object.fromEntries(this.rows("SELECT id, room FROM wallet").map(x => [x.id, x.room || 0]));
+      const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
+      const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { const m = JSON.parse(x.pos); return [x.id, m && m.l == null ? m : {}]; } catch (e) { return [x.id, {}]; } }));
+      const likes = Object.fromEntries(this.rows("SELECT too, COUNT(*) AS n FROM likes GROUP BY too").map(x => [x.too, x.n]));
+      const rooms = {};
+      for (const x of this.rows("SELECT DISTINCT who, a FROM pulls WHERE kind = 'item'")) (rooms[x.who] = rooms[x.who] || []).push(x.a);
+      const poseMap = {};
+      for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
+      const phs = Object.fromEntries(this.rows("SELECT id, at FROM photos").map(x => [x.id, x.at]));
+      for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [], ph: phs[x.id] || 0, seen: seenAt[x.id] || 0 };
+      return { players, seenAt, pets };
+    });
     const bonds = id ? Object.fromEntries(this.rows("SELECT a, b, pts FROM bonds WHERE a = ? OR b = ?", id, id).map(x => [x.a === id ? x.b : x.a, x.pts])) : {};
     const babies = id ? this.rows("SELECT bid, pa, pb, kind, asker, st, name, at FROM babies WHERE (pa = ? OR pb = ?) AND st IN ('ask', 'born')", id, id) : [];
-    const layouts = Object.fromEntries(this.rows("SELECT id, data FROM layout").map(x => { try { return [x.id, JSON.parse(x.data)]; } catch (e) { return [x.id, null]; } }));
-    const roomLvs = Object.fromEntries(this.rows("SELECT id, room FROM wallet").map(x => [x.id, x.room || 0]));
-    const gearRows = this.rows("SELECT id, gear, pos FROM equip"), gear = Object.fromEntries(gearRows.map(x => [x.id, x.gear]));
-    const gpos = Object.fromEntries(gearRows.filter(x => x.pos).map(x => { try { const m = JSON.parse(x.pos); return [x.id, m && m.l == null ? m : {}]; } catch (e) { return [x.id, {}]; } }));
-    const likes = Object.fromEntries(this.rows("SELECT too, COUNT(*) AS n FROM likes GROUP BY too").map(x => [x.too, x.n]));
-    const rooms = {};
-    for (const x of this.rows("SELECT DISTINCT who, a FROM pulls WHERE kind = 'item'")) (rooms[x.who] = rooms[x.who] || []).push(x.a);
     const likedToday = id ? this.rows("SELECT too FROM likes WHERE day = ? AND fr = ?", kst(now), id).map(x => x.too) : [];
-    const poseMap = {};
-    for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
-    const phs = Object.fromEntries(this.rows("SELECT id, at FROM photos").map(x => [x.id, x.at]));
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [], ph: phs[x.id] || 0, seen: seenAt[x.id] || 0 };
 
     const line = [];
     R.entries.forEach((e, i) => {
@@ -650,15 +658,15 @@ export class Hub extends DurableObject {
         st: done ? "done" : !meE.gets ? "soldout" : now < meE.t ? "wait" : now <= meE.t + WINDOW ? "turn" : "missed" };
     }
     const week = now - 7 * 864e5;
-    const rank = this.rows("SELECT a AS pet, COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND t > ? GROUP BY a ORDER BY n DESC LIMIT 5", week);
+    const rank = this.cached("rank", () => this.rows("SELECT a AS pet, COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND t > ? GROUP BY a ORDER BY n DESC LIMIT 5", week), 60000);
     const mine = id ? this.rows("SELECT uniq, kind, a, b, t FROM pulls WHERE who = ? ORDER BY t DESC LIMIT 300", id) : [];
-    const trades = this.rows("SELECT t.tid, t.fr, t.wk, t.wa, t.wb, t.at, p.kind AS gk, p.a AS ga, p.b AS gb, p.uniq AS gu FROM trades t JOIN pulls p ON p.uniq = t.give WHERE t.st = 'open' ORDER BY t.at DESC LIMIT 40")
-      .map(x => ({ ...x, by: players[x.fr] || "누군가" }));
+    const trades = this.cached("trades", () => this.rows("SELECT t.tid, t.fr, t.wk, t.wa, t.wb, t.at, p.kind AS gk, p.a AS ga, p.b AS gb, p.uniq AS gu FROM trades t JOIN pulls p ON p.uniq = t.give WHERE t.st = 'open' ORDER BY t.at DESC LIMIT 40")
+      .map(x => ({ ...x, by: players[x.fr] || "누군가" })));
     const tradedRecent = id ? this.rows("SELECT tid, too FROM trades WHERE fr = ? AND st = 'done' AND too IS NOT NULL ORDER BY at DESC LIMIT 5", id).map(x => ({ tid: x.tid, by: players[x.too] || "누군가" })) : [];
-    const recent = this.rows("SELECT who, kind, a, b, t FROM pulls WHERE t <= ? ORDER BY t DESC LIMIT 6", now)
-      .map(x => ({ ...x, by: pets[x.who]?.npc ? pets[x.who].name : (players[x.who] || "누군가") }));
+    const recent = this.cached("recent", () => this.rows("SELECT who, kind, a, b, t FROM pulls WHERE t <= ? ORDER BY t DESC LIMIT 6", now)
+      .map(x => ({ ...x, by: pets[x.who]?.npc ? pets[x.who].name : (players[x.who] || "누군가") })));
     const wk = wkKey(now);
-    const scoreRank = this.rows("SELECT id, best FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", wk).map(x => ({ ...x, nick: players[x.id] || "누군가" }));
+    const scoreRank = this.cached("score", () => this.rows("SELECT id, best FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", wk).map(x => ({ ...x, nick: players[x.id] || "누군가" })));
     const myBest = id ? (this.rows("SELECT best FROM scores WHERE wk = ? AND id = ?", wk, id)[0] || { best: 0 }).best : 0;
     const wal = id ? (this.rows("SELECT seeds, room FROM wallet WHERE id = ?", id)[0] || { seeds: 0, room: 0 }) : { seeds: 0, room: 0 };
     const seeds = wal.seeds, roomLv = wal.room || 0;
@@ -666,9 +674,9 @@ export class Hub extends DurableObject {
     const pouch = { n: pc.last ? Math.min(POUCH_MAX, Math.floor((now - pc.last) / POUCH_MS)) : 3, shards: pc.shards || 0, next: pc.last ? pc.last + POUCH_MS * (1 + Math.min(POUCH_MAX - 1, Math.floor((now - pc.last) / POUCH_MS))) : 0 };
     const gifts = id ? this.rows("SELECT gid, fr, x FROM gifts WHERE too = ? AND open = 0", id).map(g => ({ gid: g.gid, x: g.x, nick: players[g.fr] || "누군가" })) : [];
     const cw = Number(wkKey(now)), C = CONTESTS[cw % CONTESTS.length], d7 = kst(now - 6 * 864e5);
-    const crow = C.k === "likes" ? this.rows("SELECT too AS id, COUNT(*) AS n FROM likes WHERE day >= ? GROUP BY too ORDER BY n DESC LIMIT 5", d7)
+    const crow = this.cached("contest", () => C.k === "likes" ? this.rows("SELECT too AS id, COUNT(*) AS n FROM likes WHERE day >= ? GROUP BY too ORDER BY n DESC LIMIT 5", d7)
       : C.k === "score" ? this.rows("SELECT id, best AS n FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", String(cw))
-      : this.rows("SELECT id, n FROM pouchlog WHERE wk = ? ORDER BY n DESC LIMIT 5", String(cw));
+      : this.rows("SELECT id, n FROM pouchlog WHERE wk = ? ORDER BY n DESC LIMIT 5", String(cw)), 60000);
     const contest = { title: C.t, unit: C.u, ends: (cw + 1) * 7 * 864e5 + 4 * 864e5 - 9 * 3600e3, rank: crow.filter(x => x.n > 0).map(x => ({ id: x.id, n: x.n, nick: players[x.id] || "누군가" })) };
     const account = id ? ((this.rows("SELECT uid FROM accounts WHERE pid = ?", id)[0] || {}).uid || "") : "";
     const visitors = id ? this.rows("SELECT fr, MAX(at) AS at FROM visits WHERE too = ? GROUP BY fr ORDER BY at DESC LIMIT 5", id).map(x => ({ id: x.fr, at: x.at, nick: players[x.fr] || "누군가" })) : [];
