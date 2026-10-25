@@ -2524,13 +2524,13 @@ const LR_IDS = ['apple', 'carrot', 'cheese', 'strawberry', 'pudding', 'pumpkin',
 const SNIMG = {};
 function snImg(id) { if (!SNIMG[id]) { const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(snackSVG(id).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" ')); SNIMG[id] = im; } return SNIMG[id].complete ? SNIMG[id] : null; }
 function lrDraw(g, it, x, y, sz) { if (it.k === 'clock') { g.font = `${sz * .9}px sans-serif`; g.fillText('⏰', x, y); return; } const im = snImg(it.k === 'gold' ? 'goldseed' : it.id); if (im) g.drawImage(im, x - sz / 2, y - sz / 2, sz, sz); }
-function lrSides(per) { const pool = LR_IDS.slice().sort(() => Math.random() - .5); return [pool.slice(0, per), pool.slice(per, per * 2)]; }
+function lrSides(per) { const cur = (RH.sides || []).flat(), pool = LR_IDS.filter(x => !cur.includes(x)).sort(() => Math.random() - .5); return [pool.slice(0, per), pool.slice(per, per * 2)]; }
 function lrSound(f, d = .08, type = 'sine', v = .12) {
   const C = window.AudioContext || window.webkitAudioContext; if (!C) return; RH.ac = RH.ac || new C(); const c = RH.ac, t = c.currentTime;
   const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d + .05); o.connect(g).connect(c.destination); o.start(t); o.stop(t + d + .1);
 }
 function buzz(p) { try { navigator.vibrate?.(p); } catch (e) {} }
-function lrItem() { const r = Math.random(); if (RH.n > 15 && r < .04) return { k: 'gold', s: -1 }; if (RH.n > 10 && r < .07) return { k: 'clock', s: -1 }; const s = Math.random() < .5 ? 0 : 1, side = RH.sides[s]; return { k: 'n', s, id: side[Math.floor(Math.random() * side.length)] }; }
+function lrItem() { const r = Math.random(); if (RH.n > 15 && r < .04) return { k: 'gold', s: -1 }; if (RH.n > 10 && r < .07) return { k: 'clock', s: -1 }; const s = Math.random() < .5 ? 0 : 1, src = RH.pendingSides || RH.sides, side = src[s], first = !!RH.pendingSides && !RH.pendingUsed; if (first) RH.pendingUsed = true; return { k: 'n', s, id: side[Math.floor(Math.random() * side.length)], first }; }
 setTimeout(() => LR_IDS.concat('goldseed').forEach(snImg), 1500);
 function rhStartScreen() {
   const o = $('#rhOver'); o.hidden = false;
@@ -2541,7 +2541,7 @@ function rhStartScreen() {
 function rhStart() {
   LR_IDS.concat('goldseed').forEach(snImg);
   const C = window.AudioContext || window.webkitAudioContext; if (C) { RH.ac = RH.ac || new C(); RH.ac.resume(); }
-  Object.assign(RH, { on: true, sides: lrSides(1), shiftT: 0, q: [], n: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, bad: 0, time: 1, shift: 0, fly: [], parts: [], pops: [], press: [0, 0], chomp: 0, dizzy: 0, last: performance.now(), lvl: 0 });
+  Object.assign(RH, { on: true, pendingSides: null, pendingUsed: false, sides: lrSides(1), shiftT: 0, q: [], n: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, bad: 0, time: 1, shift: 0, fly: [], parts: [], pops: [], press: [0, 0], chomp: 0, dizzy: 0, last: performance.now(), lvl: 0 });
   for (let i = 0; i < 9; i++) RH.q.push(lrItem());
   $('#rhBox').classList.add('full'); document.body.classList.add('rhFull'); $('#rhOver').hidden = true;
   cancelAnimationFrame(RH.raf); RH.raf = requestAnimationFrame(rhLoop);
@@ -2560,7 +2560,8 @@ function rhJudge(ln) {
   buzz(it.k === 'gold' ? [20, 20, 20] : fever ? 22 : 15);
   lrSound(520 + Math.min(24, RH.combo % 25) * 28, .06, fever ? 'square' : 'triangle', fever ? .07 : .11);
   if (RH.combo === 30) RH.pops.push({ t: '피버!!', c: '#E0A800', at: pn, big: 1 });
-  if (RH.n % 25 === 0) { RH.lvl++; const per = RH.lvl >= 4 ? 3 : RH.lvl >= 2 ? 2 : 1; RH.sides = lrSides(per); RH.q = RH.q.map((x, i) => i < 2 ? x : lrItem()); RH.q = RH.q.map(x => x.k === 'n' && !RH.sides[x.s].includes(x.id) ? lrItem() : x); RH.pops.push({ t: per > 1 && RH.lvl % 2 === 0 ? `한쪽에 ${per}종류!` : '새 간식 등장!', c: '#5BA3D9', at: pn, big: 1 }); RH.sideAt = pn; }
+  if (RH.q[0]?.first && RH.pendingSides) { RH.sides = RH.pendingSides; RH.pendingSides = null; RH.sideAt = pn; RH.pops.push({ t: '새 간식!', c: '#5BA3D9', at: pn, big: 1 }); }
+  if (RH.n % 25 === 17 && !RH.pendingSides) { RH.lvl++; const per = RH.lvl >= 4 ? 3 : RH.lvl >= 2 ? 2 : 1; RH.pendingSides = lrSides(per); RH.pendingUsed = false; RH.pops.push({ t: per > 1 && RH.lvl % 2 === 0 ? `곧 한쪽에 ${per}종류!` : '곧 새 간식이 와요', c: '#5BA3D9', at: pn, big: 1 }); }
 }
 function rhLoop() {
   if (!RH.on) return;
@@ -2593,12 +2594,14 @@ function rhLoop() {
   const sideY = H * .5, pop = Math.max(0, 1 - (pn - (RH.sideAt || 0)) / 500);
   for (let i = 0; i < 2; i++) { const x = i ? W * .83 : W * .17, list = RH.sides[i], bump = Math.max(0, 1 - (pn - RH.press[i]) / 160), hgt = list.length * 62 + 20;
     g.fillStyle = 'rgba(255,255,255,.85)'; g.strokeStyle = '#4A3428'; g.lineWidth = 3; g.beginPath(); g.roundRect(x - 38 - bump * 4, sideY - hgt / 2 - bump * 4, 76 + bump * 8, hgt + bump * 8, 22); g.fill(); g.stroke();
-    list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); }); }
+    list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); });
+    if (RH.pendingSides) { const nx = RH.pendingSides[i], ny = sideY - hgt / 2 - 30 - nx.length * 14; g.fillStyle = 'rgba(91,163,217,.15)'; g.strokeStyle = '#5BA3D9'; g.lineWidth = 2; g.beginPath(); g.roundRect(x - 30, ny - 16, 60, nx.length * 30 + 22, 12); g.fill(); g.stroke(); g.fillStyle = '#5BA3D9'; g.font = 'bold 10px sans-serif'; g.fillText('다음', x, ny - 6); nx.forEach((id, j) => lrDraw(g, { k: 'n', id }, x, ny + 12 + j * 30, 28)); } }
   /* 줄 선 간식: 부드럽게 한 칸씩 내려옴 */
   const N = 8, step = (bot - top) / (N - 1) * .92;
   for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i, y = bot - pos * step - (i ? 14 : 0), k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 : 0);
     let x = cx; if (i === 0 && pn - (RH.wrong || 0) < 250) x += Math.sin(pn / 15) * 6;
     if (i === 0) { g.fillStyle = 'rgba(224,122,147,.28)'; g.beginPath(); g.ellipse(x, y + sz * .42, sz * .5, sz * .14, 0, 0, 7); g.fill(); g.strokeStyle = '#E07A93'; g.lineWidth = 2.5; g.stroke(); }
+    if (it.first) { g.strokeStyle = '#5BA3D9'; g.lineWidth = 3; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(x - 60, y + sz * .55); g.lineTo(x + 60, y + sz * .55); g.stroke(); g.setLineDash([]); g.fillStyle = '#5BA3D9'; g.font = 'bold 11px sans-serif'; g.fillText('여기부터 새 간식', x + 92, y + sz * .55); }
     lrDraw(g, it, x, y, sz); }
   /* 고른 간식은 옆으로 쓱 (짧고 곧게) */
   RH.fly = RH.fly.filter(f => pn - f.at < 160);
