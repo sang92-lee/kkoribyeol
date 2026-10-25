@@ -2577,7 +2577,7 @@ function rhJudge(ln) {
   lrSound(520 + Math.min(24, RH.combo % 25) * 28, .06, fever ? 'square' : 'triangle', fever ? .07 : .11);
   if (RH.combo === 30) RH.pops.push({ t: '피버!!', c: '#E0A800', at: pn, big: 1 });
   if (RH.q[0]?.first && RH.pendingSides) { RH.sides = RH.pendingSides; RH.pendingSides = null; RH.sideAt = pn; RH.pops.push({ t: '새 간식!', c: '#5BA3D9', at: pn, big: 1 }); }
-  if (RH.n % 25 === 17 && !RH.pendingSides) { RH.lvl++; RH.pendingSides = lrSides(1); RH.pendingUsed = false; RH.pops.push({ t: '곧 새 간식이 와요', c: '#5BA3D9', at: pn, big: 1 }); }
+  if (RH.n % 70 === 62 && !RH.pendingSides) { RH.lvl++; RH.pendingSides = lrSides(1); RH.pendingUsed = false; RH.pops.push({ t: '곧 새 간식이 와요', c: '#5BA3D9', at: pn, big: 1 }); }
 }
 function rhLoop() {
   if (!RH.on) return;
