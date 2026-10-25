@@ -96,6 +96,11 @@ public class Room : MonoBehaviour
         floor.transform.position = new Vector3(VW * WF / 2, VH * .15f, 4); floor.transform.localScale = new Vector3(VW * WF, VH * .3f, 1);
         foreach (var s in stars) Destroy(s.gameObject);
         stars.Clear();
+        // 바닥 윗선(웹: 잉크색 2.5px) + 벽 물방울 무늬 + 톱밥 막대
+        var line = Quad("line", Solid(Game.Ink), -45); line.transform.position = W(50, 30, 3.5f); line.transform.localScale = new Vector3(VW * WF, .045f, 1); props["_line"] = line;
+        var wall = Quad("wall", WallTex(WF), -48); wall.transform.localScale = new Vector3(VW * WF, VH * .7f, 1);
+        wall.transform.position = new Vector3(VW * WF / 2, VH * .65f, 4.5f); wall.color = new Color(1, 1, 1, .35f); props["_wall"] = wall;
+        for (int i = 0; i < Mathf.RoundToInt(WF * 2); i++) { var st2 = Sprite("sticks", 14); st2.transform.position = W(8 + i * 45 / WF % 90, 4, 2); st2.sortingOrder = 5; props["_st" + i] = st2; }
         for (int i = 0; i < Mathf.RoundToInt(10 * WF); i++)
         {
             var s = Quad("star", Dot(), -40); s.transform.position = W((i * 37 + 7) % 96, 100 - (i * 23 + 5) % 52 * .7f, 3); s.transform.localScale = Vector3.one * .07f; stars.Add(s);
@@ -121,6 +126,7 @@ public class Room : MonoBehaviour
             sr.sortingOrder = 20 - Mathf.RoundToInt(z * 16);
             if (z > 0) sr.color = Color.white * (1 - z * .06f) + Color.black;
             props[k] = sr; SpotX[k] = x;
+            if (!hang && bottom <= Floor + 1) { var sh = Quad("shadow", Blob(), sr.sortingOrder - 1); sh.transform.position = W(x, bottom + z * 13 + .3f, 1.5f + z); sh.transform.localScale = new Vector3(w / 100f * VW * .85f, .22f, 1); sh.color = new Color(.29f, .2f, .16f, .16f); props[k + "_sh"] = sh; }
         }
         Prop("platform", "platform", 30, 13); Prop("pot", "pot", 15);
         Prop("house", "house", 22);
@@ -179,6 +185,7 @@ public class Room : MonoBehaviour
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = UnityEngine.Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(.5f, .5f), t.width);
         sr.drawMode = SpriteDrawMode.Simple; sr.sortingOrder = order;
+        if (t.height != t.width) { var c = go.AddComponent<FitQuad>(); c.ratio = (float)t.width / t.height; }
         return sr;
     }
 
@@ -189,10 +196,34 @@ public class Room : MonoBehaviour
         t.Apply(); return t;
     }
 
+    static Texture2D Solid(Color c) { var t = new Texture2D(4, 4); var a = new Color[16]; for (int i = 0; i < 16; i++) a[i] = c; t.SetPixels(a); t.Apply(); return t; }
+    static Texture2D Blob()
+    {
+        var t = new Texture2D(64, 64);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) { float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), new Vector2(32, 32)) / 32; t.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01((1 - d) * 2))); }
+        t.Apply(); return t;
+    }
+    // 벽 물방울 무늬 (웹 테마 1번): 0.55유닛마다 분홍 점, 벽 크기만큼 한 장으로
+    static Texture2D WallTex(float wf)
+    {
+        int cols = Mathf.RoundToInt(VW * wf / .55f), rows = Mathf.RoundToInt(VH * .7f / .55f), P = 16;
+        var t = new Texture2D(cols * P, rows * P);
+        var px = new Color[cols * P * rows * P];
+        for (int y = 0; y < rows * P; y++) for (int x = 0; x < cols * P; x++) { float d = Vector2.Distance(new Vector2(x % P + .5f, y % P + .5f), new Vector2(P / 2f, P / 2f)); px[y * cols * P + x] = new Color(.95f, .63f, .7f, Mathf.Clamp01(2.6f - d)); }
+        t.SetPixels(px); t.Apply(); return t;
+    }
+
     static Texture2D Dot()
     {
         var t = new Texture2D(16, 16);
         for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), new Vector2(8, 8)); t.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(7 - d))); }
         t.Apply(); return t;
     }
+}
+
+// 가로세로 다른 텍스처도 localScale(가로, 세로)가 실제 크기가 되게
+public class FitQuad : MonoBehaviour
+{
+    public float ratio = 1; Vector3 last;
+    void LateUpdate() { var s = transform.localScale; if (s == last) return; s.y = s.y * ratio; transform.localScale = last = s; }
 }

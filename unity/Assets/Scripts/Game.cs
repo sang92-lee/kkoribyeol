@@ -119,7 +119,7 @@ public class Game : MonoBehaviour
 
         // 위: 이름 / 아래: 지금 하는 일
         title = Label(cv.transform, "꼬리별", 52, Ink, new Vector2(0, 1), new Vector2(1, 1), new Vector2(36, -122), new Vector2(-36, -30), TextAnchor.MiddleLeft);
-        title.fontStyle = FontStyle.Bold;
+        title.fontStyle = FontStyle.Bold; title.supportRichText = true;
         // 방 액자: Room 카메라가 그리는 자리와 똑같이 (위 130, 좌우 24, 4:3)
         var fr = new GameObject("Frame", typeof(RectTransform), typeof(Image)); fr.transform.SetParent(cv.transform, false);
         var frt = (RectTransform)fr.transform; frt.anchorMin = new Vector2(0, 1); frt.anchorMax = new Vector2(1, 1); frt.pivot = new Vector2(.5f, 1);
@@ -141,12 +141,30 @@ public class Game : MonoBehaviour
         gate.transform.SetParent(cv.transform, false);
         var gr = (RectTransform)gate.transform; gr.anchorMin = Vector2.zero; gr.anchorMax = Vector2.one; gr.offsetMin = gr.offsetMax = Vector2.zero;
         gate.GetComponent<Image>().color = Cream;
-        Label(gate.transform, "꼬리별", 96, Ink, new Vector2(0, .62f), new Vector2(1, .8f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
-        Label(gate.transform, "우리 애가 별이 되어 사는 곳 · Unity 버전 (시험)", 30, Ink, new Vector2(0, .56f), new Vector2(1, .62f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
-        Button(gate.transform, "처음이에요 (코드 + 닉네임)", new Vector2(.12f, .42f), new Vector2(.88f, .5f), Pink, NewStart);
-        Button(gate.transform, "계정이 있어요 (아이디·비밀번호)", new Vector2(.12f, .32f), new Vector2(.88f, .4f), Color.white, Login);
-        gateMsg = Label(gate.transform, "", 30, new Color32(0xD2, 0x47, 0x5B, 255), new Vector2(0, .24f), new Vector2(1, .3f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+        // 입장 화면: 물방울 무늬 배경 + 둥근 카드 안에 그림·이름·버튼 (웹 첫 화면 느낌)
+        var dots = new GameObject("Dots", typeof(RectTransform), typeof(RawImage)); dots.transform.SetParent(gate.transform, false);
+        var dr = (RectTransform)dots.transform; dr.anchorMin = Vector2.zero; dr.anchorMax = Vector2.one; dr.offsetMin = dr.offsetMax = Vector2.zero;
+        var dt = DotTex(); var ri = dots.GetComponent<RawImage>(); ri.texture = dt; ri.uvRect = new Rect(0, 0, 750 / 60f, 1334 / 60f); ri.raycastTarget = false;
+        var card = Panel(gate.transform, Color.white, new Vector2(.06f, .16f), new Vector2(.94f, .9f), Vector2.zero, Vector2.zero);
+        var box = new GameObject("PicBox", typeof(RectTransform)); box.transform.SetParent(card.transform, false);
+        var br2 = (RectTransform)box.transform; br2.anchorMin = new Vector2(.15f, .52f); br2.anchorMax = new Vector2(.85f, .96f); br2.offsetMin = br2.offsetMax = Vector2.zero;
+        var pic = new GameObject("Pic", typeof(RectTransform), typeof(RawImage)); pic.transform.SetParent(box.transform, false);
+        var st = new Texture2D(2, 2); st.LoadImage(Resources.Load<TextAsset>("Art/style").bytes); pic.GetComponent<RawImage>().texture = st;
+        pic.AddComponent<AspectRatioFitter>().aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        var logo = Label(card.transform, "꼬리<color=#E07C95>별</color>", 92, Ink, new Vector2(0, .38f), new Vector2(1, .5f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+        logo.fontStyle = FontStyle.Bold; logo.supportRichText = true;
+        Label(card.transform, "우리 애가 작은 별에서 살아요", 32, new Color32(0x8C, 0x74, 0x66, 255), new Vector2(0, .32f), new Vector2(1, .38f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+        Button(card.transform, "처음이에요", new Vector2(.08f, .17f), new Vector2(.92f, .28f), new Color32(0xF8, 0xD3, 0xDA, 255), NewStart);
+        Button(card.transform, "계정이 있어요 (이어하기)", new Vector2(.08f, .04f), new Vector2(.92f, .15f), Color.white, Login);
+        gateMsg = Label(gate.transform, "", 30, new Color32(0xD2, 0x47, 0x5B, 255), new Vector2(0, .1f), new Vector2(1, .15f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
         gate.SetActive(false);
+    }
+
+    static Texture2D DotTex()
+    {
+        var t = new Texture2D(32, 32) { wrapMode = TextureWrapMode.Repeat };
+        for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) { float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), new Vector2(16, 16)); t.SetPixel(x, y, Color.Lerp(new Color32(0xF8, 0xD8, 0xDF, 255), Cream, Mathf.Clamp01(d - 4))); }
+        t.Apply(); return t;
     }
 
     static Image Panel(Transform p, Color c, Vector2 a0, Vector2 a1, Vector2 o0, Vector2 o1)

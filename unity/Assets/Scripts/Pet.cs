@@ -40,7 +40,13 @@ public class Pet : MonoBehaviour
         for (int r = 0; r < Rr; r++) for (int c = 0; c < C; c++) { int a = r * (C + 1) + c, b = a + 1, d = a + C + 1, e = d + 1; tris.AddRange(new[] { a, d, b, b, d, e }); }
         mesh.vertices = verts; mesh.uv = uvs; mesh.colors = cols; mesh.SetTriangles(tris, 0);
         mr.enabled = false;
+        // 발밑 그림자 (뛰어오르면 작고 흐려짐)
+        var t = new Texture2D(64, 64);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) { float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), new Vector2(32, 32)) / 32; t.SetPixel(x, y, new Color(.29f, .2f, .16f, Mathf.Clamp01((1 - d) * 2) * .22f)); }
+        t.Apply();
+        shadow = new GameObject("shadow").AddComponent<SpriteRenderer>(); shadow.sprite = Sprite.Create(t, new Rect(0, 0, 64, 64), new Vector2(.5f, .5f), 64); shadow.sortingOrder = 29;
     }
+    SpriteRenderer shadow;
 
     public void Apply(Dictionary<string, object> st, Dictionary<string, object> pet)
     {
@@ -148,6 +154,8 @@ public class Pet : MonoBehaviour
         }
         Springs(dt, now, moving, run);
         transform.position = Room.W(x, Room.Floor, 0) + Vector3.up * hopY;
+        shadow.enabled = mr.enabled; shadow.transform.position = Room.W(x, Room.Floor, 0) + Vector3.up * .05f;
+        float ss = 1 - Mathf.Clamp01(hopY / (Ht * .3f)) * .4f; shadow.transform.localScale = new Vector3(Wd * .7f * ss, Wd * .13f * ss, 1);
         transform.localScale = new Vector3(dirShown, 1, 1);
         Deform();
         Touch(now);
