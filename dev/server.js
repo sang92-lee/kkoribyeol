@@ -237,6 +237,7 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pouch(id TEXT PRIMARY KEY, last INTEGER, shards INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS pouchlog(wk TEXT, id TEXT, n INTEGER, PRIMARY KEY(wk, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS gifts(gid TEXT PRIMARY KEY, fr TEXT, too TEXT, x REAL, a TEXT, at INTEGER, open INTEGER)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS accounts(uid TEXT PRIMARY KEY, pid TEXT, pw TEXT, at INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -299,6 +300,23 @@ export class Hub extends DurableObject {
       if (old && old.img !== b.img) this.sql.exec("DELETE FROM poses WHERE id = ?", b.id);
       this.sql.exec("INSERT INTO pets(id, name, kind, img, at) VALUES(?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, kind = excluded.kind, img = excluded.img, at = excluded.at", b.id, name, kind, b.img, now);
       return json({ ok: true });
+    }
+    if (p === "/api/register" || p === "/api/login") {
+      const uid = String(b.uid || "").trim().toLowerCase(), pw = String(b.pw || "");
+      if (!/^[a-z0-9가-힣_]{2,16}$/.test(uid)) return json({ error: "bad", message: "아이디는 2~16자 한글·영문·숫자로 적어 주세요" }, 400);
+      if (pw.length < 4 || pw.length > 40) return json({ error: "bad", message: "비밀번호는 4자 이상이에요" }, 400);
+      const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("kkori|" + uid + "|" + pw)))].map(x => x.toString(16).padStart(2, "0")).join("");
+      const ac = this.rows("SELECT pid, pw FROM accounts WHERE uid = ?", uid)[0];
+      if (p === "/api/login") {
+        if (!ac || ac.pw !== h) return json({ error: "login", message: "아이디나 비밀번호가 달라요" }, 401);
+        const nick = (this.rows("SELECT nick FROM players WHERE id = ?", ac.pid)[0] || {}).nick || uid;
+        return json({ ok: true, id: ac.pid, nick });
+      }
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      if (ac) return json({ error: "dup", message: "이미 있는 아이디예요" }, 409);
+      if (this.rows("SELECT 1 FROM accounts WHERE pid = ?", b.id)[0]) this.sql.exec("DELETE FROM accounts WHERE pid = ?", b.id);
+      this.sql.exec("INSERT INTO accounts(uid, pid, pw, at) VALUES(?, ?, ?, ?)", uid, b.id, h, now);
+      return json({ ok: true, uid });
     }
     if (p === "/api/rename") {
       const name = String(b.name || "").trim().slice(0, 12);
@@ -650,12 +668,13 @@ export class Hub extends DurableObject {
       : C.k === "score" ? this.rows("SELECT id, best AS n FROM scores WHERE wk = ? ORDER BY best DESC LIMIT 5", String(cw))
       : this.rows("SELECT id, n FROM pouchlog WHERE wk = ? ORDER BY n DESC LIMIT 5", String(cw));
     const contest = { title: C.t, unit: C.u, ends: (cw + 1) * 7 * 864e5 + 4 * 864e5 - 9 * 3600e3, rank: crow.filter(x => x.n > 0).map(x => ({ id: x.id, n: x.n, nick: players[x.id] || "누군가" })) };
+    const account = id ? ((this.rows("SELECT uid FROM accounts WHERE pid = ?", id)[0] || {}).uid || "") : "";
     const visitors = id ? this.rows("SELECT fr, MAX(at) AS at FROM visits WHERE too = ? GROUP BY fr ORDER BY at DESC LIMIT 5", id).map(x => ({ id: x.fr, at: x.at, nick: players[x.fr] || "누군가" })) : [];
     const pulledMe = id ? this.rows("SELECT COUNT(*) AS n FROM pulls WHERE kind = 'pet' AND a = ? AND who != ?", id, id)[0].n : 0;
     const joinable = !meE && R.joinable;
     return {
       now, round: { r: R.r, rs: R.rs, re: R.re, stock: R.stock, left: Math.max(0, R.stock - used), booked: R.arrived, joinable, window: WINDOW },
-      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors, bonds, babies, pouch, gifts, contest, giftCost: GIFT_COST,
+      line, me, pets, rank, mine, pulledMe, recent, likedToday, trades, tradedRecent, scoreRank, myBest, seeds, spinCost: SPIN_COST, roomLv, roomCost: ROOM_COST, roomSlots: ROOM_SLOTS, visitors, bonds, babies, pouch, gifts, contest, giftCost: GIFT_COST, account,
     };
   }
 }

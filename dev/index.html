@@ -129,6 +129,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .prop.carousel.spin .cr { animation: bob2 .5s ease-in-out infinite alternate; }
 @keyframes bob2 { to { transform: translateY(-6px); } }
 .hdr .who { background: none; border: 2px solid var(--line, #E8DCCF); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+.acct { margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; background: #F6EFF7; text-align: left; font-size: 14px; } .acct p { margin: 0 0 6px; } .acct small { color: var(--ink-soft); } .acct .btn { width: 100%; margin-top: 6px; }
 .setRow { display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 14px; margin: 8px 0; } .setRow input { font: inherit; font-size: 16px; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; }
 .room .camArrow { z-index: 32 !important; } .room .glass { z-index: 31 !important; } .room .miss, .room .sticks, .room .bedMound, .room .bubble, .room .emote, .room .snot, .room .zz, .room .ball, .room .toyx { z-index: 30 !important; } .room .pet.guest, .room .pet.baby { z-index: 19; }
 .sat { margin: 12px 0 4px; padding: 12px 14px; border: 2px solid var(--ink); border-radius: 16px; background: #FFF8EE; }
@@ -687,7 +688,9 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <li><i>3</i>10분마다 친구들이랑 갓챠 줄 서서 굿즈·아이템 뽑기</li>
     </ol>
     <label class="f">입장 코드<input type="text" id="gCode" autocomplete="off" placeholder="친구가 알려준 코드"></label>
-    <label class="f">내 닉네임<input type="text" id="gNick" maxlength="12" autocomplete="off" placeholder="예: 메롱"></label>
+    <div id="gNew"><label class="f">내 닉네임<input type="text" id="gNick" maxlength="12" autocomplete="off" placeholder="예: 메롱"></label></div>
+    <div id="gOld" hidden><label class="f">아이디<input type="text" id="gUid" maxlength="16" autocomplete="username"></label><label class="f">비밀번호<input type="password" id="gPw" autocomplete="current-password"></label></div>
+    <button type="button" class="link" id="gToggle">계정이 있어요 (다른 폰·창에서 이어하기)</button>
     <p class="err" id="gErr" hidden></p>
     <button type="button" class="btn main big" id="gGo">들어가기</button>
   </div>
@@ -720,8 +723,11 @@ function openSettings() {
   c.innerHTML = `<h3 style="font-size:21px">설정</h3>
     <label class="setRow">내 이름<input id="setNick" maxlength="12" value="${esc(S.nick)}"></label>
     ${p ? `<label class="setRow">우리 아이 이름<input id="setPet" maxlength="12" value="${esc(p.name)}"></label>` : ''}
+    <div class="acct">${S.state?.account ? `<p>🔐 계정 <b>${esc(S.state.account)}</b> 연결됨<br><small>다른 폰·인터넷 창에서 이 아이디로 로그인하면 이어서 할 수 있어요</small></p><button type="button" class="link" id="setOut">이 기기에서 로그아웃</button>` : `<p>🔐 <b>계정 만들기</b><br><small>지금은 이 브라우저에만 저장돼 있어요. 아이디를 만들면 다른 폰·창에서도 이어서 해요</small></p><label class="setRow">아이디<input id="setUid" maxlength="16" autocomplete="username"></label><label class="setRow">비밀번호<input id="setPw" type="password" autocomplete="new-password"></label><button type="button" class="btn" id="setReg">계정 만들기</button>`}</div>
     <div class="row2"><button type="button" class="btn" id="setNo">닫기</button><button type="button" class="btn main" id="setOk">저장</button></div>`;
   m.hidden = false; $('#setNo').onclick = () => m.hidden = true;
+  if ($('#setReg')) $('#setReg').onclick = async () => { try { const r = await api('register', { id: S.id, uid: $('#setUid').value.trim(), pw: $('#setPw').value }); S.state.account = r.uid; toast('계정을 만들었어요! 다른 곳에서도 로그인할 수 있어요'); openSettings(); } catch (e) { toast(e.message); } };
+  if ($('#setOut')) $('#setOut').onclick = () => { if (!confirm('이 기기에서 로그아웃할까요? 아이디로 다시 들어올 수 있어요')) return; ['id', 'nick'].forEach(k => { try { localStorage.removeItem('kk_' + k); } catch (e) {} }); location.reload(); };
   $('#setOk').onclick = async () => {
     const nick = $('#setNick').value.trim(), pn = $('#setPet')?.value.trim();
     if (!nick) return toast('이름을 적어 주세요');
@@ -834,9 +840,19 @@ function goodsHTML(petId, type, count) {
 }
 
 /* ---------- 입장 ---------- */
+let gLogin = false;
+$('#gToggle').onclick = () => { gLogin = !gLogin; $('#gOld').hidden = !gLogin; $('#gNew').hidden = gLogin; $('#gToggle').textContent = gLogin ? '처음이에요 (새로 시작)' : '계정이 있어요 (다른 폰·창에서 이어하기)'; };
 async function enter() {
-  const code = $('#gCode').value.trim(), nick = $('#gNick').value.trim();
   const err = $('#gErr'); err.hidden = true;
+  if (gLogin) {
+    const code = $('#gCode').value.trim(), uid = $('#gUid').value.trim(), pw = $('#gPw').value;
+    if (!code || !uid || !pw) { err.textContent = '코드·아이디·비밀번호를 적어 주세요'; err.hidden = false; return; }
+    S.code = code; $('#gGo').disabled = true;
+    try { const r = await api('login', { uid, pw }); S.id = r.id; S.nick = r.nick; store.set('id', r.id); store.set('code', code); store.set('nick', r.nick); const h = await api('hello', { id: S.id, nick: S.nick }); S.drawsLeft = h.drawsLeft; $('#gate').hidden = true; boot(); }
+    catch (e) { err.textContent = e.message; err.hidden = false; }
+    $('#gGo').disabled = false; return;
+  }
+  const code = $('#gCode').value.trim(), nick = $('#gNick').value.trim();
   if (!code || !nick) { err.textContent = '코드와 닉네임을 둘 다 적어 주세요'; err.hidden = false; return; }
   S.code = code; S.nick = nick;
   $('#gGo').disabled = true;
@@ -2534,7 +2550,7 @@ function lrItem() { const r = Math.random(); if (RH.n > 15 && r < .04) return { 
 setTimeout(() => LR_IDS.concat('goldseed').forEach(snImg), 1500);
 function rhStartScreen() {
   const o = $('#rhOver'); o.hidden = false;
-  o.innerHTML = `<h3>냠냠 좌우</h3><p>맨 아래 간식이 왼쪽 편이면 ◀, 오른쪽 편이면 ▶<br>오래 버틸수록 한쪽에 간식 종류가 늘어나요<br>빨리빨리 나눠서 ${esc(myPet()?.name || '우리 애')}한테 먹여요</p>
+  o.innerHTML = `<h3>냠냠 좌우</h3><p>맨 아래 간식이 왼쪽 편이면 ◀, 오른쪽 편이면 ▶<br>빨리빨리 나눠서 ${esc(myPet()?.name || '우리 애')}한테 먹여요</p>
     <div class="legend"><span>✨ 아무 쪽이나 +5</span><span>⏰ 시간 회복</span></div><p class="small">틀리면 콤보가 끊기고 시간이 줄어요 · 30콤보부터 피버!</p><button type="button" class="btn main big" id="rhGo">시작</button>`;
   $('#rhGo').onclick = rhStart;
 }
@@ -2561,7 +2577,7 @@ function rhJudge(ln) {
   lrSound(520 + Math.min(24, RH.combo % 25) * 28, .06, fever ? 'square' : 'triangle', fever ? .07 : .11);
   if (RH.combo === 30) RH.pops.push({ t: '피버!!', c: '#E0A800', at: pn, big: 1 });
   if (RH.q[0]?.first && RH.pendingSides) { RH.sides = RH.pendingSides; RH.pendingSides = null; RH.sideAt = pn; RH.pops.push({ t: '새 간식!', c: '#5BA3D9', at: pn, big: 1 }); }
-  if (RH.n % 25 === 17 && !RH.pendingSides) { RH.lvl++; const per = RH.lvl >= 4 ? 3 : RH.lvl >= 2 ? 2 : 1; RH.pendingSides = lrSides(per); RH.pendingUsed = false; RH.pops.push({ t: per > 1 && RH.lvl % 2 === 0 ? `곧 한쪽에 ${per}종류!` : '곧 새 간식이 와요', c: '#5BA3D9', at: pn, big: 1 }); }
+  if (RH.n % 25 === 17 && !RH.pendingSides) { RH.lvl++; RH.pendingSides = lrSides(1); RH.pendingUsed = false; RH.pops.push({ t: '곧 새 간식이 와요', c: '#5BA3D9', at: pn, big: 1 }); }
 }
 function rhLoop() {
   if (!RH.on) return;
