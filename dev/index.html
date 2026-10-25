@@ -182,7 +182,11 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .body.cv { position: relative; aspect-ratio: 1; }
 .room .pet .body.cv img { visibility: hidden; }
 .room .pet .body.cv canvas { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; pointer-events: none; }
-.room .pet .body.cv, .room .pet.walk .body.cv, .room .pet.run .body.cv, .room .pet.eat .body.cv, .room .pet.groom .body.cv, .room .pet.sleep .body.cv, .room .pet.framed .body.cv, .room .pet.go .body.cv, .room .pet.land .body.cv, .room .pet.stretch .body.cv, .room .pet.twitch .body.cv { animation: none; }
+.room .pet .body.cv, .room .pet.walk .body.cv, .room .pet.run .body.cv, .room .pet.eat .body.cv, .room .pet.groom .body.cv, .room .pet.sleep .body.cv, .room .pet.framed .body.cv, .room .pet.go .body.cv, .room .pet.land .body.cv, .room .pet.stretch .body.cv, .room .pet.twitch .body.cv, .room .pet.hopx .body.cv { animation: none; }
+/* 그림(canvas) 펫은 몸 전체(.spr)를 움직여야 장비도 같이 감: 폴짝 */
+.room .pet.hopx:has(.body.cv) .spr { animation: hopxS .45s cubic-bezier(.3,.7,.4,1) 2; }
+/* transform은 방향·발 위치에 쓰고 있어서 translate·scale 속성으로 따로 */
+@keyframes hopxS { 0%,100% { translate: 0 0; scale: 1 1; } 15% { scale: 1.1 .88; } 50% { translate: 0 -26%; scale: .95 1.06; } }
 .room .pet .body img { width: 100%; display: block; }
 .room .pet .body svg { width: 100%; display: block; }
 .room .pet.walk .body { animation: hop .32s ease-in-out infinite; }
