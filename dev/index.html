@@ -2577,7 +2577,7 @@ function rhLoop() {
   g.fillStyle = 'rgba(255,255,255,.9)'; for (let i = 0; i < 3; i++) { const x = ((pn / (60 + i * 25) + i * 160) % (W + 160)) - 80, y = H * (.06 + i * .07); g.beginPath(); g.ellipse(x, y, 34, 12, 0, 0, 7); g.ellipse(x + 20, y - 7, 20, 12, 0, 0, 7); g.fill(); }
   g.fillStyle = fever ? '#FFF' : 'rgba(246,201,78,.7)'; for (let i = 0; i < 14; i++) { const x = (i * 97 + Math.sin(pn / 900 + i) * 20) % W, y = ((pn / (25 + i % 4 * 6) + i * 61) % (H + 20)) - 10; g.beginPath(); g.arc(x, y, i % 3 ? 1.6 : 2.6, 0, 7); g.fill(); }
   /* 길 (줄무늬가 흘러내림) */
-  const cx = W / 2, top = H * .3, bot = H * .72, prog = Math.min(1, (pn - (RH.shiftT || 0)) / 140), ease = 1 - Math.pow(1 - prog, 3);
+  const cx = W / 2, top = H * .3, bot = H * .72, prog = Math.min(1, (pn - (RH.shiftT || 0)) / 90), ease = 1 - Math.pow(1 - prog, 3);
   g.save(); g.beginPath(); g.moveTo(cx - 36, top); g.lineTo(cx + 36, top); g.lineTo(cx + 78, bot + 50); g.lineTo(cx - 78, bot + 50); g.closePath(); g.fillStyle = 'rgba(255,255,255,.8)'; g.fill(); g.clip();
   g.fillStyle = 'rgba(242,160,179,.13)'; const off = ((RH.n + ease) * 28) % 56; for (let y = top - 56 + off; y < bot + 60; y += 56) g.fillRect(0, y, W, 28); g.restore();
   /* 우리 애 (위) */
@@ -2591,13 +2591,13 @@ function rhLoop() {
   const sideY = H * .5, pop = Math.max(0, 1 - (pn - (RH.sideAt || 0)) / 500);
   for (let i = 0; i < 2; i++) { const x = i ? W * .83 : W * .17, list = RH.sides[i], bump = Math.max(0, 1 - (pn - RH.press[i]) / 160), hgt = list.length * 62 + 20;
     g.fillStyle = 'rgba(255,255,255,.85)'; g.strokeStyle = '#4A3428'; g.lineWidth = 3; g.beginPath(); g.roundRect(x - 38 - bump * 4, sideY - hgt / 2 - bump * 4, 76 + bump * 8, hgt + bump * 8, 22); g.fill(); g.stroke();
-    list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62 + Math.sin(pn / 400 + j + i) * 2, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); }); }
+    list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); }); }
   /* 줄 선 간식: 부드럽게 한 칸씩 내려옴 */
   const N = 8, step = (bot - top) / (N - 1);
   for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i + (1 - ease), y = bot - pos * step, k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 * ease : 0);
-    let x = cx + (i ? Math.sin(pn / 260 + i * 1.7) * 2 : 0); if (i === 0 && pn - (RH.wrong || 0) < 250) x += Math.sin(pn / 15) * 6;
+    let x = cx; if (i === 0 && pn - (RH.wrong || 0) < 250) x += Math.sin(pn / 15) * 6;
     if (i === 0) { g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.arc(x, y, sz * .66, 0, 7); g.fill(); g.strokeStyle = '#E07A93'; g.lineWidth = 3; g.stroke(); }
-    const wob = i === 0 ? 1 + Math.sin(pn / 120) * .03 : 1; lrDraw(g, it, x, y, sz * wob); }
+    lrDraw(g, it, x, y, sz); }
   /* 고른 간식은 옆으로 쓱 (짧고 곧게) */
   RH.fly = RH.fly.filter(f => pn - f.at < 200);
   for (const f of RH.fly) { const k = (pn - f.at) / 200, e = 1 - Math.pow(1 - k, 2), tx = f.side ? W * .83 : W * .17, x = cx + (tx - cx) * e, y = bot + (sideY - bot) * e; g.globalAlpha = 1 - k * .7; lrDraw(g, f.it, x, y, 70 - k * 20); g.globalAlpha = 1; if (k > .8 && !f.burst) { f.burst = 1; for (let j = 0; j < 5; j++) RH.parts.push({ e: '✦', x: tx, y: sideY, vx: (Math.random() - .5) * 90, vy: -Math.random() * 60, at: pn, life: 380 }); } }
