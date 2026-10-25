@@ -1129,7 +1129,7 @@ const bk = k => String(k).split('#')[0];
 const ZI = z => 20 - Math.round((z || 0) * 16);
 function itemCnt() { const c = {}; for (const x of S.state?.mine || []) if (x.kind === 'item') c[x.a] = Math.min(3, (c[x.a] || 0) + 1); return c; }
 function allItems() { return new Set((S.state?.mine || []).filter(x => x.kind === 'item').map(x => x.a)); }
-function slots() { return (S.state?.roomSlots || [3, 5, 7, 9])[S.state?.roomLv || 0] || 3; }
+function slots() { return (S.state?.roomSlots || [5, 8, 11, 14])[S.state?.roomLv || 0] || 3; }
 /* 방에 놓인 아이템: 내가 배치한 것, 없으면 가진 것 중 칸 수만큼 */
 function ownedItems() {
   const all = allItems(), lay = DECO.on ? DECO.lay : myPet()?.layout;

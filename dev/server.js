@@ -12,7 +12,7 @@ const DRAW_PER_DAY = 40;      // AI 그림: 전체 하루 40번 (요금 안전�
 
 const SPIN_COST = 50;
 const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
-const ROOM_SLOTS = [3, 5, 7, 8];        // 방 크기별 놓을 수 있는 아이템 수
+const ROOM_SLOTS = [5, 8, 11, 14];        // 방 크기별 놓을 수 있는 아이템 수
 const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
 const RARE_IDS = new Set(["strawberryhat", "bearhood", "tiara", "cape", "unicorn", "tube", "telescope", "carousel", "piano", "witch", "halo", "cake", "macaron", "starjelly", "pool", "cloud", "wings", "figure", "strawberry", "pudding", "tent", "crown", "goldseed"]);
