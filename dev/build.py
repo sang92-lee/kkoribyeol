@@ -7,6 +7,8 @@ html = (d / 'index.html').read_text()
 for f in sorted((d / 'fx').glob('*.png')):
     html = html.replace(f'fx/{f.name}', 'data:image/png;base64,' + base64.b64encode(f.read_bytes()).decode())
 html = html.replace('`fx/${k}.png`', 'FXD[k]').replace('url(fx/${name}.png)', 'url(${FXD[name]})')
+gs = {f.stem: 'data:image/png;base64,' + base64.b64encode(f.read_bytes()).decode() for f in sorted((d / 'gear_side').glob('*.png'))}
+html = html.replace('const GSD = null;', 'const GSD = ' + json.dumps(gs) + ';', 1)
 html = html.replace('const FXI = {};', 'const FXD = ' + json.dumps({f.stem: 'data:image/png;base64,' + base64.b64encode(f.read_bytes()).decode() for f in sorted((d / 'fx').glob('*.png'))}) + ';\nconst FXI = {};', 1)
 b64 = base64.b64encode((d / 'style.jpg').read_bytes()).decode()
 head = 'import { DurableObject } from "cloudflare:workers";\n'

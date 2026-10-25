@@ -211,6 +211,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .bubble.on { opacity: 1; }
 .room .pet .gears { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .room .pet .gears .gear { transition: opacity .2s; }
+.gear .gs { display: none; position: absolute; left: 0; top: 0; width: 100%; height: auto; }
+.gear.sideOn > svg { visibility: hidden; } .gear.sideOn .gs { display: block; }
 .room .pet .paws { position: absolute; inset: 0; pointer-events: none; z-index: 2; --ps: 12%; }
 .room .pet .paws .pw { position: absolute; width: var(--ps); aspect-ratio: 1.2; border-radius: 50% 50% 45% 45%; background: #F8D3DA; border: 2px solid #4A3428; transform: translate(-50%, -50%); }
 .room .pet .paws .pw::after { content: ""; position: absolute; left: 22%; right: 22%; top: 12%; height: 30%; background: radial-gradient(circle, #E9A5B5 28%, transparent 30%) 0 0 / 33.3% 100% repeat-x; }
@@ -951,12 +953,15 @@ const GEAR_SVG = {
   scarf: `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 14 Q60 34 112 14 L112 30 Q60 50 8 30Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M78 30 L92 58 L76 58 L68 34Z" fill="#E86A6A" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M30 22 v12 M50 26 v12 M70 26 v12 M90 22 v12" stroke="#FFFFFF" stroke-width="4" opacity=".7"/></svg>`,
 };
 function gearPos(g, pos) { if (pos) return pos; const [l, t, w] = GEAR_POS[g] || [30, 0, 40]; return { l, t, w, r: 0 }; }
+/* 장비 옆모습: Unity로 정면 그림을 3/4로 돌려 구운 것 (unity/Assets/Editor/GearSide.cs → dev/gear_side). 배포본은 build.py가 GSD에 넣어 줌 */
+const GSD = null;
+const gsUrl = g => (GSD && GSD[g]) || `gear_side/${g}.png`;
 function gearOverlay(g, pos) {
   if (Array.isArray(g)) { const order = { body: 0, face: 1, head: 2 }; return [...g].sort((a, b) => order[SLOT[a]] - order[SLOT[b]]).map(x => gearOverlay(x, (pos || {})[x])).join(''); }
   if (!g || !GEAR_SVG[g]) return '';
   if (pos && pos.l == null) pos = pos[g];
   const q = gearPos(g, pos);
-  return `<div class="gear" data-g="${g}" style="left:${q.l}%;top:${q.t}%;width:${q.w}%;transform:rotate(${q.r}deg)">${GEAR_SVG[g]}</div>`;
+  return `<div class="gear" data-g="${g}" style="left:${q.l}%;top:${q.t}%;width:${q.w}%;transform:rotate(${q.r}deg)">${GEAR_SVG[g]}<img class="gs" src="${gsUrl(g)}" alt="" aria-hidden="true"></div>`;
 }
 
 /* ---------- 방 소품 ---------- */
@@ -1405,8 +1410,11 @@ function gearFollow() {
     const id = g.dataset.g, slot = SLOT[id];
     g.style.opacity = P.cur === 'back' && slot === 'face' ? 0 : 1;
     /* 옆모습: 얼굴 장비는 앞쪽으로 납작, 목도리·넥타이 같은 몸 장비도 옆으로 돌아간 만큼 좁히고 앞으로 */
-    g.style.scale = a1.side ? (slot === 'face' ? '.55 1' : slot === 'body' ? '.62 1' : '.85 1') : '';
-    g.style.translate = a1.side ? (slot === 'face' ? '30% 0' : slot === 'body' ? '18% 0' : '8% 0') : '';
+    /* 옆모습이면 3/4로 돌아간 그림으로 바꾸고, 얼굴·몸 장비는 앞쪽(코 방향)으로 조금 옮김 */
+    const gs = g.querySelector('.gs'), has = gs && gs.complete && gs.naturalWidth;
+    g.classList.toggle('sideOn', !!(a1.side && has));
+    g.style.scale = a1.side && !has ? (slot === 'face' ? '.55 1' : '.7 1') : '';
+    g.style.translate = a1.side ? (slot === 'face' ? '26% 0' : slot === 'body' ? '14% 0' : '6% 0') : '';
   });
 }
 /* ---------- 앞발: 세수·먹기 ---------- */
