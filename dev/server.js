@@ -15,6 +15,7 @@ const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
 const ROOM_SLOTS = [3, 5, 7, 8];        // 방 크기별 놓을 수 있는 아이템 수
 const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
+const RARE_IDS = new Set(["strawberryhat", "bearhood", "tiara", "cape", "unicorn", "tube", "telescope", "carousel", "piano", "witch", "halo", "cake", "macaron", "starjelly", "pool", "cloud", "wings", "figure", "strawberry", "pudding", "tent", "crown", "goldseed"]);
 const POUCH_MS = 40 * 60e3, POUCH_MAX = 5, GIFT_COST = 15;
 const CONTESTS = [{ k: "likes", t: "하트 제일 많이 받은 햄찌", u: "♥" }, { k: "score", t: "씨앗 받기 최고점", u: "점" }, { k: "pouch", t: "볼주머니 제일 많이 턴 햄찌", u: "번" }];
 const wkKey = t => String(Math.floor((t + 9 * 3600e3 - 4 * 864e5) / (7 * 864e5)));
@@ -32,10 +33,11 @@ const ITEMS = [
   { id: "pool", w: 9 }, { id: "piano", w: 6 }, { id: "telescope", w: 5 }, { id: "cloud", w: 7 }, { id: "carousel", w: 2.5 }, { id: "tent", w: 3 },
 ];
 const GEAR = [
+  { id: "sprout", w: 16 }, { id: "bell", w: 16 }, { id: "mustache", w: 16 }, { id: "bib", w: 16 }, { id: "catears", w: 10 }, { id: "froghat", w: 10 }, { id: "chick", w: 10 }, { id: "backpack", w: 10 }, { id: "santa", w: 10 }, { id: "strawberryhat", w: 4 }, { id: "bearhood", w: 4 }, { id: "tiara", w: 4 }, { id: "cape", w: 4 }, { id: "unicorn", w: 1.5 },
   { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "bowtie", w: 16 }, { id: "beret", w: 14 }, { id: "bunny", w: 9 }, { id: "heartglass", w: 9 },
   { id: "wings", w: 5 }, { id: "witch", w: 4 }, { id: "crown", w: 2.5 }, { id: "halo", w: 2 },
 ];
-const SLOT = { ribbon: "head", strawhat: "head", flower: "head", beret: "head", bunny: "head", witch: "head", crown: "head", halo: "head",
+const SLOT = { sprout: "head", bell: "body", mustache: "face", bib: "body", catears: "head", froghat: "head", chick: "head", backpack: "body", santa: "head", strawberryhat: "head", bearhood: "head", tiara: "head", cape: "body", unicorn: "head", ribbon: "head", strawhat: "head", flower: "head", beret: "head", bunny: "head", witch: "head", crown: "head", halo: "head",
   glasses: "face", heartglass: "face", scarf: "body", bowtie: "body", wings: "body" };
 const SNACKS = [
   { id: "apple", w: 16 }, { id: "carrot", w: 15 }, { id: "pumpkin", w: 13 }, { id: "corn", w: 13 }, { id: "banana", w: 12 },
@@ -448,6 +450,16 @@ export class Hub extends DurableObject {
       this.sql.exec("INSERT INTO visits(too, fr, at) VALUES(?, ?, ?)", b.to, b.id, now);
       this.sql.exec("DELETE FROM visits WHERE at < ?", now - 3 * 864e5);
       return json({ ok: true });
+    }
+    if (p === "/api/spin10") {
+      if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
+      const cost = SPIN_COST * 9, w = this.rows("SELECT seeds FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0 };
+      if (w.seeds < cost) return json({ error: "poor", message: `씨앗이 ${cost - w.seeds}개 모자라요` }, 409);
+      this.sql.exec("UPDATE wallet SET seeds = seeds - ? WHERE id = ?", cost, b.id);
+      const outs = Array.from({ length: 10 }, () => this.roll(Math.random, b.id));
+      if (!outs.some(o => RARE_IDS.has(o.a))) { const pool = [...ITEMS, ...GEAR, ...SNACKS].filter(x => RARE_IDS.has(x.id)), pick = pickW(pool, Math.random()).id; outs[9] = { kind: ITEMS.some(x => x.id === pick) ? "item" : GEAR.some(x => x.id === pick) ? "gear" : "snack", a: pick, b: SNACKS.some(x => x.id === pick) ? "10" : "" }; }
+      outs.forEach((o, i) => this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, -1, ?, ?, ?, ?)", `x:${now.toString(36)}:${i}:${Math.random().toString(36).slice(2, 7)}`, b.id, now, o.kind, o.a, o.b));
+      return json({ ok: true, results: outs, seeds: w.seeds - cost });
     }
     if (p === "/api/spin") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
