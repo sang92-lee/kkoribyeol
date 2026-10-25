@@ -455,6 +455,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 /* 씨앗 받기 */
 .gameTop { display: flex; justify-content: space-between; align-items: center; font-family: var(--display); font-size: 17px; }
 .gameTop b { color: #B7861A; font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; }
+.rhBox { position: relative; aspect-ratio: 4 / 3; border: var(--stroke); border-radius: var(--r); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; } .rhBox canvas { width: 100%; height: 100%; display: block; }
+.rhOver { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px; text-align: center; background: rgba(253,246,236,.94); } .rhOver[hidden] { display: none; } .rhOver h3 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; } .rhOver p { margin: 0; } .rhOver .legend { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 13px; } .rhOver .btn { margin-top: 6px; width: 80%; }
 .gameBox { position: relative; aspect-ratio: 3 / 4; max-width: 100%; border: var(--stroke); border-radius: var(--r); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #E8EEF8; }
 .gameBox canvas { width: 100%; height: 100%; display: block; }
 .gameHud { position: absolute; inset: 10px 12px auto; display: flex; justify-content: space-between; align-items: center; font-family: var(--display); pointer-events: none; }
@@ -582,6 +584,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
         <div class="gameOver" id="gameOver"></div>
       </div>
       <button type="button" class="btn big" id="btnSpin" disabled>씨앗으로 뽑기</button>
+    </div>
+    <div class="card rhCard">
+      <h2>🎵 쳇바퀴 리듬</h2>
+      <div class="rhBox" id="rhBox"><canvas id="rhCv"></canvas><div class="rhOver" id="rhOver"></div></div>
     </div>
     <div class="card">
       <h2>이번 주 씨앗왕</h2>
@@ -2488,6 +2494,133 @@ async function endGame() {
     updateSpinBtn(); refresh();
   } catch (e) { $('#gResult').textContent = e.message; }
 }
+
+/* ---------- 쳇바퀴 리듬: 판마다 즉석 작곡 ---------- */
+const RH = { on: false };
+const RH_STYLE = [
+  { n: '폴카', bpm: 128, sw: 0, bass: 'oom' }, { n: '행진곡', bpm: 112, sw: 0, bass: 'march' }, { n: '자장가', bpm: 92, sw: .12, bass: 'soft' },
+  { n: '디스코', bpm: 120, sw: 0, bass: 'oct' }, { n: '셔플', bpm: 108, sw: .18, bass: 'walk' }, { n: '댄스', bpm: 132, sw: 0, bass: 'oct' },
+];
+const RH_ADJ = ['말랑말랑', '꼬물꼬물', '볼빵빵', '두근두근', '반짝반짝', '데굴데굴', '쫀득쫀득', '폭신폭신', '우다다', '새근새근'];
+const RH_NOUN = ['해바라기', '쳇바퀴', '톱밥', '씨앗', '치즈', '딸기', '별빛', '볼주머니', '꼬리', '구름'];
+const PROGS = [[0, 4, 5, 3], [0, 3, 4, 0], [5, 3, 0, 4], [0, 5, 3, 4], [0, 4, 3, 4]];
+const TWINKLE = [0, 0, 4, 4, 5, 5, 4, -1, 3, 3, 2, 2, 1, 1, 0, -1, 4, 4, 3, 3, 2, 2, 1, -1, 4, 4, 3, 3, 2, 2, 1, -1];
+function rhRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const MAJ = [0, 2, 4, 5, 7, 9, 11];
+function rhFreq(root, deg, oct = 0) { const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7; return 440 * Math.pow(2, (root + MAJ[d] + 12 * (o + oct) - 9) / 12); }
+function rhNewSong() {
+  const R = rhRng(Date.now() ^ Math.floor(Math.random() * 1e9)), st = RH_STYLE[Math.floor(R() * RH_STYLE.length)], tw = R() < .2;
+  return { R, st, bpm: st.bpm + Math.round((R() - .5) * 10), root: Math.floor(R() * 7) - 2, prog: PROGS[Math.floor(R() * PROGS.length)], tw, wave: ['square', 'triangle', 'square'][Math.floor(R() * 3)],
+    title: tw ? '반짝반짝 작은 별 (꼬리별 버전)' : `${RH_ADJ[Math.floor(R() * RH_ADJ.length)]} ${RH_NOUN[Math.floor(R() * RH_NOUN.length)]} ${st.n}`, motif: Array.from({ length: 8 }, () => Math.floor(R() * 5)) };
+}
+function rhVoice(t, f, dur, type, gain, dest) { const c = RH.ac, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g).connect(dest); o.start(t); o.stop(t + dur + .05); }
+function rhKick(t) { const c = RH.ac, o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12); g.gain.setValueAtTime(.5, t); g.gain.exponentialRampToValueAtTime(.001, t + .15); o.connect(g).connect(RH.out); o.start(t); o.stop(t + .2); }
+function rhHat(t, v = .06) { const c = RH.ac, s = c.createBufferSource(); s.buffer = RH.noise; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + .05); s.connect(f).connect(g).connect(RH.out); s.start(t); s.stop(t + .06); }
+/* 한 마디씩 즉석으로 만들어서 소리 예약 + 노트 생성 */
+function rhBar() {
+  const S2 = RH.song, R = S2.R, beat = 60 / S2.bpm, t0 = RH.nextBar, bar = RH.bar, chord = S2.prog[bar % 4], el = RH.t0 ? (t0 - RH.t0) : 0, hard = Math.min(1, el / 40);
+  const sw = i => (i % 2 ? S2.st.sw * beat : 0);
+  for (let b = 0; b < 4; b++) { const t = t0 + b * beat; if (b % 2 === 0 || S2.st.bass === 'oct') rhKick(t); rhHat(t + beat / 2 + sw(1), RH.fever ? .09 : .05); if (RH.fever) rhHat(t, .04); }
+  for (let b = 0; b < 4; b++) { const t = t0 + b * beat, oct = S2.st.bass === 'oct' && b % 2 ? 1 : 0, deg = S2.st.bass === 'walk' ? chord + b : S2.st.bass === 'oom' && b % 2 ? chord + 4 : chord; rhVoice(t, rhFreq(S2.root, deg, -2 + oct), beat * .8, 'triangle', .22, RH.out); if (S2.st.bass === 'oom' && b % 2) [2, 4].forEach(x => rhVoice(t, rhFreq(S2.root, chord + x, -1), beat * .4, 'square', .03, RH.out)); }
+  let steps = [];
+  if (S2.tw) { for (let i = 0; i < 8; i++) { const d = TWINKLE[(bar * 8 + i) % TWINKLE.length]; if (d >= 0 && i % 2 === 0) steps.push([i / 2, d]); } }
+  else for (let b = 0; b < 4; b++) { const pat = R() < .25 + hard * .4 ? [0, .5] : R() < .15 ? [] : [0]; for (const o of pat) { const m = S2.motif[(bar * 4 + b + Math.floor(o * 2)) % 8], deg = chord + [0, 2, 4, 5, 7][m] - (R() < .3 ? 7 : 0); steps.push([b + o, deg]); } }
+  if (!steps.length) steps.push([0, chord]);
+  for (const [at, deg] of steps) {
+    const t = t0 + at * beat + (at % 1 ? sw(1) : 0);
+    rhVoice(t, rhFreq(S2.root, deg, 0), beat * .45, S2.wave, .07, RH.mel);
+    if (RH.t0 && t - RH.t0 > 1.2) { const r = R(); RH.notes.push({ t, k: r < .05 ? 'gold' : r < .09 + (RH.left < 12 ? .05 : 0) ? 'clock' : r < .14 + hard * .06 ? 'broc' : 'seed', f: rhFreq(S2.root, deg, 1) }); }
+  }
+  RH.nextBar += beat * 4; RH.bar++;
+}
+function rhStartScreen(msg = '') {
+  const o = $('#rhOver'); o.hidden = false;
+  o.innerHTML = `<h3>쳇바퀴 리듬</h3><p>씨앗이 동그라미에 닿을 때 톡!<br>박자 맞추면 ${esc(myPet()?.name || '우리 애')}가 달려요</p>
+    <div class="legend"><span>🌻 톡</span><span>✨ 황금 30점</span><span>⏰ +3초</span><span>🥦 누르면 으엑</span></div>
+    <p class="small">20콤보부터 피버! 매 판 새 노래가 즉석으로 작곡돼요</p>${msg}<button type="button" class="btn main big" id="rhGo">시작</button>`;
+  $('#rhGo').onclick = rhStart;
+}
+function rhStart() {
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return toast('이 폰에선 소리를 못 내요');
+  RH.ac = RH.ac || new C(); RH.ac.resume();
+  if (!RH.noise) { const b = RH.ac.createBuffer(1, RH.ac.sampleRate * .2, RH.ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; RH.noise = b; }
+  RH.out = RH.ac.createGain(); RH.out.gain.value = .8; RH.out.connect(RH.ac.destination); RH.mel = RH.ac.createGain(); RH.mel.connect(RH.out);
+  Object.assign(RH, { on: true, song: rhNewSong(), notes: [], bar: 0, score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, left: 30, fever: false, pops: [], ang: 0, spin: 0, tumble: 0, run: 0 });
+  RH.nextBar = RH.ac.currentTime + .15; RH.t0 = 0; rhBar(); RH.t0 = RH.ac.currentTime + .15;
+  RH.last = RH.ac.currentTime; $('#rhOver').hidden = true; RH.titleUntil = performance.now() + 2600;
+  cancelAnimationFrame(RH.raf); RH.raf = requestAnimationFrame(rhLoop);
+}
+function rhJudge() {
+  if (!RH.on) return; const now = RH.ac.currentTime - .03;
+  let best = null, bd = 9; for (const n of RH.notes) { if (n.done) continue; const d = Math.abs(n.t - now); if (d < bd) { bd = d; best = n; } }
+  RH.run = 1;
+  if (!best || bd > .16) { RH.spin += .3; return; }
+  best.done = true;
+  if (best.k === 'broc') { RH.combo = 0; RH.tumble = 1; RH.pops.push({ t: '으엑!', c: '#7FB069', at: performance.now() }); return; }
+  const perfect = bd < .065, mult = (1 + Math.min(3, Math.floor(RH.combo / 10)) * .5) * (RH.fever ? 2 : 1);
+  RH.combo++; RH.maxCombo = Math.max(RH.maxCombo, RH.combo); perfect ? RH.perfect++ : RH.good++;
+  let pts = perfect ? 10 : 5; if (best.k === 'gold') pts = 30; if (best.k === 'clock') { RH.left += 3; RH.pops.push({ t: '+3초', c: '#5BA3D9', at: performance.now() }); }
+  RH.score += Math.round(pts * mult); RH.spin += perfect ? 1.4 : .9;
+  rhVoice(RH.ac.currentTime, best.f, .12, 'sine', .08, RH.out);
+  RH.pops.push({ t: best.k === 'gold' ? '황금!' : perfect ? 'Perfect!' : 'Good', c: best.k === 'gold' ? '#E0A800' : perfect ? '#E07A93' : '#9C8576', at: performance.now() });
+  if (RH.combo === 20) { RH.pops.push({ t: '피버!!', c: '#F6C94E', at: performance.now(), big: 1 }); }
+}
+function rhLoop() {
+  if (!RH.on) return;
+  const cv = $('#rhCv'), box = $('#rhBox'); if (!cv || !box) return;
+  const W = box.clientWidth, H = box.clientHeight, dpr = devicePixelRatio || 1; if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const now = RH.ac.currentTime, dt = Math.min(.1, now - RH.last); RH.last = now;
+  while (RH.nextBar < now + .6) rhBar();
+  RH.left -= dt; RH.fever = RH.combo >= 20;
+  for (const n of RH.notes) if (!n.done && now - n.t > .16) { n.done = true; if (n.k !== 'broc') { RH.combo = 0; RH.miss++; RH.tumble = 1; RH.pops.push({ t: 'Miss', c: '#B0A090', at: performance.now() }); } }
+  RH.notes = RH.notes.filter(n => n.t > now - 1);
+  /* 배경 */
+  const bg = g.createLinearGradient(0, 0, 0, H); if (RH.fever) { const h = (performance.now() / 20) % 360; bg.addColorStop(0, `hsl(${h},80%,88%)`); bg.addColorStop(1, `hsl(${(h + 60) % 360},80%,90%)`); } else { bg.addColorStop(0, '#E9E1FA'); bg.addColorStop(1, '#FDF1E6'); }
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const hx = W * .26, ly = H * .5, sp = W * .55;
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(0, ly - 22, W, 44);
+  g.strokeStyle = '#4A3428'; g.lineWidth = 3; g.beginPath(); g.arc(hx, ly, 24, 0, 7); g.stroke();
+  const pulse = 1 + .12 * Math.max(0, 1 - ((now - RH.t0) * RH.song.bpm / 60 % 1) * 4); g.strokeStyle = 'rgba(224,122,147,.5)'; g.beginPath(); g.arc(hx, ly, 24 * pulse + 4, 0, 7); g.stroke();
+  /* 노트 */
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '28px sans-serif';
+  for (const n of RH.notes) { if (n.done) continue; const x = hx + (n.t - now) * sp; if (x > W + 30) continue; g.fillText({ seed: '🌻', gold: '✨', clock: '⏰', broc: '🥦' }[n.k], x, ly); }
+  /* 쳇바퀴 + 우리 애 */
+  RH.spin *= .94; RH.ang += (RH.spin + (RH.fever ? .6 : .1)) * dt * 6; RH.tumble = Math.max(0, RH.tumble - dt * 1.5); RH.run = Math.max(0, RH.run - dt * 4);
+  const wx = W * .5, wy = H * .76, wr = H * .21;
+  g.save(); g.translate(wx, wy); g.strokeStyle = '#4A3428'; g.lineWidth = 4; g.fillStyle = '#F7B6C6'; g.beginPath(); g.arc(0, 0, wr, 0, 7); g.fill(); g.stroke();
+  g.rotate(RH.ang); g.strokeStyle = '#E07A93'; g.lineWidth = 2; for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(wr * .3, 0); g.lineTo(wr * .95, 0); g.stroke(); } g.restore();
+  g.fillStyle = '#B98558'; g.fillRect(wx - 4, wy, 8, H - wy); 
+  const im = imgOf(P.spr?.front) || imgOf(myPet()?.img ? `/api/img/${encodeURIComponent(S.id)}?v=${myPet().v}&c=${encodeURIComponent(S.code)}` : '');
+  const ps = wr * 1.55, bob = Math.sin(performance.now() / (RH.fever ? 50 : 90)) * (2 + RH.run * 6) * (RH.spin > .2 || RH.fever ? 1 : .3);
+  g.save(); g.translate(wx, wy + wr - ps * .5 + bob); if (RH.tumble > 0) g.rotate((1 - RH.tumble) * Math.PI * 2); else g.rotate(Math.sin(performance.now() / 70) * .08 * RH.run);
+  if (RH.fever) g.scale(1.08, .95); if (im) g.drawImage(im, -ps / 2, -ps / 2, ps, ps); else { g.font = `${ps * .7}px sans-serif`; g.fillText('🐹', 0, 0); } g.restore();
+  /* 팝 문구 */
+  RH.pops = RH.pops.filter(p => performance.now() - p.at < 700);
+  for (const p of RH.pops) { const k = (performance.now() - p.at) / 700; g.globalAlpha = 1 - k; g.fillStyle = p.c; g.font = `bold ${p.big ? 34 : 20}px sans-serif`; g.fillText(p.t, hx + (p.big ? W * .25 : 0), ly - 40 - k * 20); g.globalAlpha = 1; }
+  /* HUD */
+  g.fillStyle = '#4A3428'; g.font = 'bold 18px sans-serif'; g.textAlign = 'left'; g.fillText(`${RH.score}점`, 12, 20);
+  g.textAlign = 'right'; g.fillStyle = RH.left < 5 ? '#D2475B' : '#4A3428'; g.fillText(`${Math.max(0, Math.ceil(RH.left))}초`, W - 12, 20);
+  if (RH.combo >= 3) { g.textAlign = 'center'; g.fillStyle = RH.fever ? '#E0A800' : '#E07A93'; g.font = 'bold 16px sans-serif'; g.fillText(`${RH.combo} 콤보${RH.fever ? ' 🔥피버' : ''}`, W / 2, 20); }
+  if (performance.now() < RH.titleUntil) { g.textAlign = 'center'; g.fillStyle = 'rgba(74,52,40,.85)'; g.font = '15px sans-serif'; g.fillText(`♪ ${RH.song.title}`, W / 2, H * .3); }
+  if (RH.left <= 0) return rhEnd();
+  RH.raf = requestAnimationFrame(rhLoop);
+}
+async function rhEnd() {
+  RH.on = false; try { RH.out.gain.setTargetAtTime(0, RH.ac.currentTime, .1); } catch (e) {}
+  const tot = RH.perfect + RH.good + RH.miss, acc = tot ? Math.round((RH.perfect + RH.good * .6) / tot * 100) : 0, earned = Math.min(700, Math.round(RH.score / 6));
+  const o = $('#rhOver'); o.hidden = false;
+  o.innerHTML = `<h3>끝!</h3><p class="small">♪ ${esc(RH.song.title)}</p><div class="bigScore">${RH.score}<small>점</small></div><p class="small">정확도 ${acc}% · 최대 ${RH.maxCombo}콤보 · Perfect ${RH.perfect}</p><p class="small" id="rhRes">씨앗 저장 중…</p><button type="button" class="btn main big" id="rhGo">새 노래로 한 판 더</button>`;
+  $('#rhGo').onclick = rhStart;
+  try { const r = await api('score', { id: S.id, score: earned }); S.state.seeds = r.seeds; $('#rhRes').innerHTML = `씨앗 <b>+${r.earned}</b> · 모은 씨앗 <b>${r.seeds}</b>개`; updateSpinBtn(); refresh(); }
+  catch (e) { $('#rhRes').textContent = e.message; }
+}
+(function bindRh() {
+  const box = $('#rhBox'); if (!box) return;
+  box.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; e.preventDefault(); rhJudge(); });
+  document.addEventListener('keydown', e => { if (RH.on && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); rhJudge(); } });
+  rhStartScreen();
+})();
 function confetti() {
   const b = $('#gameBox'); if (!b) return;
   const c = document.createElement('i'); c.className = 'confetti';
