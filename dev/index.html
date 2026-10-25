@@ -594,6 +594,10 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <h2>🍓 냠냠 좌우</h2>
       <div class="rhBox" id="rhBox"><canvas id="rhCv"></canvas><div class="rhOver" id="rhOver"></div></div>
     </div>
+    <div class="card rhCard">
+      <h2>🎵 냠냠 리듬</h2>
+      <div class="rhBox" id="rbBox"><canvas id="rbCv"></canvas><div class="rhOver" id="rbOver"></div></div>
+    </div>
     <div class="card">
       <h2>이번 주 씨앗왕</h2>
       <ol class="rank" id="scoreRank"></ol>
@@ -2651,6 +2655,152 @@ async function rhEnd() {
   box.addEventListener('pointerdown', e => { if (e.target.closest('button') || !RH.on) return; e.preventDefault(); const r = box.getBoundingClientRect(); rhJudge(e.clientX - r.left < r.width / 2 ? 0 : 1); });
   document.addEventListener('keydown', e => { if (!RH.on || e.repeat) return; if (['ArrowLeft', 'KeyF', 'KeyD'].includes(e.code)) { e.preventDefault(); rhJudge(0); } if (['ArrowRight', 'KeyJ', 'KeyK'].includes(e.code)) { e.preventDefault(); rhJudge(1); } });
   rhStartScreen();
+})();
+/* ---------- 냠냠 리듬 (2): 판마다 즉석 작곡 ---------- */
+const RB = { on: false };
+const RB_STYLE = [
+  { n: '폴카', bpm: 128, sw: 0, bass: 'oom' }, { n: '행진곡', bpm: 112, sw: 0, bass: 'march' }, { n: '자장가', bpm: 92, sw: .12, bass: 'soft' },
+  { n: '디스코', bpm: 120, sw: 0, bass: 'oct' }, { n: '셔플', bpm: 108, sw: .18, bass: 'walk' }, { n: '댄스', bpm: 132, sw: 0, bass: 'oct' },
+];
+const RB_ADJ = ['말랑말랑', '꼬물꼬물', '볼빵빵', '두근두근', '반짝반짝', '데굴데굴', '쫀득쫀득', '폭신폭신', '우다다', '새근새근'];
+const RB_NOUN = ['해바라기', '쳇바퀴', '톱밥', '씨앗', '치즈', '딸기', '별빛', '볼주머니', '꼬리', '구름'];
+const RBPROGS = [[0, 4, 5, 3], [0, 3, 4, 0], [5, 3, 0, 4], [0, 5, 3, 4], [0, 4, 3, 4]];
+const RBTWINKLE = [0, 0, 4, 4, 5, 5, 4, -1, 3, 3, 2, 2, 1, 1, 0, -1, 4, 4, 3, 3, 2, 2, 1, -1, 4, 4, 3, 3, 2, 2, 1, -1];
+function rbRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const RBMAJ = [0, 2, 4, 5, 7, 9, 11];
+function rbFreq(root, deg, oct = 0) { const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7; return 440 * Math.pow(2, (root + RBMAJ[d] + 12 * (o + oct) - 9) / 12); }
+function rbNewSong() {
+  const R = rbRng(Date.now() ^ Math.floor(Math.random() * 1e9)), st = RB_STYLE[Math.floor(R() * RB_STYLE.length)], tw = R() < .2;
+  return { R, st, bpm: st.bpm + Math.round((R() - .5) * 10), root: Math.floor(R() * 7) - 2, prog: RBPROGS[Math.floor(R() * RBPROGS.length)], tw, wave: ['square', 'triangle', 'square'][Math.floor(R() * 3)],
+    title: tw ? '반짝반짝 작은 별 (꼬리별 버전)' : `${RB_ADJ[Math.floor(R() * RB_ADJ.length)]} ${RB_NOUN[Math.floor(R() * RB_NOUN.length)]} ${st.n}`, motif: Array.from({ length: 8 }, () => Math.floor(R() * 5)) };
+}
+function rbVoice(t, f, dur, type, gain, dest) { const c = RB.ac, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g).connect(dest); o.start(t); o.stop(t + dur + .05); }
+function rbKick(t) { const c = RB.ac, o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12); g.gain.setValueAtTime(.5, t); g.gain.exponentialRampToValueAtTime(.001, t + .15); o.connect(g).connect(RB.out); o.start(t); o.stop(t + .2); }
+function rbHat(t, v = .06) { const c = RB.ac, s = c.createBufferSource(); s.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + .05); s.connect(f).connect(g).connect(RB.out); s.start(t); s.stop(t + .06); }
+/* 한 마디씩 즉석으로 만들어서 소리 예약 + 노트 생성 */
+function rbBar() {
+  const S2 = RB.song, R = S2.R, beat = 60 / S2.bpm, t0 = RB.nextBar, bar = RB.bar, chord = S2.prog[bar % 4], el = RB.t0 ? (t0 - RB.t0) : 0, hard = Math.min(1, el / 40);
+  const sw = i => (i % 2 ? S2.st.sw * beat : 0);
+  for (let b = 0; b < 4; b++) { const t = t0 + b * beat; if (b % 2 === 0 || S2.st.bass === 'oct') rbKick(t); rbHat(t + beat / 2 + sw(1), RB.fever ? .09 : .05); if (RB.fever) rbHat(t, .04); }
+  for (let b = 0; b < 4; b++) { const t = t0 + b * beat, oct = S2.st.bass === 'oct' && b % 2 ? 1 : 0, deg = S2.st.bass === 'walk' ? chord + b : S2.st.bass === 'oom' && b % 2 ? chord + 4 : chord; rbVoice(t, rbFreq(S2.root, deg, -2 + oct), beat * .8, 'triangle', .22, RB.out); if (S2.st.bass === 'oom' && b % 2) [2, 4].forEach(x => rbVoice(t, rbFreq(S2.root, chord + x, -1), beat * .4, 'square', .03, RB.out)); }
+  for (const x of [0, 2, 4]) rbVoice(t0, rbFreq(S2.root, chord + x, -1), beat * 3.8, 'sine', .035, RB.out);
+  for (const b of [1, 3]) { const t = t0 + b * beat, c = RB.ac, sn = c.createBufferSource(); sn.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; const gg = c.createGain(); gg.gain.setValueAtTime(.18, t); gg.gain.exponentialRampToValueAtTime(.001, t + .12); sn.connect(f).connect(gg).connect(RB.out); sn.start(t); sn.stop(t + .14); }
+  let steps = [];
+  if (S2.tw) { for (let i = 0; i < 8; i++) { const d = RBTWINKLE[(bar * 8 + i) % RBTWINKLE.length]; if (d >= 0 && i % 2 === 0) steps.push([i / 2, d]); } }
+  else for (let b = 0; b < 4; b++) { const pat = R() < .25 + hard * .4 ? [0, .5] : R() < .15 ? [] : [0]; for (const o of pat) { const m = S2.motif[(bar * 4 + b + Math.floor(o * 2)) % 8], deg = chord + [0, 2, 4, 5, 7][m] - (R() < .3 ? 7 : 0); steps.push([b + o, deg]); } }
+  if (!steps.length) steps.push([0, chord]);
+  for (const [at, deg] of steps) {
+    const t = t0 + at * beat + (at % 1 ? sw(1) : 0);
+    rbVoice(t, rbFreq(S2.root, deg, 0), beat * .45, S2.wave, .07, RB.mel);
+    if (RB.t0 && t - RB.t0 > 1.2) { const r = R(); const ln = deg % 7 >= 3 || deg >= 7 ? 1 : 0; if (hard > .5 && at % 1 === 0 && R() < .12) RB.notes.push({ t, k: 'seed', f: rbFreq(S2.root, deg + 2, 1), ln: 1 - ln }); RB.notes.push({ t, ln, k: r < .05 ? 'gold' : r < .09 + (RB.left < 12 ? .05 : 0) ? 'clock' : r < .14 + hard * .06 ? 'broc' : 'seed', f: rbFreq(S2.root, deg, 1) }); }
+  }
+  RB.nextBar += beat * 4; RB.bar++;
+}
+function rbStartScreen(msg = '') {
+  const o = $('#rbOver'); o.hidden = false;
+  o.innerHTML = `<h3>냠냠 리듬</h3><p>씨앗이 입 옆 동그라미에 닿을 때 왼쪽·오른쪽 톡!<br>냠냠 받아먹을수록 볼이 빵빵해져요<br>양손으로 하면 편해요. 막 누르면 헛손질로 콤보가 끊겨요<br>박자 맞추면 ${esc(myPet()?.name || '우리 애')}가 달려요</p>
+    <div class="legend"><span>🌻 톡</span><span>✨ 황금 30점</span><span>⏰ +3초</span><span>🥦 누르면 으엑</span></div>
+    <p class="small">20콤보부터 피버! 매 판 새 노래가 즉석으로 작곡돼요</p>${msg}<button type="button" class="btn main big" id="rbGo">시작</button>`;
+  $('#rbGo').onclick = rbStart;
+}
+function rbStart() {
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return toast('이 폰에선 소리를 못 내요');
+  RB.ac = RB.ac || new C(); RB.ac.resume();
+  if (!RB.noise) { const b = RB.ac.createBuffer(1, RB.ac.sampleRate * .2, RB.ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; RB.noise = b; }
+  RB.out = RB.ac.createGain(); RB.out.gain.value = .8; RB.out.connect(RB.ac.destination); RB.mel = RB.ac.createGain(); RB.mel.connect(RB.out);
+  Object.assign(RB, { cheek: 0, turn: 0, parts: [], flash: [0, 0], on: true, song: rbNewSong(), notes: [], bar: 0, score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, left: 30, fever: false, pops: [], ang: 0, spin: 0, tumble: 0, run: 0 });
+  RB.nextBar = RB.ac.currentTime + .15; RB.t0 = 0; rbBar(); RB.t0 = RB.ac.currentTime + .15;
+  $('#rbBox').classList.add('full'); document.body.classList.add('rbFull');
+  RB.last = RB.ac.currentTime; $('#rbOver').hidden = true; RB.titleUntil = performance.now() + 2600;
+  cancelAnimationFrame(RB.raf); RB.raf = requestAnimationFrame(rbLoop);
+}
+function rbJudge(ln) {
+  if (!RB.on) return; const now = RB.ac.currentTime - .03;
+  let best = null, bd = 9; for (const n of RB.notes) { if (n.done || n.ln !== ln) continue; const d = Math.abs(n.t - now); if (d < bd) { bd = d; best = n; } }
+  RB.flash[ln] = performance.now(); RB.turn = ln ? 1 : -1;
+  if (!best || bd > .16) { RB.combo = 0; RB.score = Math.max(0, RB.score - 3); RB.pops.push({ t: '헛손질', c: '#B0A090', at: performance.now(), ln }); return; }
+  best.done = true;
+  if (best.k === 'broc') { RB.combo = 0; RB.yuck = 1; navigator.vibrate?.([30, 40, 30]); RB.pops.push({ t: '으엑!', c: '#7FB069', at: performance.now() }); return; }
+  const perfect = bd < .065, mult = (1 + Math.min(3, Math.floor(RB.combo / 10)) * .5) * (RB.fever ? 2 : 1);
+  RB.combo++; RB.maxCombo = Math.max(RB.maxCombo, RB.combo); perfect ? RB.perfect++ : RB.good++;
+  let pts = perfect ? 10 : 5; if (best.k === 'gold') pts = 30; if (best.k === 'clock') { RB.left += 3; RB.pops.push({ t: '+3초', c: '#5BA3D9', at: performance.now() }); }
+  RB.score += Math.round(pts * mult); RB.chomp = 1; RB.shake = perfect ? .6 : .3; navigator.vibrate?.(perfect ? 18 : 10);
+  const hp = RB.hitPts?.[ln]; if (hp) rbBurst(hp[0], hp[1], best.k === 'gold' ? ['✨', '⭐', '💛'] : ['🌻', '✦', '·'], perfect ? 10 : 6, perfect ? 18 : 14);
+  if (RB.fever && RB.combo % 10 === 0 && hp) { rbBurst(RB.hitPts[0][0] + (RB.hitPts[1][0] - RB.hitPts[0][0]) / 2, hp[1], ['🌻', '🌰', '✨', '💖'], 24, 24); RB.pops.push({ t: '퉤!', c: '#E07A93', at: performance.now(), big: 1 }); }
+  rbVoice(RB.ac.currentTime, best.f, .12, 'sine', .08, RB.out);
+  RB.pops.push({ t: best.k === 'gold' ? '황금!' : perfect ? 'Perfect!' : 'Good', c: best.k === 'gold' ? '#E0A800' : perfect ? '#E07A93' : '#9C8576', at: performance.now(), ln });
+  if (RB.combo === 20) { RB.pops.push({ t: '피버!!', c: '#F6C94E', at: performance.now(), big: 1 }); }
+}
+function rbLoop() {
+  if (!RB.on) return;
+  const cv = $('#rbCv'), box = $('#rbBox'); if (!cv || !box) return;
+  const W = box.clientWidth, H = box.clientHeight, dpr = devicePixelRatio || 1; if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d'), pn = performance.now();
+  const now = RB.ac.currentTime, dt = Math.min(.1, now - RB.last); RB.last = now;
+  while (RB.nextBar < now + .6) rbBar();
+  RB.left -= dt; RB.fever = RB.combo >= 20;
+  for (const n of RB.notes) if (!n.done && now - n.t > .16) { n.done = true; if (n.k !== 'broc') { RB.combo = 0; RB.miss++; RB.dizzy = 1; RB.pops.push({ t: '콩!', c: '#B0A090', at: pn, ln: n.ln }); } }
+  RB.notes = RB.notes.filter(n => n.t > now - 1);
+  RB.shake = Math.max(0, (RB.shake || 0) - dt * 6); RB.dizzy = Math.max(0, (RB.dizzy || 0) - dt * 1.6); RB.yuck = Math.max(0, (RB.yuck || 0) - dt * 1.4); RB.chomp = Math.max(0, (RB.chomp || 0) - dt * 7);
+  RB.turn = (RB.turn || 0) * Math.pow(.002, dt); RB.cheek += ((Math.min(1, RB.combo / 20) + (RB.fever ? .25 : 0)) - (RB.cheek || 0)) * Math.min(1, dt * 6);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (RB.shake) g.translate((Math.random() - .5) * 8 * RB.shake, (Math.random() - .5) * 8 * RB.shake);
+  /* 배경 */
+  const bg = g.createLinearGradient(0, 0, 0, H); if (RB.fever) { const h = (pn / 20) % 360; bg.addColorStop(0, `hsl(${h},80%,88%)`); bg.addColorStop(1, `hsl(${(h + 60) % 360},80%,90%)`); } else { bg.addColorStop(0, '#E9E1FA'); bg.addColorStop(1, '#FDF1E6'); }
+  g.fillStyle = bg; g.fillRect(-10, -10, W + 20, H + 20);
+  const beatK = Math.max(0, 1 - ((now - RB.t0) * RB.song.bpm / 60 % 1) * 4);
+  /* 우리 애 (가운데 크게) */
+  const ps = Math.min(W * .62, H * .42), cx = W / 2, cy = H * .58, mY = cy + ps * .08;
+  const hit = [[cx - ps * .5, mY], [cx + ps * .5, mY]], src = [[W * .06, H * .06], [W * .94, H * .06]], TRAVEL = 1.15;
+  /* 판정 원 */
+  for (let i = 0; i < 2; i++) { const fl = Math.max(0, 1 - (pn - RB.flash[i]) / 200), [hx, hy] = hit[i]; g.strokeStyle = `rgba(224,122,147,${.35 + beatK * .4})`; g.lineWidth = 3; g.beginPath(); g.arc(hx, hy, 26 + beatK * 5 + fl * 12, 0, 7); g.stroke(); g.fillStyle = `rgba(255,255,255,${.5 + fl * .5})`; g.beginPath(); g.arc(hx, hy, 24, 0, 7); g.fill(); g.strokeStyle = '#4A3428'; g.lineWidth = 2.5; g.stroke(); }
+  /* 노트: 위 모서리에서 입으로 포물선 */
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const n of RB.notes) { if (n.done) continue; const k = 1 - (n.t - now) / TRAVEL; if (k < 0) continue; const [sx, sy] = src[n.ln], [ex, ey] = hit[n.ln], x = sx + (ex - sx) * k, y = sy + (ey - sy) * k - Math.sin(k * Math.PI) * H * .12; g.font = `${20 + k * 14}px sans-serif`; g.save(); g.translate(x, y); g.rotate(k * 6 * (n.ln ? -1 : 1)); g.fillText({ seed: '🌻', gold: '✨', clock: '⏰', broc: '🥦' }[n.k], 0, 0); g.restore(); }
+  const im = imgOf(P.spr?.front) || imgOf(myPet()?.img ? `/api/img/${encodeURIComponent(S.id)}?v=${myPet().v}&c=${encodeURIComponent(S.code)}` : '');
+  const bob = Math.sin(pn / (RB.fever ? 60 : 140)) * (RB.fever ? 5 : 2) + beatK * 3;
+  g.save(); g.translate(cx + RB.turn * ps * .12, cy + bob); g.rotate(RB.turn * .28 + (RB.dizzy ? Math.sin(pn / 40) * .15 * RB.dizzy : 0));
+  const sq = 1 + RB.chomp * .08; g.scale(sq * (1 + RB.cheek * .06), (2 - sq) * (1 - RB.cheek * .02));
+  if (RB.yuck) g.filter = `hue-rotate(${RB.yuck * 60}deg) saturate(${1 - RB.yuck * .3})`;
+  if (im) g.drawImage(im, -ps / 2, -ps / 2, ps, ps); else { g.font = `${ps * .7}px sans-serif`; g.fillText('🐹', 0, 0); }
+  g.filter = 'none';
+  /* 볼 빵빵 */
+  if (RB.cheek > .05) for (const sx2 of [-1, 1]) { const r = ps * (.035 + RB.cheek * .055); g.fillStyle = `rgba(247,150,175,${.22 + RB.cheek * .25})`; g.beginPath(); g.ellipse(sx2 * ps * .22, ps * .1, r * 1.2, r, 0, 0, 7); g.fill(); }
+  if (RB.dizzy) { g.font = `${ps * .14}px sans-serif`; g.fillText('💫', Math.cos(pn / 120) * ps * .2, -ps * .42); g.fillText('⭐', Math.cos(pn / 120 + 3) * ps * .2, -ps * .4); }
+  if (RB.yuck) { g.font = `${ps * .16}px sans-serif`; g.fillText('🤢', ps * .3, -ps * .3); }
+  g.restore();
+  /* 파티클 */
+  RB.parts = (RB.parts || []).filter(q => pn - q.at < q.life);
+  for (const q of RB.parts) { const k = (pn - q.at) / q.life; g.globalAlpha = 1 - k; g.font = `${q.sz}px sans-serif`; g.fillText(q.e, q.x + q.vx * k, q.y + q.vy * k + 120 * k * k); }
+  g.globalAlpha = 1;
+  /* 팝 문구 */
+  RB.pops = RB.pops.filter(p => pn - p.at < 700);
+  for (const p of RB.pops) { const k = (pn - p.at) / 700; g.globalAlpha = 1 - k; g.fillStyle = p.c; g.font = `bold ${p.big ? 36 : 20}px sans-serif`; const [px, py] = p.big ? [W / 2, H * .22] : hit[p.ln ?? 0]; g.fillText(p.t, px, py - 44 - k * 22); g.globalAlpha = 1; }
+  /* HUD */
+  g.fillStyle = '#4A3428'; g.font = 'bold 20px sans-serif'; g.textAlign = 'left'; g.fillText(`${RB.score}점`, 14, 24);
+  g.textAlign = 'right'; g.fillStyle = RB.left < 5 ? '#D2475B' : '#4A3428'; g.fillText(`${Math.max(0, Math.ceil(RB.left))}초`, W - 14, 24);
+  if (RB.combo >= 3) { g.textAlign = 'center'; g.fillStyle = RB.fever ? '#E0A800' : '#E07A93'; g.font = `bold ${18 + Math.min(10, RB.combo / 4)}px sans-serif`; g.fillText(`${RB.combo} 콤보${RB.fever ? ' 🔥피버' : ''}`, W / 2, H * .14); }
+  if (pn < RB.titleUntil) { g.textAlign = 'center'; g.fillStyle = 'rgba(74,52,40,.85)'; g.font = '15px sans-serif'; g.fillText(`♪ ${RB.song.title}`, W / 2, H * .9); }
+  g.textAlign = 'center'; g.fillStyle = 'rgba(74,52,40,.35)'; g.font = '13px sans-serif'; g.fillText('왼쪽 톡', W * .25, H - 14); g.fillText('오른쪽 톡', W * .75, H - 14);
+  RB.hitPts = hit;
+  if (RB.left <= 0) return rbEnd();
+  RB.raf = requestAnimationFrame(rbLoop);
+}
+function rbBurst(x, y, list, n = 8, sz = 18) { const pn = performance.now(); for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 40 + Math.random() * 70; (RB.parts = RB.parts || []).push({ e: list[Math.floor(Math.random() * list.length)], x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, at: pn, life: 600 + Math.random() * 300, sz: sz * (.7 + Math.random() * .6) }); } }
+async function rbEnd() {
+  RB.on = false; try { RB.out.gain.setTargetAtTime(0, RB.ac.currentTime, .1); } catch (e) {}
+  const tot = RB.perfect + RB.good + RB.miss, acc = tot ? Math.round((RB.perfect + RB.good * .6) / tot * 100) : 0, earned = Math.min(700, Math.round(RB.score / 6));
+  const o = $('#rbOver'); o.hidden = false;
+  o.innerHTML = `<h3>끝!</h3><p class="small">♪ ${esc(RB.song.title)}</p><div class="bigScore">${RB.score}<small>점</small></div><p class="small">정확도 ${acc}% · 최대 ${RB.maxCombo}콤보 · Perfect ${RB.perfect}</p><p class="small" id="rbRes">씨앗 저장 중…</p><button type="button" class="btn main big" id="rbGo">새 노래로 한 판 더</button><button type="button" class="btn big" id="rbClose">그만하기</button>`;
+  $('#rbGo').onclick = rbStart; $('#rbClose').onclick = () => { $('#rbBox').classList.remove('full'); document.body.classList.remove('rbFull'); rbStartScreen(); };
+  try { const r = await api('score', { id: S.id, score: earned }); S.state.seeds = r.seeds; $('#rbRes').innerHTML = `씨앗 <b>+${r.earned}</b> · 모은 씨앗 <b>${r.seeds}</b>개`; updateSpinBtn(); refresh(); }
+  catch (e) { $('#rbRes').textContent = e.message; }
+}
+(function bindRh() {
+  const box = $('#rbBox'); if (!box) return;
+  box.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; e.preventDefault(); const r = box.getBoundingClientRect(); rbJudge(e.clientX - r.left < r.width / 2 ? 0 : 1); });
+  document.addEventListener('keydown', e => { if (!RB.on || e.repeat) return; if (['KeyF', 'ArrowLeft', 'KeyD'].includes(e.code)) { e.preventDefault(); rbJudge(0); } if (['KeyJ', 'ArrowRight', 'KeyK'].includes(e.code)) { e.preventDefault(); rbJudge(1); } });
+  rbStartScreen();
 })();
 function confetti() {
   const b = $('#gameBox'); if (!b) return;
