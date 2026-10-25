@@ -343,7 +343,7 @@ export class Hub extends DurableObject {
     if (p === "/api/score") {
       if (!this.player(b.id)) return json({ error: "who", message: "다시 들어와 주세요" }, 400);
       const w = this.rows("SELECT seeds, last FROM wallet WHERE id = ?", b.id)[0] || { seeds: 0, last: 0 };
-      if (now - w.last < 20e3) return json({ error: "fast", message: "너무 빨라요" }, 429);
+      if (now - w.last < 4e3) return json({ error: "fast", message: "너무 빨라요" }, 429);
       const score = Math.max(0, Math.min(MAX_SCORE, Math.floor(Number(b.score) || 0)));
       const seeds = w.seeds + score, wk = wkKey(now);
       this.sql.exec("INSERT INTO wallet(id, seeds, last) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET seeds = excluded.seeds, last = excluded.last", b.id, seeds, now);
