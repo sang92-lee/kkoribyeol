@@ -217,6 +217,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet .paws .snk { position: absolute; width: calc(var(--ps) * .7); aspect-ratio: .6; border-radius: 50%; background: var(--snk, #B98A5A); border: 2px solid #4A3428; transform: translate(-50%, -50%) rotate(12deg); display: none; }
 .room .spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; z-index: 7; pointer-events: none; transform: translate(-50%, -50%); animation: spark .65s cubic-bezier(.2,.8,.3,1) forwards; }
 @keyframes spark { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity: 0; } }
+.fxs { position: absolute; aspect-ratio: 1; transform: translate(-50%, 50%); background-size: calc(var(--n) * 100%) 100%; background-repeat: no-repeat; pointer-events: none; z-index: 7; animation: fxPlay 1s steps(var(--n)) forwards; }
+@keyframes fxPlay { from { background-position: 0 0; } to { background-position: calc(var(--n) * 100% / (var(--n) - 1)) 0; } }
 .room .shadow { position: absolute; bottom: 10.5%; width: calc(15% / var(--wf)); height: 3.2%; border-radius: 50%; background: rgba(74,52,40,.18); transform: translateX(-50%); pointer-events: none; z-index: 2; transition: opacity .4s; }
 .room .emote { position: absolute; width: calc(9% / var(--wf)); transform: translate(-50%, 0); z-index: 6; pointer-events: none; animation: emoteIn .35s cubic-bezier(.3,1.7,.5,1); }
 .room .emote svg { width: 100%; display: block; }
@@ -1713,6 +1715,7 @@ function loop(now) {
   if (P.tween) { const T = P.tween, k = Math.min(1, (now - T.t0) / T.ms); P.y = T.from + (T.to - T.from) * (k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2); if (k >= 1) { P.tween = null; if (T.done) T.done(); } }
   if (P.act === 'wheel') { P.wheel += dt * 520; P.ran += dt * 1.1; const sp = room.querySelector('.prop.wheel .spokes'); if (sp) sp.setAttribute('transform', `rotate(${P.wheel} 60 58)`); }
   if (P.act === 'sleep' && Math.random() < dt * .45) zz();
+  if (P.act === 'eat' && !P.hidden && Math.random() < dt * .5) fxSheet('crumbs', P.x + P.dir * 3, P.y + (P.z || 0) * DEPTH + 2, 9);
   if (P.act === 'swim' && Math.random() < dt * 4) splash();
   if (P.act === 'piano' && now > (P.noteT || 0)) { P.noteT = now + rnd(220, 480); emote('note', 500); { const f = [523, 587, 659, 698, 784, 880][Math.floor(Math.random() * 6)]; gTone(f, f * 1.01, .05, .25, 'triangle'); } }
   if (P.act === 'bath') { P.tilt = Math.sin(now / 90) * 35; }
@@ -1779,21 +1782,24 @@ function snot(now) {
 }
 function splash() {
   const r = $('#world'); if (!r) return;
+  if (FXI.splash.naturalWidth) { if (Math.random() < .35) fxSheet('splash', P.x + rnd(-4, 4), P.y + 2, 12); return; }
   const d = document.createElement('i'); d.className = 'dust'; d.style.background = '#8EC3E6'; d.style.borderColor = '#4A6FA5';
   d.style.left = (P.x + rnd(-5, 5)) + '%'; d.style.bottom = (P.y + rnd(2, 6)) + '%'; d.style.setProperty('--dx', rnd(-150, 150) + '%');
   r.appendChild(d); setTimeout(() => d.remove(), 650);
 }
 function dust() {
   const r = ($('#world') || $('#room')); if (!r || P.hidden) return;
-  const d = document.createElement('i'); d.className = 'dust';
   const back = P.act === 'wheel' ? -1 : -P.dir;
+  if (FXI.dust.naturalWidth) { if (Math.random() < .5) fxSheet('dust', P.x + back * 7, P.y + (P.z || 0) * DEPTH, 9); return; }
+  const d = document.createElement('i'); d.className = 'dust';
   d.style.left = (P.x + back * 8 + rnd(-1.5, 1.5)) + '%'; d.style.bottom = (P.y + rnd(0, 3)) + '%'; d.style.setProperty('--dx', (back * 140) + '%');
   r.appendChild(d); setTimeout(() => d.remove(), 650);
 }
 function zz() {
   const r = ($('#world') || $('#room')); if (!r) return;
-  const z = document.createElement('span'); z.className = 'zz'; z.textContent = 'z';
   const x = P.hidden ? SPOT.house + 3 : P.x + 6, y = P.hidden ? 70 : 100 - P.y - 26;
+  if (FXI.zzz.naturalWidth) { if (!(performance.now() < P.zzT)) { P.zzT = performance.now() + 1900; fxSheet('zzz', x + 4, 100 - y - 6, 16); } return; }
+  const z = document.createElement('span'); z.className = 'zz'; z.textContent = 'z';
   z.style.left = x + '%'; z.style.top = y + '%'; z.style.fontSize = (14 + Math.random() * 8) + 'px';
   r.appendChild(z); setTimeout(() => z.remove(), 2300);
 }
@@ -1813,6 +1819,22 @@ setInterval(() => {
   else if (modeNow() === 'active' && Math.random() < .25) emote('think', 2000, 'play');
 }, 22000);
 const LINES = { hamster: ['냠냠…', '해씨 줘!', '볼 빵빵', '쳇바퀴 가자', '킁킁'], dog: ['멍~', '산책 가쟈!', '헤헤', '간식?', '꼬리 살랑'], cat: ['냥~', '…', '쓰다듬어도 돼', '꾹꾹', '골골'] };
+/* ---------- Unity로 구운 효과 그림 (dev/fx/*.png, unity/Assets/Editor/FxBake.cs) ---------- */
+const FXN = {"heart": [18, 24], "sparkle": [14, 24], "dust": [12, 24], "zzz": [30, 15], "crumbs": [16, 24], "splash": [14, 24]};
+const FXI = {}; for (const k in FXN) { FXI[k] = new Image(); FXI[k].src = `fx/${k}.png`; }
+/* 방(DOM): 한 칸씩 넘기는 스프라이트. x·bottom은 % (world 기준), size는 화면 너비 비율 */
+function fxSheet(name, x, bottom, size, parent) {
+  const r = parent || $('#world'); if (!r) return; const [n, fps] = FXN[name];
+  const d = document.createElement('i'); d.className = 'fxs';
+  d.style.cssText = `left:${x}%;bottom:${bottom}%;width:calc(${size}% / var(--wf, 1));background-image:url(fx/${name}.png);--n:${n};animation-duration:${n / fps}s`;
+  r.appendChild(d); setTimeout(() => d.remove(), n / fps * 1000 + 50);
+}
+/* 미니게임(canvas): 좌표는 0~1 비율 */
+function fxs(st, name, x, y, size) { (st.fxs = st.fxs || []).push({ name, x, y, size, at: performance.now() }); }
+function fxsDraw(g, st, W = g.canvas.clientWidth, H = g.canvas.clientHeight) {
+  if (!st.fxs || !st.fxs.length) return; const pn = performance.now();
+  st.fxs = st.fxs.filter(f => { const [n, fps] = FXN[f.name], i = Math.floor((pn - f.at) / 1000 * fps), im = FXI[f.name]; if (i >= n) return false; if (im.complete && im.naturalWidth) { const s = f.size * W, c = im.naturalHeight; g.drawImage(im, i * c, 0, c, c, f.x * W - s / 2, f.y * H - s / 2, s, s); } return true; });
+}
 function touchAt(e, kick) {
   const J = P.J; if (!J || !e || e.clientY == null) return;
   const r = $('#roomPet').getBoundingClientRect(); J.ty = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)); J.dv = (J.dv || 0) + kick;
@@ -1931,6 +1953,8 @@ function hearts(e) {
   const r = $('#room').getBoundingClientRect(), h = document.createElement('span');
   h.className = 'heart'; h.textContent = '♥'; h.style.left = (e.clientX - r.left - 8) + 'px'; h.style.top = (e.clientY - r.top - 20) + 'px';
   $('#room').appendChild(h); setTimeout(() => h.remove(), 1200);
+  { const room = $('#room'), rr = room.getBoundingClientRect(), xp = (e.clientX - rr.left) / rr.width * 100, bp = (rr.bottom - e.clientY) / rr.height * 100; fxSheet('heart', xp, bp - 4, 26, room); fxSheet('sparkle', xp, bp - 10, 22, room); }
+  if (FXI.heart.naturalWidth) return;
   /* 콕 누른 자리에서 반짝이가 퐁 퍼짐 */
   for (let i = 0; i < 6; i++) { const d = document.createElement('i'), a = i / 6 * Math.PI * 2 + Math.random() * .5, R = 26 + Math.random() * 18; d.className = 'spark'; d.style.left = (e.clientX - r.left) + 'px'; d.style.top = (e.clientY - r.top) + 'px'; d.style.setProperty('--dx', Math.cos(a) * R + 'px'); d.style.setProperty('--dy', Math.sin(a) * R + 'px'); d.style.background = ['#F2A0B3', '#FFE08A', '#A9D4F2'][i % 3]; $('#room').appendChild(d); setTimeout(() => d.remove(), 700); }
 }
@@ -2497,6 +2521,7 @@ function catchIt(it) {
     try { navigator.vibrate && navigator.vibrate(80); } catch (e) {}
     return;
   }
+  fxs(G, it.type === 'clock' ? 'splash' : 'sparkle', it.x, it.y, .2);
   if (it.type === 'clock') { G.left += 3; GS.clock(); gPop('+3초', it.x, it.y - .05, '#4A6FA5', 1.2); gBurst(it.x, it.y, '#C9D8F6'); G.sv -= 2; return; }
   G.size = Math.min(1, G.size + (it.type === 'gold' ? .15 : .025));
   G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.caught++;
@@ -2541,6 +2566,7 @@ function drawGame(now) {
   }
   if (G.stun > 0) { g.fillStyle = '#5E9E4A'; g.font = `${W * .05}px Jua, sans-serif`; g.textAlign = 'center'; g.fillText('@@', cx, base - petW * .95); }
   /* 파티클·글자 */
+  fxsDraw(g, G, W, H);
   for (const pt of G.parts) { g.globalAlpha = 1 - pt.t / .7; g.fillStyle = pt.color; g.beginPath(); g.arc(pt.x * W, pt.y * H, pt.r * W, 0, 7); g.fill(); }
   g.globalAlpha = 1; g.textAlign = 'center';
   for (const pp of G.pops) { const k = pp.t / .9; g.globalAlpha = 1 - k; g.font = `${W * .055 * pp.size * (1 + (1 - Math.min(1, pp.t * 8)) * .4)}px Jua, sans-serif`; g.lineWidth = W * .012; g.strokeStyle = '#FFFFFF'; g.strokeText(pp.text, pp.x * W, (pp.y - k * .06) * H); g.fillStyle = pp.color; g.fillText(pp.text, pp.x * W, (pp.y - k * .06) * H); }
@@ -2603,7 +2629,7 @@ function rhJudge(ln) {
   RH.q.shift(); RH.q.push(lrItem()); RH.n++; RH.ok++; RH.combo++; RH.maxCombo = Math.max(RH.maxCombo, RH.combo); RH.chomp = 1;
   const fever = RH.combo >= 30, pts = (it.k === 'gold' ? 5 : 1 + Math.floor(RH.combo / 10)) * (fever ? 2 : 1);
   RH.score += pts; RH.time = Math.min(1, RH.time + (it.k === 'clock' ? .3 : .045));
-  RH.fly.push({ it, side: ln, at: pn }); RH.shiftT = pn;
+  RH.fly.push({ it, side: ln, at: pn }); RH.shiftT = pn; fxs(RH, 'crumbs', ln ? .7 : .3, .5, .28); if (RH.combo % 10 === 0) fxs(RH, 'heart', .5, .35, .4);
   buzz(it.k === 'gold' ? [20, 20, 20] : fever ? 22 : 15);
   lrSound(520 + Math.min(24, RH.combo % 25) * 28, .06, fever ? 'square' : 'triangle', fever ? .07 : .11);
   if (RH.combo === 30) RH.pops.push({ t: '피버!!', c: '#E0A800', at: pn, big: 1 });
@@ -2653,6 +2679,7 @@ function rhLoop() {
   /* 고른 간식은 옆으로 쓱 (짧고 곧게) */
   RH.fly = RH.fly.filter(f => pn - f.at < 160);
   for (const f of RH.fly) { const k = (pn - f.at) / 160, e = k * k, x = cx + (f.side ? 1 : -1) * 26 * k, y = bot + 70 * e; g.globalAlpha = 1 - k; lrDraw(g, f.it, x, y, 72 * (1 - k * .4)); g.globalAlpha = 1; }
+  fxsDraw(g, RH);
   RH.parts = RH.parts.filter(q => pn - q.at < q.life);
   for (const q of RH.parts) { const k = (pn - q.at) / q.life; g.globalAlpha = 1 - k; g.fillStyle = '#E07A93'; g.font = '14px sans-serif'; g.fillText(q.e, q.x + q.vx * k, q.y + q.vy * k + 60 * k * k); } g.globalAlpha = 1;
   /* 버튼 */
@@ -2818,6 +2845,7 @@ function rbLoop() {
   if (RB.yuck) { g.font = `${ps * .16}px sans-serif`; g.fillText('🤢', ps * .3, -ps * .3); }
   g.restore();
   /* 파티클 */
+  RB.g = g; fxsDraw(g, RB);
   RB.parts = (RB.parts || []).filter(q => pn - q.at < q.life);
   for (const q of RB.parts) { const k = (pn - q.at) / q.life; g.globalAlpha = 1 - k; g.font = `${q.sz}px sans-serif`; g.fillText(q.e, q.x + q.vx * k, q.y + q.vy * k + 120 * k * k); }
   g.globalAlpha = 1;
@@ -2834,7 +2862,7 @@ function rbLoop() {
   if (RB.left <= 0) return rbEnd();
   RB.raf = requestAnimationFrame(rbLoop);
 }
-function rbBurst(x, y, list, n = 8, sz = 18) { const pn = performance.now(); for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 40 + Math.random() * 70; (RB.parts = RB.parts || []).push({ e: list[Math.floor(Math.random() * list.length)], x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, at: pn, life: 600 + Math.random() * 300, sz: sz * (.7 + Math.random() * .6) }); } }
+function rbBurst(x, y, list, n = 8, sz = 18) { const pn = performance.now(), cv = document.querySelector('#rbCv') || null; { const c = RB.g?.canvas || cv; if (c && c.clientWidth) fxs(RB, n > 10 ? 'heart' : 'sparkle', x / c.clientWidth, y / c.clientHeight, n > 10 ? .4 : .26); } for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = 40 + Math.random() * 70; (RB.parts = RB.parts || []).push({ e: list[Math.floor(Math.random() * list.length)], x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, at: pn, life: 600 + Math.random() * 300, sz: sz * (.7 + Math.random() * .6) }); } }
 async function rbEnd() {
   RB.on = false; try { RB.out.gain.setTargetAtTime(0, RB.ac.currentTime, .1); } catch (e) {}
   const tot = RB.perfect + RB.good + RB.miss, acc = tot ? Math.round((RB.perfect + RB.good * .6) / tot * 100) : 0, earned = Math.min(700, Math.round(RB.score / 6));

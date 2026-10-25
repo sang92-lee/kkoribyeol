@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "unityMCP": {
+      "type": "stdio",
+      "command": "/Users/sanghyeok/.local/bin/uvx",
+      "args": [
+        "--from",
+        "mcpforunityserver",
+        "mcp-for-unity",
+        "--transport",
+        "stdio"
+      ],
+      "env": {}
+    }
+  }
+}
