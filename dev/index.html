@@ -145,6 +145,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .dream.done { background: linear-gradient(135deg, #FFF3C9, #F6E3F2); animation: dreamGlow 2s ease-in-out infinite; } @keyframes dreamGlow { 50% { box-shadow: 0 0 12px rgba(246,201,78,.7); } }
 .satTip { margin: 10px 0 0; font-size: 14px; }
 .room .prop.movedNew { animation: movedNew 1s ease-in-out 6; } @keyframes movedNew { 50% { filter: drop-shadow(0 0 6px #F6C94E) brightness(1.15); } }
+.on { color: #3BA55C; font-size: 12px; font-weight: 700; } .off { color: var(--ink-soft); font-size: 11px; } .friend .on, .friend .off { display: block; }
 .roomBar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
 .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
@@ -2177,21 +2178,23 @@ function renderShow() {
     }
   }
   const ids = Object.keys(st.pets).filter(id => !st.pets[id].npc && st.pets[id].img && id !== S.id).sort((a, b) => (st.pets[b].likes || 0) - (st.pets[a].likes || 0));
-  const hk = ids.map(id => id + st.pets[id].ph + st.pets[id].v + st.pets[id].likes + JSON.stringify(st.pets[id].layout) + (st.pets[id].gears || []).join()).join('|');
+  const hk = ids.map(id => id + onlineTag(id) + st.pets[id].ph + st.pets[id].v + st.pets[id].likes + JSON.stringify(st.pets[id].layout) + (st.pets[id].gears || []).join()).join('|');
   const hm = $('#homes');
   if (hm.dataset.key !== hk) {
     hm.dataset.key = hk;
-    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}"><span class="homeTop"><span class="homeArt"><img data-cut="/api/img/${encodeURIComponent(id)}?v=${q.v}&c=${encodeURIComponent(S.code)}" alt=""></span>${q.ph ? `<span class="homeReal"><img src="/api/img/photo-${encodeURIComponent(id)}?v=${q.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습"><small>실물</small></span>` : '<span class="homeReal none"><span>📷</span><small>실물 아직</small></span>'}</span>${miniRoom(id)}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
+    hm.innerHTML = ids.length ? ids.map((id, i) => { const q = st.pets[id]; return `<button type="button" class="home" data-visit="${id}"><span class="homeTop"><span class="homeArt"><img data-cut="/api/img/${encodeURIComponent(id)}?v=${q.v}&c=${encodeURIComponent(S.code)}" alt=""></span>${q.ph ? `<span class="homeReal"><img src="/api/img/photo-${encodeURIComponent(id)}?v=${q.ph}&c=${encodeURIComponent(S.code)}" alt="실제 모습"><small>실물</small></span>` : '<span class="homeReal none"><span>📷</span><small>실물 아직</small></span>'}</span>${miniRoom(id)}<span class="homeName">${i < 3 ? ['🥇', '🥈', '🥉'][i] : ''} ${esc(q.owner || '')}네 ${esc(q.name)} ${onlineTag(id)}</span><span class="homeMeta">${PERSONA[personaOf(id)].icon} ${PERSONA[personaOf(id)].name} · ♥ ${q.likes || 0}${bondOf(id) ? ` · ${bondLv(bondOf(id)).i}` : ''}</span></button>`; }).join('') : '<p class="note">아직 다른 친구가 없어요. 친구를 초대해 보세요</p>';
     cutImgs(hm);
   }
 }
 /* ---------- 친구 방 놀러가기 ---------- */
-function renderFriends() {
+function onlineTag(id) { const t = S.state?.pets?.[id]?.seen || 0, d = Date.now() + (S.offset || 0) - t; if (!t) return ''; if (d < 45e3) return '<span class="on">● 접속 중</span>'; const m = Math.floor(d / 60e3); return `<span class="off">${m < 60 ? `${Math.max(1, m)}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`}</span>`; }
+function onlineWatch() { const st = S.state; if (!st) return; const now = Date.now() + (S.offset || 0); onlineWatch.prev = onlineWatch.prev || {}; for (const [id, p] of Object.entries(st.pets)) { if (id === S.id || p.npc || !p.img) continue; const on = p.seen && now - p.seen < 45e3; if (on && onlineWatch.prev[id] === false) toast(`${p.owner || '친구'}님이 들어왔어요! ${p.name}도 같이 왔대요`); onlineWatch.prev[id] = !!on; } }
+function renderFriends() { onlineWatch();
   const st = S.state, ids = Object.keys(st.pets).filter(id => id !== S.id && !st.pets[id].npc && st.pets[id].img);
   $('#friendsCard').hidden = !ids.length;
-  const key = ids.map(id => id + st.pets[id].v + (st.pets[id].gear || '')).join();
+  const key = ids.map(id => id + st.pets[id].v + (st.pets[id].gear || '') + onlineTag(id)).join();
   if ($('#friends').dataset.key === key) return; $('#friends').dataset.key = key;
-  $('#friends').innerHTML = ids.map(id => { const p = st.pets[id]; return `<button type="button" class="friend" data-visit="${id}"><span class="av">${petFace(id)}</span><b>${esc(p.name)}</b><span>${esc(p.owner || '')}네 · ${bondLv(bondOf(id)).i} ${bondLv(bondOf(id)).n}</span></button>`; }).join('');
+  $('#friends').innerHTML = ids.map(id => { const p = st.pets[id]; return `<button type="button" class="friend" data-visit="${id}"><span class="av">${petFace(id)}</span><b>${esc(p.name)}</b><span>${esc(p.owner || '')}네 · ${bondLv(bondOf(id)).i} ${bondLv(bondOf(id)).n}</span>${onlineTag(id)}</button>`; }).join('');
 }
 function visit(pid) {
   const st = S.state, p = st.pets[pid]; if (!p || p.npc || !p.img || pid === S.id) return;

@@ -238,6 +238,7 @@ export class Hub extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS pouchlog(wk TEXT, id TEXT, n INTEGER, PRIMARY KEY(wk, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS gifts(gid TEXT PRIMARY KEY, fr TEXT, too TEXT, x REAL, a TEXT, at INTEGER, open INTEGER)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS accounts(uid TEXT PRIMARY KEY, pid TEXT, pw TEXT, at INTEGER)");
+    try { this.sql.exec("ALTER TABLE players ADD COLUMN seen INTEGER DEFAULT 0"); } catch (e) {}
     this.sql.exec("CREATE TABLE IF NOT EXISTS quota(day TEXT, id TEXT, n INTEGER, PRIMARY KEY(day, id))");
   }
   rows(q, ...a) { return this.sql.exec(q, ...a).toArray(); }
@@ -563,7 +564,7 @@ export class Hub extends DurableObject {
       this.sql.exec("INSERT INTO pulls(uniq, who, r, t, kind, a, b) VALUES(?, ?, ?, ?, ?, ?, ?)", uniq, b.id, R.r, now, out.kind, out.a, out.b);
       return json({ ok: true, result: out });
     }
-    if (p === "/api/state") return json(this.state(url.searchParams.get("id") || "", now));
+    if (p === "/api/state") { const sid = url.searchParams.get("id") || ""; if (validId(sid)) this.sql.exec("UPDATE players SET seen = ? WHERE id = ?", now, sid); return json(this.state(sid, now)); }
     return json({ error: "none", message: "없는 주소예요" }, 404);
   }
 
@@ -607,6 +608,7 @@ export class Hub extends DurableObject {
     const pulled = new Set(this.rows("SELECT uniq FROM pulls WHERE r = ?", R.r).map(x => x.uniq));
     const key = e => e.npc ? e.id : `${R.r}:${e.id}`;
     const players = Object.fromEntries(this.rows("SELECT id, nick FROM players").map(x => [x.id, x.nick]));
+    const seenAt = Object.fromEntries(this.rows("SELECT id, seen FROM players").map(x => [x.id, x.seen || 0]));
     const pets = {};
     for (const n of NPC_PETS) pets[n.id] = { name: n.name, kind: n.kind, fur: n.fur, npc: true };
     const bonds = id ? Object.fromEntries(this.rows("SELECT a, b, pts FROM bonds WHERE a = ? OR b = ?", id, id).map(x => [x.a === id ? x.b : x.a, x.pts])) : {};
@@ -622,7 +624,7 @@ export class Hub extends DurableObject {
     const poseMap = {};
     for (const x of this.rows("SELECT id, k, at FROM poses")) (poseMap[x.id] = poseMap[x.id] || {})[x.k] = x.at;
     const phs = Object.fromEntries(this.rows("SELECT id, at FROM photos").map(x => [x.id, x.at]));
-    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [], ph: phs[x.id] || 0 };
+    for (const x of this.rows("SELECT id, name, kind, at, img IS NOT NULL AS has FROM pets")) pets[x.id] = { name: x.name, kind: x.kind, v: x.at, img: !!x.has, owner: players[x.id] || "", room: roomLvs[x.id] || 0, layout: layouts[x.id] || null, gear: (gear[x.id] || "").split(",")[0] || "", gears: (gear[x.id] || "").split(",").filter(Boolean), gpos: gpos[x.id] || {}, poses: poseMap[x.id] || {}, likes: likes[x.id] || 0, items: rooms[x.id] || [], ph: phs[x.id] || 0, seen: seenAt[x.id] || 0 };
 
     const line = [];
     R.entries.forEach((e, i) => {
