@@ -595,7 +595,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
       <div class="rhBox" id="rhBox"><canvas id="rhCv"></canvas><div class="rhOver" id="rhOver"></div></div>
     </div>
     <div class="card rhCard">
-      <h2>🎵 냠냠 리듬</h2>
+      <h2>🎤 냠트박스</h2>
       <div class="rhBox" id="rbBox"><canvas id="rbCv"></canvas><div class="rhOver" id="rbOver"></div></div>
     </div>
     <div class="card">
@@ -2698,7 +2698,7 @@ function rbBar() {
 }
 function rbStartScreen(msg = '') {
   const o = $('#rbOver'); o.hidden = false;
-  o.innerHTML = `<h3>냠냠 리듬</h3><p>씨앗이 입 옆 동그라미에 닿을 때 왼쪽·오른쪽 톡!<br>냠냠 받아먹을수록 볼이 빵빵해져요<br>양손으로 하면 편해요. 막 누르면 헛손질로 콤보가 끊겨요<br>박자 맞추면 ${esc(myPet()?.name || '우리 애')}가 달려요</p>
+  o.innerHTML = `<h3>냠트박스</h3><p>우리 애가 비트박스 해요! 왼쪽은 붐, 오른쪽은 츠<br>씨앗이 입 옆 동그라미에 닿을 때 왼쪽·오른쪽 톡!<br>냠냠 받아먹을수록 볼이 빵빵해져요<br>양손으로 하면 편해요. 막 누르면 헛손질로 콤보가 끊겨요<br>박자 맞추면 ${esc(myPet()?.name || '우리 애')}가 달려요</p>
     <div class="legend"><span>🌻 톡</span><span>✨ 황금 30점</span><span>⏰ +3초</span><span>🥦 누르면 으엑</span></div>
     <p class="small">20콤보부터 피버! 매 판 새 노래가 즉석으로 작곡돼요</p>${msg}<button type="button" class="btn main big" id="rbGo">시작</button>`;
   $('#rbGo').onclick = rbStart;
@@ -2714,6 +2714,14 @@ function rbStart() {
   RB.last = RB.ac.currentTime; $('#rbOver').hidden = true; RB.titleUntil = performance.now() + 2600;
   cancelAnimationFrame(RB.raf); RB.raf = requestAnimationFrame(rbLoop);
 }
+/* 입으로 내는 비트박스 소리: 왼쪽=붐(킥), 오른쪽=츠(스네어), 황금=뿌잉 */
+function rbBeat(ln, k) {
+  const c = RB.ac, t = c.currentTime;
+  if (k === 'gold') { const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(1400, t + .15); g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + .22); o.connect(g).connect(RB.out); o.start(t); o.stop(t + .25); return; }
+  if (!ln) { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(40, t + .18); g.gain.setValueAtTime(.7, t); g.gain.exponentialRampToValueAtTime(.001, t + .22); o.connect(g).connect(RB.out); o.start(t); o.stop(t + .25);
+    const n = c.createBufferSource(); n.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400; const g2 = c.createGain(); g2.gain.setValueAtTime(.25, t); g2.gain.exponentialRampToValueAtTime(.001, t + .06); n.connect(f).connect(g2).connect(RB.out); n.start(t); n.stop(t + .08); return; }
+  const n = c.createBufferSource(); n.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 5200; f.Q.value = .8; const g = c.createGain(); g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.001, t + .13); n.connect(f).connect(g).connect(RB.out); n.start(t); n.stop(t + .15);
+}
 function rbJudge(ln) {
   if (!RB.on) return; const now = RB.ac.currentTime - .03;
   let best = null, bd = 9; for (const n of RB.notes) { if (n.done || n.ln !== ln) continue; const d = Math.abs(n.t - now); if (d < bd) { bd = d; best = n; } }
@@ -2727,8 +2735,8 @@ function rbJudge(ln) {
   RB.score += Math.round(pts * mult); RB.chomp = 1; RB.shake = perfect ? .6 : .3; navigator.vibrate?.(perfect ? 18 : 10);
   const hp = RB.hitPts?.[ln]; if (hp) rbBurst(hp[0], hp[1], best.k === 'gold' ? ['✨', '⭐', '💛'] : ['🌻', '✦', '·'], perfect ? 10 : 6, perfect ? 18 : 14);
   if (RB.fever && RB.combo % 10 === 0 && hp) { rbBurst(RB.hitPts[0][0] + (RB.hitPts[1][0] - RB.hitPts[0][0]) / 2, hp[1], ['🌻', '🌰', '✨', '💖'], 24, 24); RB.pops.push({ t: '퉤!', c: '#E07A93', at: performance.now(), big: 1 }); }
-  rbVoice(RB.ac.currentTime, best.f, .12, 'sine', .08, RB.out);
-  RB.pops.push({ t: best.k === 'gold' ? '황금!' : perfect ? 'Perfect!' : 'Good', c: best.k === 'gold' ? '#E0A800' : perfect ? '#E07A93' : '#9C8576', at: performance.now(), ln });
+  rbVoice(RB.ac.currentTime, best.f, .1, 'sine', .05, RB.out); rbBeat(ln, best.k);
+  RB.pops.push({ t: best.k === 'gold' ? '뿌잉!' : ln ? ['츠!', '치키!', '츳!'][RB.combo % 3] : ['붐!', '부움!', '냠!'][RB.combo % 3], c: best.k === 'gold' ? '#E0A800' : perfect ? '#E07A93' : '#9C8576', at: performance.now(), ln });
   if (RB.combo === 20) { RB.pops.push({ t: '피버!!', c: '#F6C94E', at: performance.now(), big: 1 }); }
 }
 function rbLoop() {
