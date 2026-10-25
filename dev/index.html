@@ -209,7 +209,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 @keyframes sway { 0%,100% { transform: rotate(-7deg) translateX(-4%); } 50% { transform: rotate(7deg) translateX(4%); } }
 .room .bubble { position: absolute; transform: translateX(-50%); background: var(--card); border: var(--stroke); border-radius: 14px; padding: 4px 12px; font-family: var(--display); font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
 .room .bubble.on { opacity: 1; }
-.room .pet .gears { position: absolute; inset: 0; pointer-events: none; z-index: 3; transition: transform .12s linear; }
+.room .pet .gears { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .room .pet .gears .gear { transition: opacity .2s; }
 .room .pet .paws { position: absolute; inset: 0; pointer-events: none; z-index: 2; --ps: 12%; }
 .room .pet .paws .pw { position: absolute; width: var(--ps); aspect-ratio: 1.2; border-radius: 50% 50% 45% 45%; background: #F8D3DA; border: 2px solid #4A3428; transform: translate(-50%, -50%); }
@@ -1327,6 +1327,8 @@ function jelly(dt, now) {
     const ph = (now % per) / per; P.hopY = (P.act === 'wheel' ? 2 : run ? 9 : 3) * Math.sin(Math.PI * ph);
   } else P.hopY = (P.hopY || 0) * .8;
   { const tk = (now - (P.turnHopT || -1e9)) / 240; if (tk < 1) P.hopY = Math.max(P.hopY, 6 * Math.sin(Math.PI * tk)); }
+  /* 옆모습 그림이 없으면 걸을 때 몸을 가는 쪽으로 살짝 틀어서(3/4) 정면으로 미끄러지는 느낌을 줄임 */
+  { const turn = (moving || P.act === 'wheel') && !(P.spr && P.spr[P.cur] && P.cur !== 'front') ? (run ? 34 : 26) : 0; P.yaw = (P.yaw || 0) + (turn - (P.yaw || 0)) * Math.min(1, dt * 8); }
   /* 방향 전환: 순간 뒤집기 대신 몸을 돌리듯 얇아졌다 펴짐 */
   const want = P.act === 'wheel' ? 1 : P.dir; P.dirS = P.dirS ?? want;
   if (Math.sign(P.dirS) !== want && Math.abs(P.dirS - want) > 1.5 && !P.turnKick) { P.turnKick = 1; P.turnHopT = now; J.sv -= 1.2; J.wv += want * 3; }
@@ -1386,10 +1388,16 @@ function gearFollow() {
   const gw = $('#gearsWrap'); if (!gw || !P.spr) return;
   const fb = BOX[P.spr.front], cb = BOX[P.spr[P.cur]] || fb; if (!fb) return;
   const a0 = headAnchor(fb, 'front'), a1 = headAnchor(cb, P.cur), sc = a1.w / a0.w;
-  const J = P.J || { lean: 0, wob: 0, sq: 1 };
-  const dx = (a1.x - a0.x * sc) * 100 + (J.lean * .22 + J.wob * .06) * 100 * .8, dy = (a1.y - a0.y * sc) * 100 + (1 - J.sq) * (1 - a1.y) * 100;
-  const tilt = a1.rot + J.lean * 12 + J.wob * 4;
-  gw.style.transform = `translate(${dx}%, ${dy}%) scale(${sc}) rotate(${tilt}deg)`;
+  /* 젤리 그리기(jelly)와 똑같은 식으로 머리 줄이 어디로 갔는지 계산해서 장비가 딱 붙어 다니게 */
+  const J = P.J || { lean: 0, wob: 0, sq: 1 }, yN = a1.y + .12, up = Math.pow(1 - yN, 1.5);
+  const fat = (CARE?.fat ?? .35) - .35, sq = J.sq * (1 - Math.max(0, fat) * .12), wscale = (1 + (1 - J.sq) * .6) * (1 + fat * .38);
+  const near = Math.exp(-Math.pow((yN - (J.ty ?? .5)) / .16, 2));
+  const wf = (1 + (wscale - 1) * (.6 + .4 * Math.sin(Math.PI * yN)) - (J.dent || 0) * .16 * near + (J.dent || 0) * .05 * (1 - near)) * (1 - (J.stand || 0) * .07);
+  const jx = (J.lean * .22 + J.wob * .06) * up + (J.pull || 0) * .12 * near + (J.look || 0) * .05 * up * up;
+  const jy = (1 - yN) * (1 - sq) + (J.sniff || 0) * .012 * Math.max(0, 1 - yN * 2.2);
+  const dx = (a1.x - a0.x * sc) * 100 + jx * 100 + (a1.x - .5) * (wf - 1) * 100, dy = (a1.y - a0.y * sc) * 100 + jy * 100;
+  const tilt = a1.rot + J.lean * 12 + J.wob * 4 + (J.look || 0) * 6;
+  gw.style.transform = `translate(${dx}%, ${dy}%) scale(${sc * wf}, ${sc * (1 + (sq - 1) * .5)}) rotate(${tilt}deg)`;
   gw.style.transformOrigin = `${a0.x * 100}% ${a0.y * 100}%`;
   /* 뒷모습이면 얼굴 장비는 안 보이고, 옆모습이면 얼굴 장비를 옆으로 좁힘 */
   gw.querySelectorAll('.gear').forEach(g => {
@@ -1403,7 +1411,7 @@ function gearFollow() {
 function pawsTick(now) {
   const box = $('#paws'); if (!box) return;
   const k = kindNow(), groom = P.act === 'groom' && !P.hidden, eat = P.act === 'eat' && !P.hidden && (k === 'hamster' || P.atTreat);
-  P.tilt = 0;
+  if (!P.ride && !P.arc) P.tilt = 0;
   box.style.display = '';
   if (groom) P.tilt = Math.sin(now / 1000 * 2.2) * 3;
   return;
@@ -1538,7 +1546,7 @@ function next() {
   if (a !== 'sleep' && P.hidden) return leaveHouse(next);
   const PRK = k => { const el = $(`#world .prop[data-k="${k}"]`); return el; }, PFX = (k, cls, ms) => { const el = PRK(k); if (!el) return; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
   if (a === 'hay') return goTo(SPOT.hay, 10, () => { P.face = 'eat'; P.faceUntil = performance.now() + 4000; PFX('hay', 'rustle', 3000); say(['건초 냄새 좋아', '푹신푹신', '볼에 쏙쏙'][Math.floor(Math.random() * 3)], 1500); for (let i = 0; i < 6; i++) setTimeout(() => { const d = document.createElement('i'); d.className = 'dust'; d.style.left = (SPOT.hay + rnd(-4, 4)) + '%'; d.style.bottom = (FLOOR + rnd(2, 8)) + '%'; d.style.background = '#E2BC62'; $('#world')?.appendChild(d); setTimeout(() => d.remove(), 800); }, i * 300); setAct('dig', rnd(5, 9) * 1000, `${n}가 건초를 파고들어요`, 'munch'); }, `${n}가 건초 더미로 가요`);
-  if (a === 'bridge') return goTo(SPOT.bridge - 8, 10, () => { say('다리 건너기!', 1000); tweenY(FLOOR + 6, 500, () => goTo(SPOT.bridge + 8, 4, () => tweenY(FLOOR, 400, () => { emote('note', 1200); say(Math.random() < .5 ? '건넜다~' : '한 번 더!', 1200); setAct('idle', 1500, '', ''); }), `${n}가 나무 다리를 건너요`, 0)); }, `${n}가 나무 다리로 가요`);
+  if (a === 'bridge') return goTo(SPOT.bridge - 8, 10, () => { say('다리 건너기!', 1000); P.arc = { x0: SPOT.bridge - 8, x1: SPOT.bridge + 8, h: 8 }; goTo(SPOT.bridge + 8, 5, () => { P.arc = null; P.y = FLOOR; fx('land', 300); emote('note', 1200); say(Math.random() < .5 ? '건넜다~' : '한 번 더!', 1200); setAct('idle', 1500, '', ''); }, `${n}가 나무 다리를 건너요`, 0); }, `${n}가 나무 다리로 가요`);
   if (a === 'tube') return goTo(SPOT.tube - 8, 12, () => { say('쏙!', 700); P.cls = 'squeeze'; setTimeout(() => { $('#roomPet').style.opacity = 0; P.hidden = false; const sfx = setInterval(() => { try { SFX.run(); } catch (e) {} }, 120); setTimeout(() => clearInterval(sfx), 1300); PFX('tube', 'rustle', 1500); setTimeout(() => { P.x = SPOT.tube + 8; P.y = FLOOR + 12; $('#roomPet').style.opacity = 1; P.cls = 'popout'; emote('spark', 1300); say(['뿅!', '튜브 최고!', '쪼르르르~'][Math.floor(Math.random() * 3)], 1300); setAct('idle', 1800, `${n}가 튜브에서 튀어나왔어요`, ''); }, 1500); }, 600); }, `${n}가 튜브 터널로 가요`);
   if (a === 'mush') return goTo(SPOT.mushroom, 10, () => { $('#roomPet').style.opacity = 0; say('똑똑, 아무도 없어요~', 1500); PFX('mushroom', 'rustle', 2000); setTimeout(() => { $('#roomPet').style.opacity = 1; P.cls = 'popout'; say('까꿍!', 1200); emote('heart', 1300); setAct('idle', 2000, '', ''); }, rnd(3, 6) * 1000); setAct('hiding2', 7000, `${n}가 버섯 집에 들어갔어요`, ''); }, `${n}가 버섯 집으로 가요`);
   if (a === 'balloon') return goTo(SPOT.balloon, 10, () => { say('풍선 꽉!', 1000); PFX('balloon', 'floaty', 4000); tweenY(FLOOR + 9, 1500, () => { emote('note', 1500); say('둥실둥실~', 1500); setAct('float', 2500, `${n}가 풍선 타고 둥실`, ''); }); }, `${n}가 풍선으로 가요`);
@@ -1559,11 +1567,11 @@ function next() {
   if (a === 'drink') return goTo(KP() === KIND_PROPS.hamster ? SPOT.bottle - 3 : SPOT.bottle, 12, drinkNow, `${n}가 물 마시러 가요`);
   if (a === 'cushion') return goTo(SPOT.cushion, 10, () => { say('푹신푹신~', 1200); fx('land', 400); setAct('sleep', rnd(20, 50) * 1000, `${n}가 딸기 쿠션에서 꾸벅`, 'sleep'); }, `${n}가 딸기 쿠션으로 가요`);
   if (a === 'tunnel') return goTo(SPOT.tunnel - 9, 13, () => { $('#roomPet').style.opacity = 0; say('쏘옥', 800); setTimeout(() => { P.x = SPOT.tunnel + 9; $('#roomPet').style.opacity = 1; P.cls = 'popout'; emote('note', 1000); say('뿅!', 900); setAct('idle', 1500, `${n}가 터널을 통과했어요`, ''); }, 1500); P.act = 'enter'; P.until = 0; }, `${n}가 터널로 가요`);
-  if (a === 'seesaw') return goTo(SPOT.seesaw - 6, 12, () => { const ss = $('#world .prop.seesaw'); ss?.classList.add('rock'); say('올라가라~', 1200); setAct('seesaw', rnd(5, 8) * 1000, `${n}가 시소 타요`, 'sway'); setTimeout(() => ss?.classList.remove('rock'), 8000); }, `${n}가 시소로 가요`);
+  if (a === 'seesaw') return goTo(SPOT.seesaw - 6, 12, () => { const ss = $('#world .prop.seesaw'); ss?.classList.remove('rock'); void ss?.offsetWidth; ss?.classList.add('rock'); fx('hopx', 300); P.ride = { k: 'seesaw', t0: performance.now() }; say('올라가라~', 1200); setAct('seesaw', rnd(5, 8) * 1000, `${n}가 시소 타요`, 'sway'); setTimeout(() => ss?.classList.remove('rock'), 8000); }, `${n}가 시소로 가요`);
   if (a === 'scope') return goTo(SPOT.telescope - 4, 10, () => { emote('spark', 1800); say(['별이다…', '저기 꼬리별!', '반짝반짝'][Math.floor(Math.random() * 3)], 1600); setAct('look', rnd(5, 8) * 1000, `${n}가 별을 봐요`, ''); }, `${n}가 망원경으로 가요`);
   if (a === 'carousel') return goTo(SPOT.carousel, 12, () => { const c = $('#world .prop.carousel'); c?.classList.add('spin'); P.happyUntil = performance.now() + 6000; emote('note', 1500); say('빙글빙글~', 1400); setAct('ride', rnd(6, 9) * 1000, `${n}가 회전목마를 타요`, 'sway'); setTimeout(() => c?.classList.remove('spin'), 9000); }, `${n}가 회전목마로 가요`);
   if (a === 'sandbath') return goTo(SPOT.sandbath, 12, () => { say('데굴데굴~', 1400); P.happyUntil = performance.now() + 4000; setAct('bath', rnd(4, 7) * 1000, `${n}가 모래 목욕해요`, 'groom'); }, `${n}가 모래 목욕탕으로 가요`);
-  if (a === 'swing') return goTo(SPOT.swing, 11, () => { say('슝~ 슝~', 1400); $('#world .prop.swing')?.classList.add('swinging'); setAct('swing', rnd(6, 10) * 1000, `${n}가 그네 타요`, 'sway'); setTimeout(() => $('#world .prop.swing')?.classList.remove('swinging'), 9000); }, `${n}가 그네로 가요`);
+  if (a === 'swing') return goTo(SPOT.swing, 11, () => { say('슝~ 슝~', 1400); { const sw = $('#world .prop.swing'); sw?.classList.remove('swinging'); void sw?.offsetWidth; sw?.classList.add('swinging'); } fx('hopx', 300); P.ride = { k: 'swing', t0: performance.now() }; setAct('swing', rnd(6, 10) * 1000, `${n}가 그네 타요`, 'sway'); setTimeout(() => $('#world .prop.swing')?.classList.remove('swinging'), 9000); }, `${n}가 그네로 가요`);
   if (a === 'books') return goTo(SPOT.bookshelf, 10, () => { emote('q', 1600); say('흠… 어려운 책이다', 1500); setAct('look', rnd(4, 7) * 1000, `${n}가 책 읽는 척해요`, ''); }, `${n}가 책장으로 가요`);
   if (a === 'piano') return goTo(SPOT.piano, 11, () => { say('도레미~', 1200); setAct('piano', rnd(4, 7) * 1000, `${n}가 피아노를 쳐요`, 'eat'); }, `${n}가 피아노로 가요`);
   if (a === 'dig' && KP().cage) return digIn(false);
@@ -1743,6 +1751,15 @@ function loop(now) {
   if (P.act === 'swim' && Math.random() < dt * 4) splash();
   if (P.act === 'piano' && now > (P.noteT || 0)) { P.noteT = now + rnd(220, 480); emote('note', 500); { const f = [523, 587, 659, 698, 784, 880][Math.floor(Math.random() * 6)]; gTone(f, f * 1.01, .05, .25, 'triangle'); } }
   if (P.act === 'bath') { P.tilt = Math.sin(now / 90) * 35; }
+  /* 놀이기구에 진짜로 올라타기: 다리는 아치 따라 오르내리고, 시소·그네는 판·의자 움직임에 맞춰 같이 흔들림 */
+  if (P.arc && P.act === 'walk') { const k = Math.max(0, Math.min(1, (P.x - P.arc.x0) / (P.arc.x1 - P.arc.x0))); P.y = FLOOR + P.arc.h * Math.sin(Math.PI * k); P.tilt = -Math.cos(Math.PI * k) * 14 * P.dir; }
+  else if (P.arc) { P.arc = null; P.tilt = 0; }
+  if (P.ride) {
+    const t = (now - P.ride.t0) / 1000;
+    if (P.act !== P.ride.k) { P.ride = null; P.tilt = 0; P.x = Math.max(4, Math.min(96, P.x)); tweenY(FLOOR, 260); fx('land', 300); }
+    else if (P.ride.k === 'seesaw') { const ang = -12 * Math.cos(2 * Math.PI * t); P.x = SPOT.seesaw - 7 / WF; P.y = FLOOR + 5 + Math.sin(ang * Math.PI / 180) * 12; P.tilt = ang * .9; if (Math.floor(t) !== P.ride.bump) { P.ride.bump = Math.floor(t); if (P.J) P.J.sv -= 1.6; buzz(12); } }
+    else { const a = -18 * Math.cos(2 * Math.PI * t / 1.2) * Math.PI / 180; P.x = SPOT.swing + Math.sin(a) * 13.5 / WF; P.y = FLOOR + 6 + (1 - Math.cos(a)) * 18; P.tilt = a * 180 / Math.PI * .8; }
+  }
   if (P.act !== 'walk' && P.act !== 'slidedown' && P.act !== 'enter' && !P.tween && P.until && now > P.until) { P.until = 0; if (P.act === 'hammock' || P.act === 'wheel') { P.y = P.act === 'wheel' ? FLOOR : P.y; } if (P.y > FLOOR + 6 && P.act !== 'sleep') { P.act = 'idle'; tweenY(FLOOR, 650, next); } else { P.y = FLOOR; next(); } }
   if (P.carryEl) { const c = P.carryEl; c.style.left = (P.x + P.dir * 7) + '%'; c.style.bottom = (P.y + (P.z || 0) * DEPTH + 4) + '%'; c.style.transform = `translateX(-50%) scale(.55) rotate(${P.dir * 8}deg)`; c.style.transformOrigin = '50% 100%'; }
   if (P.carry) { const b = $('#ball'); if (b) { b.style.transition = 'none'; b.style.left = (P.x + P.dir * 7) + '%'; b.style.bottom = (P.y + 6) + '%'; } }
@@ -1785,7 +1802,7 @@ function loop(now) {
   }
   pawsTick(now); if (P.spr) gearFollow();
   const fb = P.spr && BOX[P.spr[P.cur]] || (P.spr && BOX[P.spr.front]); const footGap = fb ? (1 - fb.y1) * 100 : 0;
-  pet.querySelector('.spr').style.transform = `translateY(${footGap - (P.hopY || 0)}%) scaleX(${Math.abs(P.dirS ?? P.dir) < .22 ? Math.sign(P.dirS || 1) * .22 : (P.dirS ?? P.dir)})` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '') + (P.tilt ? ` rotate(${P.tilt}deg)` : '');
+  pet.querySelector('.spr').style.transform = `translateY(${footGap - (P.hopY || 0)}%) scaleX(${Math.abs(P.dirS ?? P.dir) < .22 ? Math.sign(P.dirS || 1) * .22 : (P.dirS ?? P.dir)})${P.yaw > .5 ? ` perspective(420px) rotateY(${-P.yaw}deg)` : ''}` + (P.act === 'sleep' && !P.hidden && !(P.spr && P.spr.sleep) ? ' rotate(-10deg)' : '') + (P.tilt ? ` rotate(${P.tilt}deg)` : '');
   requestAnimationFrame(loop);
 }
 function paw() {
