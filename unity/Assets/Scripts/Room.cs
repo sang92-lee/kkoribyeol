@@ -35,8 +35,9 @@ public class Room : MonoBehaviour
     // 방이 폰 화면 위쪽에 4:3으로 보이게 (아래는 글자 자리)
     void LateUpdate()
     {
-        float sw = Screen.width, sh = Screen.height, h = Mathf.Min(1, sw * .75f / sh);
-        Cam.rect = new Rect(0, 1 - h - 130f / 1334f, 1, h);
+        // 화면 비율이 달라도 UI(기준 너비 750)와 같은 자리: 위 130, 좌우 24
+        float sw = Screen.width, sh = Screen.height, k = sw / 750f, mx = 24 * k / sw, top = 130 * k / sh, h = Mathf.Min(1, (sw - 48 * k) * .75f / sh);
+        Cam.rect = new Rect(mx, 1 - h - top, 1 - mx * 2, h);
         Cam.orthographicSize = VH / 2;
         // 카메라: 손으로 끌면 그쪽, 아니면 펫을 부드럽게 따라감
         float maxCam = (WF - 1) * VW;
