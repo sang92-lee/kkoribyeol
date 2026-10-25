@@ -4,6 +4,10 @@ compatibility_date = "2026-09-01"
 # Cloudflare 화면에서 넣은 값을 다음 배포 때 지우지 않게
 keep_vars = true
 
+# Unity 웹 버전(시험): public/play → https://.../play/  (같은 주소라 로그인·서버를 웹과 같이 씀)
+[assets]
+directory = "./public"
+
 # 게임 화면·기준 그림은 worker.js 안에 같이 들어 있어서 파일이 2개뿐이야
 
 # 줄·갓챠·랭킹·펫 그림을 모아두는 공용 저장소 (무료 플랜에서 되는 SQLite 방식)
