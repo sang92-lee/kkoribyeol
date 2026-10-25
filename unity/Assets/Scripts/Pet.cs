@@ -109,6 +109,20 @@ public class Pet : MonoBehaviour
     }
 
     // ---------- 움직임 ----------
+    // 어디로 가서 무엇을 함 (밥 먹기·물 마시기 등). 도착하면 act를 secs초 동안
+    string pendAct, pendLine; float pendSecs, actUntil;
+    public void DoAt(float xp, float spd, string a, float secs, string line)
+    {
+        pendAct = a; pendSecs = secs; pendLine = line;
+        if (Mathf.Abs(xp - x) < .5f) { Arrive(); return; }
+        Go(Mathf.Clamp(xp, 4, 96), spd);
+    }
+    void Arrive()
+    {
+        if (pendAct == null) return;
+        act = pendAct; actUntil = Time.time + pendSecs; if (pendLine != null) Say(pendLine);
+        pendAct = null;
+    }
     public void ComeTo(float xp) { if (act == "sleep") return; Say(Random.value < .5f ? "왔어!" : "…여기?"); Go(Mathf.Clamp(xp, 6, 94), 14); }
     void Go(float to, float spd) { target = to; speed = spd; act = "walk"; }
     void Say(string t) => Game.I.Say(Game.I.MyPet.Str("name") + ": " + t);
@@ -122,8 +136,15 @@ public class Pet : MonoBehaviour
         if (moving)
         {
             float d = target - x, step = speed * dt * Room.WF / 1.3f;
-            if (Mathf.Abs(d) <= step) { x = target; act = "idle"; nextT = now + Random.Range(1.5f, 4f); sv -= 1.4f; }
+            if (Mathf.Abs(d) <= step) { x = target; act = "idle"; nextT = now + Random.Range(1.5f, 4f); sv -= 1.4f; Arrive(); }
             else { x += Mathf.Sign(d) * step; SetDir(Mathf.Sign(d), now); }
+        }
+        // 먹기: 오물오물 눌림 + 부스러기 / 마시기: 꼴깍꼴깍 / 신남: 통통
+        if (act == "eat" || act == "drink" || act == "happy")
+        {
+            float per = act == "eat" ? .26f : act == "drink" ? .42f : .3f; int f = Mathf.FloorToInt(now / per);
+            if (f != chewN) { chewN = f; sv -= act == "happy" ? 2.2f : act == "eat" ? .8f : .5f; if (act == "eat" && f % 3 == 0) FxLib.Play("crumbs", transform.position + new Vector3(dir * Wd * .1f, Ht * .25f, 0), .4f, 35); }
+            if (now > actUntil) { act = "idle"; nextT = now + 2; if (Random.value < .5f) Say("배불러~"); }
         }
         Springs(dt, now, moving, run);
         transform.position = Room.W(x, Room.Floor, 0) + Vector3.up * hopY;
@@ -134,7 +155,7 @@ public class Pet : MonoBehaviour
 
     void Decide(float now)
     {
-        if (act != "idle" || now < nextT) return;
+        if (act != "idle" || now < nextT || pendAct != null) return;
         float r = Random.value;
         if (r < .55f) Go(Random.Range(8f, 92f), 10);
         else if (r < .75f) Go(Random.Range(8f, 92f), 26);
@@ -190,7 +211,7 @@ public class Pet : MonoBehaviour
         dv += (160 * (0 - dent) - 11 * dv) * dt; dent += dv * dt;
         pv += (90 * (0 - pull) - 9 * pv) * dt; pull += pv * dt;
     }
-    float dirShown = 1;
+    float dirShown = 1; int chewN;
 
     // 그림 좌표(u,v) → 지금 모양에서의 위치. 장비도 같은 함수로 붙임
     Vector3 Map(float u, float v, out float shade, out float wscale)

@@ -304,6 +304,7 @@ public static class FxLib
         main.scalingMode = ParticleSystemScalingMode.Hierarchy; main.maxParticles = 200; main.stopAction = ParticleSystemStopAction.Destroy;
         var em = ps.emission; em.rateOverTime = 0;
         All[name](ps);
+        main.loop = false; main.prewarm = false; main.duration = Mathf.Max(main.duration, 1); // 반복 효과도 한 번만 (계속 쌓이지 않게)
         var child = ps.transform.position; // 설정이 정한 시작 위치(효과 화면 기준)
         go.transform.position = pos + child * scale; go.transform.localScale = Vector3.one * scale;
         ps.GetComponent<ParticleSystemRenderer>().sortingOrder = order;

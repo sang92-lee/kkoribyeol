@@ -11,6 +11,7 @@ public class Room : MonoBehaviour
     public Pet Pet;
     public Camera Cam;
     readonly Dictionary<string, SpriteRenderer> props = new();
+    public readonly Dictionary<string, float> SpotX = new();
     string built = "";
     float cam, camTo, userCamT;
     SpriteRenderer sky, floor;
@@ -118,7 +119,7 @@ public class Room : MonoBehaviour
             sr.transform.position = W(x, bottom + z * 13, 1 + z);
             sr.sortingOrder = 20 - Mathf.RoundToInt(z * 16);
             if (z > 0) sr.color = Color.white * (1 - z * .06f) + Color.black;
-            props[k] = sr;
+            props[k] = sr; SpotX[k] = x;
         }
         Prop("platform", "platform", 30, 13); Prop("pot", "pot", 15);
         Prop("house", "house", 22);

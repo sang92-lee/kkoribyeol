@@ -101,7 +101,15 @@ public class Game : MonoBehaviour
 
         // 위: 이름 / 아래: 지금 하는 일
         title = Label(cv.transform, "꼬리별", 54, Ink, new Vector2(0, 1), new Vector2(1, 1), new Vector2(40, -150), new Vector2(-40, -40), TextAnchor.MiddleLeft);
-        status = Label(cv.transform, "", 34, Ink, new Vector2(0, 0), new Vector2(1, 0), new Vector2(40, 60), new Vector2(-40, 300), TextAnchor.UpperLeft);
+        status = Label(cv.transform, "", 32, Ink, new Vector2(0, 0), new Vector2(1, 0), new Vector2(40, 330), new Vector2(-40, 440), TextAnchor.UpperLeft);
+        // 돌봄 버튼 (웹 우리 아이 화면과 같은 다섯 개)
+        string[] names = { "밥", "물 갈기", "간식", "청소", "이름 부르기" };
+        System.Action[] acts = { Feed, Water, Snack, Clean, Call };
+        for (int i = 0; i < 5; i++)
+        {
+            int k = i; float x0 = .03f + i * .19f;
+            careSub[i] = Button(cv.transform, names[i], new Vector2(x0, 0), new Vector2(x0 + .18f, 0), Color.white, () => acts[k](), new Vector2(0, 150), new Vector2(0, 300));
+        }
 
         gate = new GameObject("Gate", typeof(RectTransform), typeof(Image));
         gate.transform.SetParent(cv.transform, false);
@@ -124,12 +132,34 @@ public class Game : MonoBehaviour
         return x;
     }
 
-    static void Button(Transform p, string t, Vector2 a0, Vector2 a1, Color bg, UnityEngine.Events.UnityAction on)
+    static Text Button(Transform p, string t, Vector2 a0, Vector2 a1, Color bg, UnityEngine.Events.UnityAction on, Vector2 o0 = default, Vector2 o1 = default)
     {
         var go = new GameObject("Button", typeof(RectTransform), typeof(Image), typeof(Button)); go.transform.SetParent(p, false);
-        var r = (RectTransform)go.transform; r.anchorMin = a0; r.anchorMax = a1; r.offsetMin = r.offsetMax = Vector2.zero;
+        var r = (RectTransform)go.transform; r.anchorMin = a0; r.anchorMax = a1; r.offsetMin = o0; r.offsetMax = o1;
         go.GetComponent<Image>().color = bg;
         go.GetComponent<Button>().onClick.AddListener(() => { Net.Buzz(10); on(); });
-        Label(go.transform, t, 36, Ink, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+        Label(go.transform, t, o1.y > 0 ? 30 : 36, Ink, new Vector2(0, o1.y > 0 ? .45f : 0), Vector2.one, Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+        return Label(go.transform, "", 24, new Color32(0x8C, 0x74, 0x66, 255), Vector2.zero, new Vector2(1, .45f), Vector2.zero, Vector2.zero, TextAnchor.MiddleCenter);
+    }
+
+    // ---------- 돌봄 (웹 feed/water/toilet 과 같은 규칙, 기록은 폰 안에) ----------
+    readonly Text[] careSub = new Text[5];
+    float X(string k, float def) => Room.SpotX.TryGetValue(k, out var v) ? v : def;
+    string Nm => MyPet.Str("name", "우리 아이");
+    void Feed() { var c = Care.Get(); c.food = 4; c.fat = Mathf.Min(1, c.fat + .02f); c.Save(); Room.Pet.DoAt(X("bowl", 41), 30, "eat", 4.5f, "밥이다!"); Say(Nm + "가 밥 먹으러 달려가요"); }
+    void Water() { var c = Care.Get(); c.water = 1; c.Save(); Room.Pet.DoAt(X("bottle", 46) - 3, 24, "drink", 3, "꼴깍꼴깍"); Say(Nm + "가 물 마시러 가요"); }
+    void Snack() { var c = Care.Get(); c.trust = Mathf.Min(100, c.trust + 1); c.fat = Mathf.Min(1, c.fat + .03f); c.Save(); Room.Pet.DoAt(50, 30, "eat", 4, "해바라기씨다!"); FxLib.Play("sparkle", Room.W(50, 30), .6f, 60); Say(Nm + "가 해바라기씨를 오독오독 먹어요"); }
+    void Clean() { var c = Care.Get(); bool dirty = c.poop > 0; c.poop = 0; c.Save(); FxLib.Play("sparkle", Room.W(X("toilet", 65), 16), .7f, 60); Say(dirty ? "화장실을 깨끗하게 치웠어요" : "이미 깨끗해요"); }
+    void Call() { Room.Pet.DoAt(Random.Range(35f, 65f), 26, "happy", 1.4f, "불렀어?"); FxLib.Play("heart", Room.W(50, 40), .6f, 60); Say("\"" + Nm + "~\""); }
+
+    void LateUpdate()
+    {
+        if (State == null) return;
+        var c = Care.Get(); int f = Mathf.RoundToInt(c.food);
+        careSub[0].text = new string('●', Mathf.Clamp(f, 0, 4)) + new string('○', 4 - Mathf.Clamp(f, 0, 4));
+        careSub[1].text = Mathf.RoundToInt(c.water * 100) + "%";
+        careSub[2].text = "해바라기씨";
+        careSub[3].text = c.poop > 0 ? "똥 " + Mathf.RoundToInt(c.poop) : "깨끗";
+        careSub[4].text = "\"" + Nm + "~\"";
     }
 }
