@@ -2595,10 +2595,10 @@ function rhLoop() {
     g.fillStyle = 'rgba(255,255,255,.85)'; g.strokeStyle = '#4A3428'; g.lineWidth = 3; g.beginPath(); g.roundRect(x - 38 - bump * 4, sideY - hgt / 2 - bump * 4, 76 + bump * 8, hgt + bump * 8, 22); g.fill(); g.stroke();
     list.forEach((id, j) => { const y = sideY - (list.length - 1) * 31 + j * 62, sz = 54 * (1 + pop * .3) * (1 + bump * .12); lrDraw(g, { k: 'n', id }, x, y, sz); }); }
   /* 줄 선 간식: 부드럽게 한 칸씩 내려옴 */
-  const N = 8, step = (bot - top) / (N - 1);
-  for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i, y = bot - pos * step, k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 : 0);
+  const N = 8, step = (bot - top) / (N - 1) * .92;
+  for (let i = N - 1; i >= 0; i--) { const it = RH.q[i]; if (!it) continue; const pos = i, y = bot - pos * step - (i ? 14 : 0), k = 1 - pos / N, sz = 30 + k * 40 + (i === 0 ? 12 : 0);
     let x = cx; if (i === 0 && pn - (RH.wrong || 0) < 250) x += Math.sin(pn / 15) * 6;
-    if (i === 0) { g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.arc(x, y, sz * .66, 0, 7); g.fill(); g.strokeStyle = '#E07A93'; g.lineWidth = 3; g.stroke(); }
+    if (i === 0) { g.fillStyle = 'rgba(224,122,147,.28)'; g.beginPath(); g.ellipse(x, y + sz * .42, sz * .5, sz * .14, 0, 0, 7); g.fill(); g.strokeStyle = '#E07A93'; g.lineWidth = 2.5; g.stroke(); }
     lrDraw(g, it, x, y, sz); }
   /* 고른 간식은 옆으로 쓱 (짧고 곧게) */
   RH.fly = RH.fly.filter(f => pn - f.at < 160);
