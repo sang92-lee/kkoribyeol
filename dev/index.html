@@ -1388,23 +1388,25 @@ function gearFollow() {
   const gw = $('#gearsWrap'); if (!gw || !P.spr) return;
   const fb = BOX[P.spr.front], cb = BOX[P.spr[P.cur]] || fb; if (!fb) return;
   const a0 = headAnchor(fb, 'front'), a1 = headAnchor(cb, P.cur), sc = a1.w / a0.w;
-  /* 젤리 그리기(jelly)와 똑같은 식으로 머리 줄이 어디로 갔는지 계산해서 장비가 딱 붙어 다니게 */
-  const J = P.J || { lean: 0, wob: 0, sq: 1 }, yN = a1.y + .12, up = Math.pow(1 - yN, 1.5);
+  /* 젤리 그리기(jelly)와 같은 식: 몸은 발바닥 기준으로 세로 sq배·가로 wf배 늘고, 눈 높이 줄이 jx만큼 옆으로 감.
+     장비도 발바닥 기준으로 똑같이 늘려야 커지거나 벌떡 설 때 안경이 눈에서 안 벗어남 */
+  const J = P.J || { lean: 0, wob: 0, sq: 1 }, yN = Math.min(.9, a1.y + .25), up = Math.pow(1 - yN, 1.5);
   const fat = (CARE?.fat ?? .35) - .35, sq = J.sq * (1 - Math.max(0, fat) * .12), wscale = (1 + (1 - J.sq) * .6) * (1 + fat * .38);
   const near = Math.exp(-Math.pow((yN - (J.ty ?? .5)) / .16, 2));
   const wf = (1 + (wscale - 1) * (.6 + .4 * Math.sin(Math.PI * yN)) - (J.dent || 0) * .16 * near + (J.dent || 0) * .05 * (1 - near)) * (1 - (J.stand || 0) * .07);
   const jx = (J.lean * .22 + J.wob * .06) * up + (J.pull || 0) * .12 * near + (J.look || 0) * .05 * up * up;
-  const jy = (1 - yN) * (1 - sq) + (J.sniff || 0) * .012 * Math.max(0, 1 - yN * 2.2);
-  const dx = (a1.x - a0.x * sc) * 100 + jx * 100 + (a1.x - .5) * (wf - 1) * 100, dy = (a1.y - a0.y * sc) * 100 + jy * 100;
+  const jy = (J.sniff || 0) * .012 * Math.max(0, 1 - yN * 2.2);
+  const px = (a1.x - a0.x * sc) * 100, py = (a1.y - a0.y * sc) * 100, ax = a0.x * 100, ay = a0.y * 100;
   const tilt = a1.rot + J.lean * 12 + J.wob * 4 + (J.look || 0) * 6;
-  gw.style.transform = `translate(${dx}%, ${dy}%) scale(${sc * wf}, ${sc * (1 + (sq - 1) * .5)}) rotate(${tilt}deg)`;
-  gw.style.transformOrigin = `${a0.x * 100}% ${a0.y * 100}%`;
+  gw.style.transformOrigin = '0 0';
+  gw.style.transform = `translate(${jx * 100}%, ${jy * 100}%) translate(50%, 100%) scale(${wf}, ${sq}) translate(-50%, -100%) translate(${px}%, ${py}%) translate(${ax}%, ${ay}%) scale(${sc}) rotate(${tilt}deg) translate(${-ax}%, ${-ay}%)`;
   /* 뒷모습이면 얼굴 장비는 안 보이고, 옆모습이면 얼굴 장비를 옆으로 좁힘 */
   gw.querySelectorAll('.gear').forEach(g => {
     const id = g.dataset.g, slot = SLOT[id];
     g.style.opacity = P.cur === 'back' && slot === 'face' ? 0 : 1;
-    g.style.scale = a1.side && slot === 'face' ? '.55 1' : '';
-    g.style.translate = a1.side && slot === 'face' ? '30% 0' : '';
+    /* 옆모습: 얼굴 장비는 앞쪽으로 납작, 목도리·넥타이 같은 몸 장비도 옆으로 돌아간 만큼 좁히고 앞으로 */
+    g.style.scale = a1.side ? (slot === 'face' ? '.55 1' : slot === 'body' ? '.62 1' : '.85 1') : '';
+    g.style.translate = a1.side ? (slot === 'face' ? '30% 0' : slot === 'body' ? '18% 0' : '8% 0') : '';
   });
 }
 /* ---------- 앞발: 세수·먹기 ---------- */
