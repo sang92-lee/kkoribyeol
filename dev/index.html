@@ -146,6 +146,7 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .satTip { margin: 10px 0 0; font-size: 14px; }
 .room .prop.movedNew { animation: movedNew 1s ease-in-out 6; } @keyframes movedNew { 50% { filter: drop-shadow(0 0 6px #F6C94E) brightness(1.15); } }
 .on { color: #3BA55C; font-size: 12px; font-weight: 700; } .off { color: var(--ink-soft); font-size: 11px; } .friend .on, .friend .off { display: block; }
+.room .prop.floaty { animation: floaty 1s ease-in-out 4; } @keyframes floaty { 50% { transform: translateX(-50%) translateY(-10%); } }
 .roomBar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .roomBar .sndBtn { margin-right: auto; }
 .roomBar .wtTag, .roomBar .sndBtn, .roomBar .clockTag { position: static !important; }
 .wtTag { position: absolute; top: 38px; right: 10px; z-index: 5; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; font-family: var(--display); font-size: 13px; }
@@ -1456,7 +1457,8 @@ function choose() {
   if (m === 'calm' && !ham) Object.assign(w, k === 'cat' ? { tower: .25 } : { chew: .2 });
   if (m === 'calm') Object.assign(w, { nap: own.has('cloud') ? .15 : .05, wander: .35 });
   if (m !== 'sleep' && KP().cage) { w.dig = .18; w.climb = .16; }
-  if (m !== 'sleep' && (S.state?.roomLv || 0) >= 2) w.loft = .16;
+  if (m !== 'sleep' && own.has('loft')) w.loft = .16;
+  if (m !== 'sleep') { if (own.has('hay')) w.hay = .16; if (own.has('bridge')) w.bridge = .14; if (own.has('tube')) w.tube = m === 'active' ? .25 : .14; if (own.has('mushroom')) w.mush = .1; if (own.has('balloon')) w.balloon = .1; if (own.has('tent')) w.tentpeek = .08; if (own.has('cloud')) w.cloudhop = .08; }
   if (m !== 'sleep') { if (own.has('cushion')) w.cushion = .15; if (own.has('tunnel')) w.tunnel = .15; if (own.has('seesaw')) w.seesaw = .12; if (own.has('telescope')) w.scope = document.querySelector('#room.night') ? .2 : .05; if (own.has('carousel')) w.carousel = .14; }
   if (m !== 'sleep') { if (own.has('sandbath')) w.sandbath = .15; if (own.has('swing')) w.swing = .15; if (own.has('bookshelf')) w.books = .1; if (own.has('piano')) w.piano = m === 'active' ? .15 : .08; }
   if (m !== 'sleep') { if (own.has('garden')) w.garden = .15; if (own.has('cafe')) w.cafe = .15; if (own.has('pool')) w.pool = m === 'active' ? .3 : .12; }
@@ -1502,6 +1504,14 @@ function next() {
   if (P.hiding) { const k = P.hiding; P.hiding = null; P.behind = false; P.zt = 0; P.follow = true; if (P.mound) { P.mound.remove(); P.mound = null; } $('#roomPet').style.opacity = 1; if (SPOT[k] != null) P.x = SPOT[k] + 4; P.cls = 'popout'; say('아무도 못 찾았지롱~', 1600); emote('note', 1400); return setAct('idle', 1800, `${petNm()}가 스스로 나왔어요`, ''); }
   const a = choose(), n = petNm(), own = ownedItems(); traitUp(ACT_TRAIT[a], .4);
   if (a !== 'sleep' && P.hidden) return leaveHouse(next);
+  const PRK = k => { const el = $(`#world .prop[data-k="${k}"]`); return el; }, PFX = (k, cls, ms) => { const el = PRK(k); if (!el) return; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
+  if (a === 'hay') return goTo(SPOT.hay, 10, () => { P.face = 'eat'; P.faceUntil = performance.now() + 4000; PFX('hay', 'rustle', 3000); say(['건초 냄새 좋아', '푹신푹신', '볼에 쏙쏙'][Math.floor(Math.random() * 3)], 1500); for (let i = 0; i < 6; i++) setTimeout(() => { const d = document.createElement('i'); d.className = 'dust'; d.style.left = (SPOT.hay + rnd(-4, 4)) + '%'; d.style.bottom = (FLOOR + rnd(2, 8)) + '%'; d.style.background = '#E2BC62'; $('#world')?.appendChild(d); setTimeout(() => d.remove(), 800); }, i * 300); setAct('dig', rnd(5, 9) * 1000, `${n}가 건초를 파고들어요`, 'munch'); }, `${n}가 건초 더미로 가요`);
+  if (a === 'bridge') return goTo(SPOT.bridge - 8, 10, () => { say('다리 건너기!', 1000); tweenY(FLOOR + 6, 500, () => goTo(SPOT.bridge + 8, 4, () => tweenY(FLOOR, 400, () => { emote('note', 1200); say(Math.random() < .5 ? '건넜다~' : '한 번 더!', 1200); setAct('idle', 1500, '', ''); }), `${n}가 나무 다리를 건너요`, 0)); }, `${n}가 나무 다리로 가요`);
+  if (a === 'tube') return goTo(SPOT.tube - 8, 12, () => { say('쏙!', 700); P.cls = 'squeeze'; setTimeout(() => { $('#roomPet').style.opacity = 0; P.hidden = false; const sfx = setInterval(() => { try { SFX.run(); } catch (e) {} }, 120); setTimeout(() => clearInterval(sfx), 1300); PFX('tube', 'rustle', 1500); setTimeout(() => { P.x = SPOT.tube + 8; P.y = FLOOR + 12; $('#roomPet').style.opacity = 1; P.cls = 'popout'; emote('spark', 1300); say(['뿅!', '튜브 최고!', '쪼르르르~'][Math.floor(Math.random() * 3)], 1300); setAct('idle', 1800, `${n}가 튜브에서 튀어나왔어요`, ''); }, 1500); }, 600); }, `${n}가 튜브 터널로 가요`);
+  if (a === 'mush') return goTo(SPOT.mushroom, 10, () => { $('#roomPet').style.opacity = 0; say('똑똑, 아무도 없어요~', 1500); PFX('mushroom', 'rustle', 2000); setTimeout(() => { $('#roomPet').style.opacity = 1; P.cls = 'popout'; say('까꿍!', 1200); emote('heart', 1300); setAct('idle', 2000, '', ''); }, rnd(3, 6) * 1000); setAct('hiding2', 7000, `${n}가 버섯 집에 들어갔어요`, ''); }, `${n}가 버섯 집으로 가요`);
+  if (a === 'balloon') return goTo(SPOT.balloon, 10, () => { say('풍선 꽉!', 1000); PFX('balloon', 'floaty', 4000); tweenY(FLOOR + 9, 1500, () => { emote('note', 1500); say('둥실둥실~', 1500); setAct('float', 2500, `${n}가 풍선 타고 둥실`, ''); }); }, `${n}가 풍선으로 가요`);
+  if (a === 'tentpeek') return goTo(SPOT.tent, 9, () => { $('#roomPet').style.opacity = 0; setTimeout(() => { $('#roomPet').style.opacity = 1; P.face = 'curious'; P.faceUntil = performance.now() + 2000; say('캠핑 중이에요', 1300); setAct('idle', 2500, '', ''); }, rnd(3, 6) * 1000); setAct('hiding2', 7000, `${n}가 텐트에서 뒹굴어요`, ''); }, `${n}가 텐트로 가요`);
+  if (a === 'cloudhop') return goTo(SPOT.cloud, 10, () => { say('구름 점프!', 900); tweenY(47, 700, () => { let k = 0; const hop = () => { if (++k > 4) { setAct('idle', 1500, '', ''); return; } tweenY(53, 260, () => tweenY(47, 260, hop)); }; emote('spark', 1200); hop(); }); }, `${n}가 구름 위로 올라가요`);
   if (a === 'tidy') { const ks = carryables(), k = ks[Math.floor(Math.random() * ks.length)], pr = $(`#world .prop[data-k="${k}"]`); if (!pr) return setAct('idle', 1500, '', '');
     const to = Math.max(6, Math.min(94, SPOT[k] + (Math.random() < .5 ? -1 : 1) * rnd(15, 40)));
     return goTo(SPOT[k], 10, () => { say(['앙! 물었다', '이건 저기가 좋겠어', '흠흠 정리 정리', '영차영차'][Math.floor(Math.random() * 4)], 1300); P.carryEl = pr; pr.style.transition = 'none'; pr.style.zIndex = 29;
@@ -1525,7 +1535,7 @@ function next() {
   if (a === 'books') return goTo(SPOT.bookshelf, 10, () => { emote('q', 1600); say('흠… 어려운 책이다', 1500); setAct('look', rnd(4, 7) * 1000, `${n}가 책 읽는 척해요`, ''); }, `${n}가 책장으로 가요`);
   if (a === 'piano') return goTo(SPOT.piano, 11, () => { say('도레미~', 1200); setAct('piano', rnd(4, 7) * 1000, `${n}가 피아노를 쳐요`, 'eat'); }, `${n}가 피아노로 가요`);
   if (a === 'dig' && KP().cage) return digIn(false);
-  if (a === 'loft') return goTo(39, 12, () => { say('사다리 영차!', 1200); tweenY(48, 1400, () => goTo(rnd(46, 78), 9, () => { emote('spark', 1200); say(['높다!', '여기 내 자리', '다 보인다~'][Math.floor(Math.random() * 3)], 1400); setAct('perch', rnd(8, 15) * 1000, `${n}가 다락방에서 놀아요`, ''); }, `${n}가 다락방을 탐험해요`, 0)); }, `${n}가 다락방으로 가요`);
+  if (a === 'loft') return goTo(SPOT.loft + 7, 12, () => { say('사다리 영차!', 1200); tweenY(FLOOR + 17, 1400, () => goTo(SPOT.loft + rnd(-4, 3), 6, () => { emote('spark', 1200); say(['높다!', '여기 내 자리', '다 보인다~'][Math.floor(Math.random() * 3)], 1400); setAct('perch', rnd(8, 15) * 1000, `${n}가 다락방에서 놀아요`, ''); }, `${n}가 다락방을 탐험해요`, 0)); }, `${n}가 다락방으로 가요`);
   if (a === 'climb' && KP().cage) return goTo(SPOT.platform - 10, 11, () => { say('영차 영차', 1200); P.x = SPOT.platform - 8; tweenY(FLOOR + 3, 500, () => goTo(SPOT.platform + 2, 10, () => { tweenY(FLOOR + 15, 400, () => setAct('perch', rnd(8, 16) * 1000, `${n}가 2층에서 사료를 먹어요`, 'eat')); })); }, `${n}가 2층으로 올라가요`);
   if (a === 'garden') return goTo(SPOT.garden, 11, () => { emote('q', 1200); say('숨었다!', 1200); setAct('look', rnd(5, 9) * 1000, `${n}가 해바라기 사이에 숨었어요`, ''); }, `${n}가 정원으로 가요`);
   if (a === 'cafe') return goTo(SPOT.cafe, 11, () => { say('홀짝~', 1400); emote('note', 1400); fatUp(.01); setAct('eat', rnd(5, 8) * 1000, `${n}가 꼬마 카페에서 티타임`, 'eat'); }, `${n}가 카페로 가요`);
@@ -2664,6 +2674,7 @@ const RB = { on: false };
 const RB_STYLE = [
   { n: '폴카', bpm: 128, sw: 0, bass: 'oom' }, { n: '행진곡', bpm: 112, sw: 0, bass: 'march' }, { n: '자장가', bpm: 92, sw: .12, bass: 'soft' },
   { n: '디스코', bpm: 120, sw: 0, bass: 'oct' }, { n: '셔플', bpm: 108, sw: .18, bass: 'walk' }, { n: '댄스', bpm: 132, sw: 0, bass: 'oct' },
+  { n: '뽀짝송', bpm: 146, sw: 0, bass: 'oom', cute: 1 }, { n: '쪼꼬미 행진', bpm: 138, sw: .08, bass: 'oom', cute: 1 }, { n: '말랑 왈츠', bpm: 132, sw: .15, bass: 'soft', cute: 1 },
 ];
 const RB_ADJ = ['말랑말랑', '꼬물꼬물', '볼빵빵', '두근두근', '반짝반짝', '데굴데굴', '쫀득쫀득', '폭신폭신', '우다다', '새근새근'];
 const RB_NOUN = ['해바라기', '쳇바퀴', '톱밥', '씨앗', '치즈', '딸기', '별빛', '볼주머니', '꼬리', '구름'];
@@ -2673,7 +2684,7 @@ function rbRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >
 const RBMAJ = [0, 2, 4, 5, 7, 9, 11];
 function rbFreq(root, deg, oct = 0) { const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7; return 440 * Math.pow(2, (root + RBMAJ[d] + 12 * (o + oct) - 9) / 12); }
 function rbNewSong() {
-  const R = rbRng(Date.now() ^ Math.floor(Math.random() * 1e9)), st = RB_STYLE[Math.floor(R() * RB_STYLE.length)], tw = R() < .2;
+  const R = rbRng(Date.now() ^ Math.floor(Math.random() * 1e9)), cutes = RB_STYLE.filter(x => x.cute), st = R() < .45 ? cutes[Math.floor(R() * cutes.length)] : RB_STYLE[Math.floor(R() * RB_STYLE.length)], tw = R() < .2;
   return { R, st, bpm: st.bpm + Math.round((R() - .5) * 10), root: Math.floor(R() * 7) - 2, prog: RBPROGS[Math.floor(R() * RBPROGS.length)], tw, wave: ['square', 'triangle', 'square'][Math.floor(R() * 3)],
     title: tw ? '반짝반짝 작은 별 (꼬리별 버전)' : `${RB_ADJ[Math.floor(R() * RB_ADJ.length)]} ${RB_NOUN[Math.floor(R() * RB_NOUN.length)]} ${st.n}`, motif: Array.from({ length: 8 }, () => Math.floor(R() * 5)) };
 }
@@ -2688,13 +2699,16 @@ function rbBar() {
   for (let b = 0; b < 4; b++) { const t = t0 + b * beat, oct = S2.st.bass === 'oct' && b % 2 ? 1 : 0, deg = S2.st.bass === 'walk' ? chord + b : S2.st.bass === 'oom' && b % 2 ? chord + 4 : chord; rbVoice(t, rbFreq(S2.root, deg, -2 + oct), beat * .8, 'triangle', .22, RB.out); if (S2.st.bass === 'oom' && b % 2) [2, 4].forEach(x => rbVoice(t, rbFreq(S2.root, chord + x, -1), beat * .4, 'square', .03, RB.out)); }
   for (const x of [0, 2, 4]) rbVoice(t0, rbFreq(S2.root, chord + x, -1), beat * 3.8, 'sine', .035, RB.out);
   for (const b of [1, 3]) { const t = t0 + b * beat, c = RB.ac, sn = c.createBufferSource(); sn.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; const gg = c.createGain(); gg.gain.setValueAtTime(.18, t); gg.gain.exponentialRampToValueAtTime(.001, t + .12); sn.connect(f).connect(gg).connect(RB.out); sn.start(t); sn.stop(t + .14); }
+  if (S2.st.cute && RB.t0 && (bar % 2 === 1 || R() < .35)) { const b = R() < .5 ? 3 : 2.5, t = t0 + b * beat, w = ['얏!', '하잇!', '에잇!', '얏호!', '뿌잇!', '야앗!', '으랏!'][Math.floor(R() * 7)]; rbShout(t, w); }
+  if (S2.st.cute) for (let b = 0; b < 4; b++) if (R() < .3) { const t = t0 + b * beat + beat * .75, c = RB.ac, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(900 + R() * 500, t); o.frequency.exponentialRampToValueAtTime(1900 + R() * 600, t + .09); g.gain.setValueAtTime(.06, t); g.gain.exponentialRampToValueAtTime(.001, t + .12); o.connect(g).connect(RB.out); o.start(t); o.stop(t + .14); }
   let steps = [];
   if (S2.tw) { for (let i = 0; i < 8; i++) { const d = RBTWINKLE[(bar * 8 + i) % RBTWINKLE.length]; if (d >= 0 && i % 2 === 0) steps.push([i / 2, d]); } }
   else for (let b = 0; b < 4; b++) { const pat = R() < .25 + hard * .4 ? [0, .5] : R() < .15 ? [] : [0]; for (const o of pat) { const m = S2.motif[(bar * 4 + b + Math.floor(o * 2)) % 8], deg = chord + [0, 2, 4, 5, 7][m] - (R() < .3 ? 7 : 0); steps.push([b + o, deg]); } }
   if (!steps.length) steps.push([0, chord]);
   for (const [at, deg] of steps) {
     const t = t0 + at * beat + (at % 1 ? sw(1) : 0);
-    rbVoice(t, rbFreq(S2.root, deg, 0), beat * .45, S2.wave, .07, RB.mel);
+    if (S2.st.cute) { rbVoice(t, rbFreq(S2.root, deg, 1), beat * .22, 'triangle', .11, RB.mel); rbVoice(t, rbFreq(S2.root, deg, 2), beat * .12, 'sine', .04, RB.mel); }
+    else rbVoice(t, rbFreq(S2.root, deg, 0), beat * .45, S2.wave, .07, RB.mel);
     if (RB.t0 && t - RB.t0 > 1.2) { const r = R(); const ln = deg % 7 >= 3 || deg >= 7 ? 1 : 0; if (hard > .5 && at % 1 === 0 && R() < .12) RB.notes.push({ t, k: 'seed', f: rbFreq(S2.root, deg + 2, 1), ln: 1 - ln }); RB.notes.push({ t, ln, k: r < .05 ? 'gold' : r < .09 + (RB.left < 12 ? .05 : 0) ? 'clock' : r < .14 + hard * .06 ? 'broc' : 'seed', f: rbFreq(S2.root, deg, 1) }); }
   }
   RB.nextBar += beat * 4; RB.bar++;
@@ -2724,6 +2738,15 @@ function rbBeat(ln, k) {
   if (!ln) { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(40, t + .18); g.gain.setValueAtTime(.7, t); g.gain.exponentialRampToValueAtTime(.001, t + .22); o.connect(g).connect(RB.out); o.start(t); o.stop(t + .25);
     const n = c.createBufferSource(); n.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400; const g2 = c.createGain(); g2.gain.setValueAtTime(.25, t); g2.gain.exponentialRampToValueAtTime(.001, t + .06); n.connect(f).connect(g2).connect(RB.out); n.start(t); n.stop(t + .08); return; }
   const n = c.createBufferSource(); n.buffer = RB.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 5200; f.Q.value = .8; const g = c.createGain(); g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.001, t + .13); n.connect(f).connect(g).connect(RB.out); n.start(t); n.stop(t + .15);
+}
+/* 귀여운 추임새: 목소리처럼 들리게 톱니파 + 모음 필터, 위로 꺾이는 음 */
+function rbShout(t, word) {
+  const c = RB.ac, o = c.createOscillator(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(), g = c.createGain(), base = 520 + Math.random() * 160;
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(base, t); o.frequency.linearRampToValueAtTime(base * 1.5, t + .06); o.frequency.exponentialRampToValueAtTime(base * 1.15, t + .16);
+  f1.type = 'bandpass'; f1.frequency.setValueAtTime(900, t); f1.frequency.linearRampToValueAtTime(1300, t + .08); f1.Q.value = 6; f2.type = 'bandpass'; f2.frequency.value = 2400; f2.Q.value = 8;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.35, t + .015); g.gain.setValueAtTime(.35, t + .1); g.gain.exponentialRampToValueAtTime(.001, t + .2);
+  o.connect(f1).connect(g); o.connect(f2).connect(g); g.connect(RB.out); o.start(t); o.stop(t + .22);
+  setTimeout(() => { if (RB.on) RB.pops.push({ t: word, c: '#F28C3A', at: performance.now(), big: 1 }); }, Math.max(0, (t - c.currentTime) * 1000));
 }
 function rbJudge(ln) {
   if (!RB.on) return; const now = RB.ac.currentTime - .03;
