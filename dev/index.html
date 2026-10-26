@@ -198,6 +198,8 @@ input[type=text] { font: 16px var(--body); color: var(--ink); padding: 12px 14px
 .room .pet.eat .body { animation: munch .35s ease-in-out infinite; }
 .room .pet.groom .body { animation: wiggle .5s ease-in-out infinite; }
 .room .pet.sleep .body { animation: breathe 4s ease-in-out infinite; filter: brightness(.95); }
+.room .pet.stomp .spr { animation: cstomp .22s ease-in-out 10; transform-origin: 50% 100%; } @keyframes cstomp { 0%,100% { translate: 0 0; scale: 1; } 50% { translate: 0 -5%; scale: 1.06 .93; } }
+.room .pet.huff .spr { animation: chuff .6s ease-in-out 4; transform-origin: 50% 100%; } @keyframes chuff { 0%,100% { scale: 1; rotate: 0deg; } 40% { scale: 1.1 1.04; rotate: -4deg; } 70% { scale: .96 1; rotate: 3deg; } }
 .room .pet.tilt .spr { animation: ctilt 1.3s ease-in-out 2; transform-origin: 50% 90%; } @keyframes ctilt { 0%,100% { rotate: 0deg; } 30%,60% { rotate: -14deg; } }
 .room .pet.butt .spr { animation: cbutt .35s ease-in-out 7; transform-origin: 50% 100%; } @keyframes cbutt { 0%,100% { rotate: 0deg; } 25% { rotate: 7deg; } 75% { rotate: -7deg; } }
 .room .pet.hop .spr { animation: chop .5s cubic-bezier(.3,.7,.4,1) 4; transform-origin: 50% 100%; } @keyframes chop { 0%,100% { translate: 0 0; scale: 1.08 .92; } 50% { translate: 0 -16%; scale: .94 1.06; } }
@@ -1597,7 +1599,7 @@ function choose() {
   if (m === 'sleep' && Math.random() < .25) { w.drink = .25; }
   if (P.afterEat && m !== 'sleep') { w.groom += 1.2; P.afterEat = false; }
   if (m !== 'sleep') w.fidget = .35;
-  if (m !== 'sleep') { w.cute = .22; }
+  if (m !== 'sleep') { w.cute = .22; const c = care(); w.grump = .14 + (c.food < 1 ? .25 : 0) + (c.poop >= 1 ? .2 : 0) + (c.water < .3 ? .15 : 0) + (persona().name === '새침이' ? .15 : 0); }
   if (m !== 'sleep') { const tv = traits(), f = t => (tv[t] - 50) / 100; w.nap = Math.max(0, (w.nap || 0) + f('sleepy') * .6); w.zoom = Math.max(0, (w.zoom || 0) + f('energy') * .4); w.wheel = Math.max(0, (w.wheel || 0) + f('energy') * .3); w.eat = Math.max(0, (w.eat || 0) + f('appetite') * .4); w.fidget = Math.max(0, w.fidget + f('cuddly') * .4); if (w.seek != null) w.seek = Math.max(0, w.seek + f('curious') * .3); }
   if (m !== 'sleep' && !DECO.on && carryables().length) w.tidy = .14;
   if ((m === 'active' || m === 'calm') && hideSpots().length) w.seek = .1;
@@ -1673,6 +1675,7 @@ function next() {
   if (a === 'cafe') return goTo(SPOT.cafe, 11, () => { say('홀짝~', 1400); emote('note', 1400); fatUp(.01); setAct('eat', rnd(5, 8) * 1000, `${n}가 꼬마 카페에서 티타임`, 'eat'); }, `${n}가 카페로 가요`);
   if (a === 'pool') return goTo(SPOT.pool, 14, () => { say('첨벙!', 1200); fx('land', 400); setAct('swim', rnd(6, 10) * 1000, `${n}가 튜브 풀장에서 첨벙첨벙`, 'sway'); fatUp(-.02); }, `${n}가 풀장으로 가요`);
   if (a === 'seek' && hideNow(false)) return;
+  if (a === 'grump') { const c = care(), why = c.food < 1 ? ['배고프다고!!', '밥 어딨어 밥!', '굶기는 거야?!'] : c.poop >= 1 ? ['여기 지저분해!!', '청소 좀 해줘라~', '으으 냄새!'] : c.water < .3 ? ['목마르다구!', '물! 물!'] : ['흥!', '칫, 몰라!', '나 삐졌어', '건들지 마라~', '오늘은 기분 별로야', '흥칫뿡!', '왜 쳐다봐!']; P.face = 'grumpy'; P.faceUntil = performance.now() + 3500; emote('mad', 1800); say(why[Math.floor(Math.random() * why.length)], 1700); P.dir = -P.dir; return setAct('grump', 3200, `${n}가 짜증 내요`, Math.random() < .5 ? 'stomp' : 'huff'); }
   if (a === 'cute') { const c = [['tilt', ['응?', '뭐야뭐야?', '갸웃'], 'q'], ['butt', ['씰룩씰룩~', '엉덩이 춤!', '룰루~'], 'note'], ['hop', ['폴짝!', '신난다!', '헤헤'], 'heart'], ['shine', ['반짝반짝', '나 귀엽지?', '뿌잉'], 'spark']][Math.floor(Math.random() * 4)]; emote(c[2], 1500); say(c[1][Math.floor(Math.random() * 3)], 1400); if (c[0] === 'shine') { P.face = 'happy'; P.faceUntil = performance.now() + 2500; } return setAct('cute', 2600, `${n}가 귀여운 척해요`, c[0] === 'shine' ? 'cutesy' : c[0]); }
   if (a === 'fidget') {
     const f = ['look', 'stretch', 'twitch', 'hop', m2() === 'settle' || m2() === 'wake' ? 'yawn' : 'look'][Math.floor(Math.random() * 5)];
@@ -1979,6 +1982,8 @@ function touchAt(e, kick) {
 }
 function poke(e) {
   traitUp('cuddly', 1); traitUp('mood', .5);
+  { const t = performance.now(); P.pokes = (P.pokes || []).filter(x => t - x < 4000); P.pokes.push(t);
+    if (P.pokes.length >= 4 && P.act !== 'sleep') { P.pokes = []; P.face = 'grumpy'; P.faceUntil = t + 4000; emote('mad', 2000); say(['그만 찔러!!', '아 진짜아~!', '귀찮게 하지 마!', '으르릉…', '한 번만 더 해봐!'][Math.floor(Math.random() * 5)], 1800); P.dir = -P.dir; trustUp(-.3); return setAct('grump', 3500, `${petNm()}가 단단히 삐졌어요`, 'stomp'); } }
   const p = myPet(); if (!p) return;
   if (P.stroked) { P.stroked = false; return; }
   if (P.act !== 'sleep') emote(Math.random() < .5 ? 'heart' : 'note', 1300);
