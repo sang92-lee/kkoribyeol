@@ -15,7 +15,7 @@ const ROOM_COST = [0, 150, 350, 700];   // 방 넓히기 단계별 씨앗
 const ROOM_SLOTS = [5, 8, 11, 14];        // 방 크기별 놓을 수 있는 아이템 수
 const FOUND_DAY = 12;                    // 숨바꼭질 보상 하루 횟수
 const MAX_SCORE = 700;        // 한 판 최대 점수 (말 안 되는 점수 막기)
-const RARE_IDS = new Set(["strawberryhat", "bearhood", "tiara", "cape", "unicorn", "tube", "telescope", "carousel", "piano", "witch", "halo", "cake", "macaron", "starjelly", "pool", "cloud", "wings", "figure", "strawberry", "pudding", "tent", "crown", "goldseed"]);
+const RARE_IDS = new Set(["strawberryhouse", "rainbow", "ferris", "sailor", "cloudhat", "fairy", "strawberryhat", "bearhood", "tiara", "cape", "unicorn", "tube", "telescope", "carousel", "piano", "witch", "halo", "cake", "macaron", "starjelly", "pool", "cloud", "wings", "figure", "strawberry", "pudding", "tent", "crown", "goldseed"]);
 const POUCH_MS = 40 * 60e3, POUCH_MAX = 5, GIFT_COST = 15;
 const CONTESTS = [{ k: "likes", t: "하트 제일 많이 받은 햄찌", u: "♥" }, { k: "score", t: "씨앗 받기 최고점", u: "점" }, { k: "pouch", t: "볼주머니 제일 많이 턴 햄찌", u: "번" }];
 const wkKey = t => String(Math.floor((t + 9 * 3600e3 - 4 * 864e5) / (7 * 864e5)));
@@ -26,6 +26,7 @@ const NPC_PETS = [
   { id: "npc-nyang", name: "냥냥", kind: "cat", fur: "#9A949E" },
 ];
 const ITEMS = [
+  { id: "donut", w: 16 }, { id: "cardbox", w: 16 }, { id: "pinecone", w: 16 }, { id: "teacup", w: 10 }, { id: "bathtub", w: 10 }, { id: "strawberryhouse", w: 4 }, { id: "rainbow", w: 4 }, { id: "ferris", w: 1.5 },
   { id: "hay", w: 22 }, { id: "bridge", w: 16 }, { id: "loft", w: 14 }, { id: "tube", w: 9 },
   { id: "slide", w: 22 }, { id: "hammock", w: 22 }, { id: "lamp", w: 22 }, { id: "garden", w: 16 }, { id: "cafe", w: 14 },
   { id: "sandbath", w: 18 }, { id: "balloon", w: 18 }, { id: "swing", w: 12 }, { id: "bookshelf", w: 12 },
@@ -33,11 +34,12 @@ const ITEMS = [
   { id: "pool", w: 9 }, { id: "piano", w: 6 }, { id: "telescope", w: 5 }, { id: "cloud", w: 7 }, { id: "carousel", w: 2.5 }, { id: "tent", w: 3 },
 ];
 const GEAR = [
+  { id: "cherrypin", w: 16 }, { id: "ladybug", w: 16 }, { id: "bandaid", w: 16 }, { id: "nightcap", w: 10 }, { id: "leafhat", w: 10 }, { id: "monocle", w: 10 }, { id: "pearl", w: 10 }, { id: "sailor", w: 4 }, { id: "cloudhat", w: 4 }, { id: "fairy", w: 1.5 },
   { id: "sprout", w: 16 }, { id: "bell", w: 16 }, { id: "mustache", w: 16 }, { id: "bib", w: 16 }, { id: "catears", w: 10 }, { id: "froghat", w: 10 }, { id: "chick", w: 10 }, { id: "backpack", w: 10 }, { id: "santa", w: 10 }, { id: "strawberryhat", w: 4 }, { id: "bearhood", w: 4 }, { id: "tiara", w: 4 }, { id: "cape", w: 4 }, { id: "unicorn", w: 1.5 },
   { id: "ribbon", w: 24 }, { id: "strawhat", w: 20 }, { id: "scarf", w: 20 }, { id: "glasses", w: 16 }, { id: "flower", w: 14 }, { id: "bowtie", w: 16 }, { id: "beret", w: 14 }, { id: "bunny", w: 9 }, { id: "heartglass", w: 9 },
   { id: "wings", w: 5 }, { id: "witch", w: 4 }, { id: "crown", w: 2.5 }, { id: "halo", w: 2 },
 ];
-const SLOT = { sprout: "head", bell: "body", mustache: "face", bib: "body", catears: "head", froghat: "head", chick: "head", backpack: "body", santa: "head", strawberryhat: "head", bearhood: "head", tiara: "head", cape: "body", unicorn: "head", ribbon: "head", strawhat: "head", flower: "head", beret: "head", bunny: "head", witch: "head", crown: "head", halo: "head",
+const SLOT = { cherrypin: "head", ladybug: "head", bandaid: "face", nightcap: "head", leafhat: "head", monocle: "face", pearl: "body", sailor: "body", cloudhat: "head", fairy: "body", sprout: "head", bell: "body", mustache: "face", bib: "body", catears: "head", froghat: "head", chick: "head", backpack: "body", santa: "head", strawberryhat: "head", bearhood: "head", tiara: "head", cape: "body", unicorn: "head", ribbon: "head", strawhat: "head", flower: "head", beret: "head", bunny: "head", witch: "head", crown: "head", halo: "head",
   glasses: "face", heartglass: "face", scarf: "body", bowtie: "body", wings: "body" };
 const SNACKS = [
   { id: "apple", w: 16 }, { id: "carrot", w: 15 }, { id: "pumpkin", w: 13 }, { id: "corn", w: 13 }, { id: "banana", w: 12 },
@@ -90,7 +92,7 @@ async function draw(req, env, hub) {
   const animal = KIND_KO[kind] || "pet";
   const prompt =
     `Redraw the ${animal} in the FIRST image as a cute chibi character illustration, in exactly the art style of the SECOND image. ` +
-    `Style: round mochi-like chubby body, soft dark-brown hand-drawn outline, fuzzy fur strokes along the edge, big glossy black dot eyes, pink blush cheeks, tiny pink paws, flat warm pastel colors. ` +
+    `Style: super cute chibi proportions (big round head about 60% of the height, tiny body and short stubby limbs), large sparkly eyes with two white shine highlights, tiny happy mouth, rosy pink blush cheeks, round mochi-like chubby body, soft dark-brown hand-drawn outline, fuzzy fur strokes along the edge, big glossy black dot eyes, pink blush cheeks, tiny pink paws, flat warm pastel colors. ` +
     `Keep this pet's real fur colors, markings, ear shape and hair length from the photo so the owner recognizes it. ` +
     `One character only, full body, centered, facing the viewer, plain cream background (#FDF6EC), no text, no frame, no extra objects.`;
   const imgs = [{ mime: "image/jpeg", data: photo }, { mime: "image/jpeg", data: style }];
